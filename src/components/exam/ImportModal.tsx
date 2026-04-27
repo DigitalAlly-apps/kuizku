@@ -2,9 +2,9 @@
 // Import File Modal — supports Excel, CSV, Word (.docx)
 // ============================================================
 import { useState, useRef } from 'react';
-import { Upload, Download, CheckCircle, AlertCircle, FileSpreadsheet, FileText } from 'lucide-react';
+import { Upload, Download, CheckCircle, AlertCircle, FileSpreadsheet } from 'lucide-react';
 import { Modal } from '../ui';
-import { parseExcelFile, parseCSVFile, parseWordFile, downloadExcelTemplate } from '../../utils/importParser';
+import { parseExcelFile, parseCSVFile, downloadExcelTemplate } from '../../utils/importParser';
 import type { ImportResult, ExamFormat, Question } from '../../types';
 
 interface Props {
@@ -86,7 +86,7 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
     if (file) processFile(file);
   };
 
-  const optionLetters = 'ABCDEF';
+
 
   return (
     <Modal open={open} onClose={handleClose} title="Import Soal dari File" size="xl"

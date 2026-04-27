@@ -3,7 +3,7 @@
 // ============================================================
 import { useState, useMemo } from 'react';
 import { Search, CheckSquare, Square, Plus, BookOpen } from 'lucide-react';
-import { Modal, EmptyState, FormatBadge } from '../ui';
+import { Modal, EmptyState } from '../ui';
 import { useBank } from '../../context/AppContext';
 import type { ExamFormat, Question, BankQuestion } from '../../types';
 
@@ -15,7 +15,7 @@ interface Props {
   onClose: () => void;
 }
 
-export default function BankModal({ open, format, existingIds, onAdd, onClose }: Props) {
+export default function BankModal({ open, format, onAdd, onClose }: Props) {
   const { bankQuestions } = useBank();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'MULTIPLE_CHOICE' | 'ESSAY'>('ALL');

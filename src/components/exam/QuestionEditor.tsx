@@ -1,11 +1,11 @@
 // ============================================================
 // Question Editor — PG & Essay editor with real-time preview
 // ============================================================
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Plus, Trash2, CheckCircle } from 'lucide-react';
 import { TagInput } from '../ui';
 import { generateId, validateQuestion } from '../../utils/helpers';
-import type { Question, QuestionType, ExamFormat, QuestionOption } from '../../types';
+import type { Question, QuestionType, ExamFormat } from '../../types';
 
 interface Props {
   format: ExamFormat;
@@ -19,7 +19,7 @@ const DEFAULT_ESSAY: Partial<Question> = { type: 'ESSAY', text: '', answerGuide:
 
 export default function QuestionEditor({ format, initial, onSave, onCancel }: Props) {
   const canPG = format === 'PG_ONLY' || format === 'COMBINATION';
-  const canEssay = format === 'ESSAY_ONLY' || format === 'COMBINATION';
+
 
   const defaultType: QuestionType = canPG ? 'MULTIPLE_CHOICE' : 'ESSAY';
   const [q, setQ] = useState<Partial<Question>>(initial ?? (defaultType === 'MULTIPLE_CHOICE' ? { ...DEFAULT_PG, options: [{ id: generateId(), text: '' }, { id: generateId(), text: '' }] } : { ...DEFAULT_ESSAY }));

@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, FileText, BookOpen, BarChart2, Settings, LogOut, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, FileText, BookOpen, BarChart2, Settings, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AppContext';
 
 const navItems = [

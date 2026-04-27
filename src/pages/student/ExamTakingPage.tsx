@@ -7,10 +7,10 @@ import { useApp } from '../../context/AppContext';
 import { storage } from '../../utils/storage';
 import {
   loadSession, upsertAnswer, updateTimer,
-  updateCurrentIndex, buildSubmission, createSession, clearSession,
+  updateCurrentIndex, buildSubmission, createSession,
   type ExamSession,
 } from '../../utils/examSession';
-import { formatTimer } from '../../utils/helpers';
+
 import { useCountdown } from '../../hooks/useCountdown';
 import type { Exam, Question, StudentAnswer } from '../../types';
 
