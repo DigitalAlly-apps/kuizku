@@ -24,6 +24,13 @@ export const storage = {
     }
     if (!authData.user) return { teacher: null, error: 'Gagal membuat akun.' };
 
+    // Supabase "phantom user" detection:
+    // When email confirmation is ON, re-registering an existing email returns a fake success
+    // with an empty identities array instead of an error (to prevent email enumeration).
+    if (!authData.user.identities || authData.user.identities.length === 0) {
+      return { teacher: null, error: 'Email ini sudah terdaftar. Silakan login atau gunakan email lain.' };
+    }
+
     // 2. Upsert into public.teachers (handles case where auth user exists but teachers row was deleted)
     const teacher: Teacher = {
       id: authData.user.id,
