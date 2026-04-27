@@ -18,10 +18,10 @@ export default function LoginPage() {
     if (!email || !password) { setError('Email dan password wajib diisi'); return; }
     setLoading(true);
     setError('');
-    const ok = await login(email, password);
+    const res = await login(email, password);
     setLoading(false);
-    if (ok) navigate('/guru/dashboard', { replace: true });
-    else setError('Email atau password salah');
+    if (res.success) navigate('/guru/dashboard', { replace: true });
+    else setError(res.error || 'Email atau password salah');
   };
 
   return (

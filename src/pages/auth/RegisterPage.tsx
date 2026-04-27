@@ -24,10 +24,10 @@ export default function RegisterPage() {
     if (form.password.length < 8) { setError('Password minimal 8 karakter'); return; }
     if (form.password !== form.confirmPassword) { setError('Konfirmasi password tidak cocok'); return; }
     setLoading(true);
-    const ok = await register({ name: form.name, email: form.email, password: form.password, subject: '', institution: '' });
+    const res = await register({ name: form.name, email: form.email, password: form.password, subject: '', institution: '' });
     setLoading(false);
-    if (ok) navigate('/guru/dashboard', { replace: true });
-    else setError('Email sudah terdaftar. Silakan login.');
+    if (res.success) navigate('/guru/dashboard', { replace: true });
+    else setError(res.error || 'Email sudah terdaftar. Silakan login.');
   };
 
   return (

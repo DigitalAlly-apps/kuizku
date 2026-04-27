@@ -12,8 +12,8 @@ interface AppContextShape {
   // Auth
   currentTeacher: Teacher | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (data: Omit<Teacher, 'id' | 'createdAt' | 'password'> & { password: string }) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  register: (data: Omit<Teacher, 'id' | 'createdAt' | 'password'> & { password: string }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
 
   // Exams
@@ -100,31 +100,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   // ---- Auth ----
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
-    const teacher = await storage.loginTeacher(email, password);
+    const { teacher, error } = await storage.loginTeacher(email, password);
     if (teacher) {
       setCurrentTeacher(teacher);
       await loadTeacherData(teacher);
-      return true;
+      return { success: true };
     }
     setIsLoading(false);
-    return false;
+    return { success: false, error };
   };
 
-  const register = async (data: Omit<Teacher, 'id' | 'createdAt' | 'password'> & { password: string }): Promise<boolean> => {
+  const register = async (data: Omit<Teacher, 'id' | 'createdAt' | 'password'> & { password: string }): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
-    const teacher = await storage.registerTeacher(data);
+    const { teacher, error } = await storage.registerTeacher(data);
     if (teacher) {
       setCurrentTeacher(teacher);
       setExamsState([]);
       setBankState([]);
       setSubmissionsState([]);
       setIsLoading(false);
-      return true;
+      return { success: true };
     }
     setIsLoading(false);
-    return false;
+    return { success: false, error };
   };
 
   const logout = async () => {

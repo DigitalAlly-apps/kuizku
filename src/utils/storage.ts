@@ -7,7 +7,7 @@ import type { Teacher, Exam, BankQuestion, Submission, StudentAnswer } from '../
 
 export const storage = {
   // ---- Auth / Teacher ----
-  async registerTeacher(data: Omit<Teacher, 'id' | 'createdAt'>): Promise<Teacher | null> {
+  async registerTeacher(data: Omit<Teacher, 'id' | 'createdAt'>): Promise<{ teacher: Teacher | null, error?: string }> {
     // 1. SignUp to Supabase Auth
     const { data: authData, error: authErr } = await supabase.auth.signUp({
       email: data.email,
@@ -15,7 +15,7 @@ export const storage = {
     });
     if (authErr || !authData.user) {
       console.error('Supabase Auth Error:', authErr);
-      return null;
+      return { teacher: null, error: authErr?.message || 'Gagal mendaftar auth' };
     }
     // 2. Insert into public.teachers
     const teacher: Teacher = {
@@ -32,19 +32,23 @@ export const storage = {
     ]);
     if (dbErr) {
       console.error('Teacher Insert Error:', dbErr);
-      return null;
+      return { teacher: null, error: dbErr.message };
     }
-    return teacher;
+    return { teacher };
   },
 
-  async loginTeacher(email: string, password: string): Promise<Teacher | null> {
+  async loginTeacher(email: string, password: string): Promise<{ teacher: Teacher | null, error?: string }> {
     const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({ email, password });
-    if (authErr || !authData.user) return null;
+    if (authErr) {
+      if (authErr.message.includes('Email not confirmed')) return { teacher: null, error: 'Email belum dikonfirmasi. Silakan cek inbox/spam email Anda.' };
+      return { teacher: null, error: 'Email atau password salah' };
+    }
+    if (!authData.user) return { teacher: null, error: 'User tidak ditemukan' };
     
     const { data: tData, error: dbErr } = await supabase.from('teachers').select('*').eq('id', authData.user.id).single();
-    if (dbErr || !tData) return null;
+    if (dbErr || !tData) return { teacher: null, error: 'Data profil guru tidak ditemukan di database' };
 
-    return {
+    return { teacher: {
       id: tData.id,
       name: tData.name,
       email: tData.email,
@@ -52,7 +56,7 @@ export const storage = {
       subject: tData.subject || '',
       institution: tData.institution || '',
       createdAt: tData.created_at
-    };
+    } };
   },
 
   async logout(): Promise<void> {
