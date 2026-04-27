@@ -13,26 +13,34 @@ export const storage = {
       email: data.email,
       password: data.password,
     });
-    if (authErr || !authData.user) {
+
+    // Handle common Supabase auth errors with friendly messages
+    if (authErr) {
       console.error('Supabase Auth Error:', authErr);
-      return { teacher: null, error: authErr?.message || 'Gagal mendaftar auth' };
+      if (authErr.message.includes('User already registered') || authErr.message.includes('already been registered')) {
+        return { teacher: null, error: 'Email ini sudah terdaftar. Silakan login atau gunakan email lain.' };
+      }
+      return { teacher: null, error: authErr.message || 'Gagal mendaftar.' };
     }
-    // 2. Insert into public.teachers
+    if (!authData.user) return { teacher: null, error: 'Gagal membuat akun.' };
+
+    // 2. Upsert into public.teachers (handles case where auth user exists but teachers row was deleted)
     const teacher: Teacher = {
       id: authData.user.id,
       name: data.name,
       email: data.email,
-      password: '', // do not store plain text
+      password: '',
       subject: data.subject,
       institution: data.institution,
       createdAt: new Date().toISOString()
     };
-    const { error: dbErr } = await supabase.from('teachers').insert([
-      { id: teacher.id, name: teacher.name, email: teacher.email, subject: teacher.subject, institution: teacher.institution }
-    ]);
+    const { error: dbErr } = await supabase.from('teachers').upsert(
+      [{ id: teacher.id, name: teacher.name, email: teacher.email, subject: teacher.subject, institution: teacher.institution }],
+      { onConflict: 'id' }
+    );
     if (dbErr) {
-      console.error('Teacher Insert Error:', dbErr);
-      return { teacher: null, error: dbErr.message };
+      console.error('Teacher Upsert Error:', dbErr);
+      return { teacher: null, error: 'Gagal menyimpan profil guru: ' + dbErr.message };
     }
     return { teacher };
   },
