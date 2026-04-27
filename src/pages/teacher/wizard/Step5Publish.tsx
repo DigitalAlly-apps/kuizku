@@ -1,6 +1,6 @@
 // Step 5 — Publish & Share
 import { useState } from 'react';
-import { CheckCircle, Copy, Share2, ExternalLink, Eye } from 'lucide-react';
+import { CheckCircle, Copy, Share2 } from 'lucide-react';
 import { useApp, useToast } from '../../../context/AppContext';
 import type { Exam } from '../../../types';
 

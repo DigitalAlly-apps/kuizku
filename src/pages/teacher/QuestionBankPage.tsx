@@ -1,9 +1,9 @@
 import { useState, useMemo } from 'react';
-import { Search, BookOpen, Trash2, Edit2, Filter } from 'lucide-react';
+import { Search, BookOpen, Trash2, Edit2 } from 'lucide-react';
 import { useApp, useToast } from '../../context/AppContext';
-import { EmptyState, ConfirmDialog, SectionHeader, Modal } from '../../components/ui';
+import { EmptyState, ConfirmDialog, Modal } from '../../components/ui';
 import QuestionEditor from '../../components/exam/QuestionEditor';
-import type { BankQuestion, FilterState } from '../../types';
+import type { BankQuestion } from '../../types';
 
 const optLetters = 'ABCDEF';
 

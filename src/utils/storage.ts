@@ -3,7 +3,7 @@
 // Replaces old localStorage implementation
 // ============================================================
 import { supabase } from '../lib/supabase';
-import type { Teacher, Exam, Question, BankQuestion, Submission, StudentAnswer } from '../types';
+import type { Teacher, Exam, BankQuestion, Submission, StudentAnswer } from '../types';
 
 export const storage = {
   // ---- Auth / Teacher ----

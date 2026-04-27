@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, Search, Copy, Edit2, Trash2, BarChart2, Archive, Play, MoreVertical, FileText, Users, Filter } from 'lucide-react';
+import { Plus, Search, Copy, Edit2, Trash2, BarChart2, Archive, Play, MoreVertical, FileText, Users } from 'lucide-react';
 import { useApp, useToast } from '../../context/AppContext';
-import { FormatBadge, StatusBadge, EmptyState, ConfirmDialog, SectionHeader } from '../../components/ui';
+import { FormatBadge, StatusBadge, EmptyState, ConfirmDialog } from '../../components/ui';
 import { formatRelative } from '../../utils/helpers';
 import type { ExamStatus } from '../../types';
 
@@ -50,8 +50,8 @@ export default function ExamListPage() {
     addToast({ type: 'success', title: 'Link disalin!', message: url });
   };
 
-  const handleDuplicate = (id: string) => {
-    const copy = duplicateExam(id);
+  const handleDuplicate = async (id: string) => {
+    const copy = await duplicateExam(id);
     addToast({ type: 'success', title: 'Ujian diduplikasi', message: `"${copy.title}" berhasil dibuat.` });
     setOpenMenuId(null);
   };

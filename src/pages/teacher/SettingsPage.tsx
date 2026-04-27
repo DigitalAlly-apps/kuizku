@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { User, Building, BookOpen, Save } from 'lucide-react';
 import { useAuth, useToast } from '../../context/AppContext';
-import { useApp } from '../../context/AppContext';
+
 
 const SUBJECTS = [
   'Aqidah Akhlaq', 'Fiqih', 'Qur\'an Hadits', 'Sejarah Kebudayaan Islam (SKI)', 'Bahasa Arab',
@@ -12,7 +12,6 @@ const SUBJECTS = [
 
 export default function SettingsPage() {
   const { currentTeacher } = useAuth();
-  const { updateExam } = useApp(); // just to access context
   const { addToast } = useToast();
   const [name, setName] = useState(currentTeacher?.name ?? '');
   const [subject, setSubject] = useState(currentTeacher?.subject ?? '');

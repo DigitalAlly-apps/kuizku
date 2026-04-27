@@ -15,7 +15,7 @@ interface Props {
     title: string; description: string; subject: string;
     activeFrom: string; activeTo: string; settings: ExamSettings;
   };
-  onNext: (data: typeof Props.prototype.initial) => void;
+  onNext: (data: Props['initial']) => void;
 }
 
 export default function Step1Setup({ initial, onNext }: Props) {

@@ -1,8 +1,8 @@
 // Step 4 — Review & Reorder
 import { useState } from 'react';
-import { GripVertical, Edit2, AlertCircle } from 'lucide-react';
+import { GripVertical, AlertCircle } from 'lucide-react';
 import { FormatBadge } from '../../../components/ui';
-import { calcMaxTotalScore, formatTimerMode } from '../../../utils/helpers';
+import { formatTimerMode } from '../../../utils/helpers';
 import type { Question, ExamFormat, ExamSettings } from '../../../types';
 
 interface Props {

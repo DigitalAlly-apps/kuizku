@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, FileText, BookOpen, Users, TrendingUp, Clock, CheckCircle, Archive } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { StatCard, FormatBadge, StatusBadge, EmptyState, SectionHeader } from '../../components/ui';
-import { formatRelative, formatExamFormat } from '../../utils/helpers';
+import { formatRelative } from '../../utils/helpers';
 
 export default function DashboardPage() {
   const { currentTeacher, exams, submissions } = useApp();

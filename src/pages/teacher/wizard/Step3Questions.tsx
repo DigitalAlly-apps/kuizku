@@ -1,10 +1,10 @@
 // Step 3 — Input Soal (4 jalur: Manual, Import, Bank Soal, Duplikasi)
 import { useState } from 'react';
-import { Plus, Upload, BookOpen, Copy, Edit2, Trash2, GripVertical, Save } from 'lucide-react';
+import { Plus, Upload, BookOpen, Copy, Edit2, Trash2, GripVertical } from 'lucide-react';
 import QuestionEditor from '../../../components/exam/QuestionEditor';
 import ImportModal from '../../../components/exam/ImportModal';
 import BankModal from '../../../components/exam/BankModal';
-import { Modal, ConfirmDialog, FormatBadge } from '../../../components/ui';
+import { Modal, ConfirmDialog } from '../../../components/ui';
 import { useApp, useToast } from '../../../context/AppContext';
 import { generateId, reorderQuestions } from '../../../utils/helpers';
 import type { Question, ExamFormat } from '../../../types';
@@ -72,11 +72,7 @@ export default function Step3Questions({ format, subject, initial, onNext, onBac
     addToast({ type: 'success', title: 'Soal diduplikasi', message: 'Edit soal salinan sesuai kebutuhan.' });
   };
 
-  const formatBtnLabel = (f: ExamFormat) => {
-    if (f === 'PG_ONLY') return 'Soal Pilihan Ganda';
-    if (f === 'ESSAY_ONLY') return 'Soal Essay';
-    return 'Soal Baru';
-  };
+
 
   const pgCount = questions.filter(q => q.type === 'MULTIPLE_CHOICE').length;
   const essayCount = questions.filter(q => q.type === 'ESSAY').length;

@@ -1,19 +1,18 @@
 import { useState, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Download, ChevronDown, CheckCircle, Clock, User, Edit2, BarChart2 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Download, User, Edit2, BarChart2 } from 'lucide-react';
 import { useApp, useToast } from '../../context/AppContext';
 import { EmptyState, FormatBadge, StatusBadge, SectionHeader, Modal } from '../../components/ui';
-import { calcMaxMCScore, calcMaxEssayScore, calcMaxTotalScore, formatDateTime } from '../../utils/helpers';
+import { calcMaxMCScore, calcMaxEssayScore, formatDateTime } from '../../utils/helpers';
 import * as XLSX from 'xlsx';
-import type { Exam, Submission } from '../../types';
+import type { Submission } from '../../types';
 
-const optLetters = 'ABCDEF';
+
 
 export default function ResultsPage() {
   const { currentTeacher, exams, submissions, gradeEssay } = useApp();
   const { addToast } = useToast();
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
 
   const myExams = useMemo(() => exams.filter(e => e.teacherId === currentTeacher?.id && e.status !== 'DRAFT'), [exams, currentTeacher]);
   const [selectedExamId, setSelectedExamId] = useState<string>(searchParams.get('exam') ?? (myExams[0]?.id ?? ''));
