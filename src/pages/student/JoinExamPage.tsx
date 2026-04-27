@@ -20,7 +20,7 @@ export default function JoinExamPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [foundExam, setFoundExam] = useState<Exam | null>(null);
-  const [_hasResume, setHasResume] = useState(false);
+  const [, setHasResume] = useState(false);
 
   // Format kode saat mengetik
   const handleCodeInput = (val: string) => {

@@ -34,7 +34,7 @@ export default function InstructionsPage() {
 
   const pgCount = exam.questions.filter(q => q.type === 'MULTIPLE_CHOICE').length;
   const essayCount = exam.questions.filter(q => q.type === 'ESSAY').length;
-  const _totalPts = exam.questions.reduce((s, q) => s + q.weight, 0);
+
   const totalMins = exam.settings.timerMode === 'WHOLE_EXAM'
     ? Math.ceil((exam.settings.wholExamTimerSeconds ?? 3600) / 60)
     : null;

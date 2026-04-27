@@ -44,7 +44,7 @@ export default function ExamTakingPage() {
   const [showSubmit, setShowSubmit] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submittedData, setSubmittedData] = useState<ReturnType<typeof buildSubmission> | null>(null);
-  const [_error, _setError] = useState('');
+  const [error] = useState('');
   const submitRef = useRef(false);
 
   // ---- Bootstrap ----

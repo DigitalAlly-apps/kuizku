@@ -1,6 +1,6 @@
 // ResultScreen — shown after student submits
 import { CheckCircle, Clock, BookOpen, Home } from 'lucide-react';
-import { formatDateTime, calcMaxMCScore, calcMaxEssayScore } from '../../../utils/helpers';
+import { formatDateTime, calcMaxMCScore } from '../../../utils/helpers';
 import type { Exam, Submission } from '../../../types';
 
 interface Props {
@@ -13,7 +13,6 @@ export default function ResultScreen({ exam, submission, studentName }: Props) {
   const showScore = exam.settings.showScoreAfterSubmit;
   const hasEssay = exam.format !== 'PG_ONLY';
   const maxMC = calcMaxMCScore(exam);
-  const maxEssay = calcMaxEssayScore(exam);
 
   const mcPct = maxMC > 0 ? Math.round((submission.mcScore / maxMC) * 100) : 0;
 
