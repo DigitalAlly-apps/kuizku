@@ -2,7 +2,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Clock, FileText, BookOpen, AlertTriangle, Play, ChevronRight } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { formatExamFormat, formatTimerMode } from '../../utils/helpers';
+import { formatExamFormat } from '../../utils/helpers';
 import { createSession } from '../../utils/examSession';
 import type { Exam } from '../../types';
 
@@ -34,7 +34,7 @@ export default function InstructionsPage() {
 
   const pgCount = exam.questions.filter(q => q.type === 'MULTIPLE_CHOICE').length;
   const essayCount = exam.questions.filter(q => q.type === 'ESSAY').length;
-  const totalPts = exam.questions.reduce((s, q) => s + q.weight, 0);
+  const _totalPts = exam.questions.reduce((s, q) => s + q.weight, 0);
   const totalMins = exam.settings.timerMode === 'WHOLE_EXAM'
     ? Math.ceil((exam.settings.wholExamTimerSeconds ?? 3600) / 60)
     : null;

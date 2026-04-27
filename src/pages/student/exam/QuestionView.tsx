@@ -15,7 +15,7 @@ interface Props {
 const OPTION_LETTERS = 'ABCDEF';
 
 export default function QuestionView({
-  question, questionNumber, totalQuestions,
+  question, questionNumber,
   currentAnswer, onAnswer, perQUrgency,
 }: Props) {
 

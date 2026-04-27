@@ -14,7 +14,6 @@ export default function ResultScreen({ exam, submission, studentName }: Props) {
   const hasEssay = exam.format !== 'PG_ONLY';
   const maxMC = calcMaxMCScore(exam);
   const maxEssay = calcMaxEssayScore(exam);
-  const maxTotal = maxMC + maxEssay;
 
   const mcPct = maxMC > 0 ? Math.round((submission.mcScore / maxMC) * 100) : 0;
 

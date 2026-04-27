@@ -32,7 +32,7 @@ export default function ExamTakingPage() {
   const { code } = useParams<{ code: string }>();
   const location = useLocation();
   const navigate = useNavigate();
-  const { exams, submissions, updateExam } = useApp();
+  const { exams, submissions } = useApp();
 
   const state = location.state as LocationState | null;
 
@@ -44,7 +44,7 @@ export default function ExamTakingPage() {
   const [showSubmit, setShowSubmit] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submittedData, setSubmittedData] = useState<ReturnType<typeof buildSubmission> | null>(null);
-  const [error, setError] = useState('');
+  const [_error, _setError] = useState('');
   const submitRef = useRef(false);
 
   // ---- Bootstrap ----
@@ -82,16 +82,15 @@ export default function ExamTakingPage() {
   }, []);
 
   // ---- Submit logic ----
-  const handleSubmit = useCallback((autoSubmit = false) => {
+  const handleSubmit = useCallback((_autoSubmit = false) => {
     if (submitRef.current || !session || !exam) return;
     submitRef.current = true;
 
     const sub = buildSubmission(session, exam);
     setSubmittedData(sub);
 
-    // Persist to global storage
-    const all = storage.getSubmissions();
-    storage.setSubmissions([...all, sub]);
+    // Persist to Supabase
+    storage.saveSubmission(sub);
 
     setSubmitted(true);
     setShowSubmit(false);

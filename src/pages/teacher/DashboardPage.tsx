@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, FileText, BookOpen, Users, TrendingUp, Clock, CheckCircle, Archive } from 'lucide-react';
+import { Plus, FileText, BookOpen, Users, TrendingUp, Clock, CheckCircle } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { StatCard, FormatBadge, StatusBadge, EmptyState, SectionHeader } from '../../components/ui';
 import { formatRelative } from '../../utils/helpers';

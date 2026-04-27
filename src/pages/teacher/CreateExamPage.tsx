@@ -83,11 +83,11 @@ export default function CreateExamPage() {
     setStep(4);
   };
 
-  const handleStep4Next = (questions: Question[]) => {
+  const handleStep4Next = async (questions: Question[]) => {
     update({ questions });
     setStep(5);
     // Create the exam in storage
-    const exam = createExam({
+    const exam = await createExam({
       teacherId: currentTeacher!.id,
       title: data.title,
       description: data.description,
@@ -98,7 +98,7 @@ export default function CreateExamPage() {
       activeTo: data.activeTo,
     });
     // Add questions
-    updateExam(exam.id, { questions });
+    await updateExam(exam.id, { questions });
     setCreatedExam({ ...exam, questions });
   };
 
@@ -106,7 +106,7 @@ export default function CreateExamPage() {
     navigate('/guru/ujian');
   };
 
-  const canGoBack = () => step > 1 && step < 5;
+
 
   return (
     <div className="page-content" style={{ maxWidth: 860 }}>

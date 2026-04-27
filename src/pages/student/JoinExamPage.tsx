@@ -1,8 +1,8 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Hash, User, CreditCard, Search, AlertCircle, ArrowRight, Clock, FileText, BookOpen } from 'lucide-react';
+import { Hash, User, CreditCard, Search, AlertCircle, ArrowRight, Clock, FileText } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { validateExamAccess, loadSession, clearSession } from '../../utils/examSession';
+import { validateExamAccess, clearSession } from '../../utils/examSession';
 import { formatExamFormat, formatTimerMode } from '../../utils/helpers';
 import { Spinner } from '../../components/ui';
 import type { Exam } from '../../types';
@@ -20,7 +20,7 @@ export default function JoinExamPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [foundExam, setFoundExam] = useState<Exam | null>(null);
-  const [hasResume, setHasResume] = useState(false);
+  const [_hasResume, setHasResume] = useState(false);
 
   // Format kode saat mengetik
   const handleCodeInput = (val: string) => {
