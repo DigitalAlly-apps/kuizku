@@ -162,7 +162,7 @@ export default function QuestionEditor({ format, initial, onSave, onCancel }: Pr
         <div className="form-group">
           <label className="form-label" htmlFor="q-weight">Bobot Nilai <span style={{ color: 'var(--danger)' }}>*</span></label>
           <input id="q-weight" type="number" className="form-input" min={1} max={100}
-            value={q.weight ?? 1} onChange={e => setField('weight', parseInt(e.target.value) || 1)} />
+            value={q.weight ?? ''} onChange={e => setField('weight', e.target.value === '' ? undefined : parseInt(e.target.value))} />
         </div>
         <div className="form-group">
           <label className="form-label" htmlFor="q-timer">Timer per Soal (detik, opsional)</label>
