@@ -3,7 +3,6 @@
 // ============================================================
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { useApp } from '../../context/AppContext';
 import { storage } from '../../utils/storage';
 import {
   loadSession, upsertAnswer, updateTimer,
@@ -32,7 +31,6 @@ export default function ExamTakingPage() {
   const { code } = useParams<{ code: string }>();
   const location = useLocation();
   const navigate = useNavigate();
-  const { exams, submissions } = useApp();
 
   const state = location.state as LocationState | null;
 
@@ -47,38 +45,41 @@ export default function ExamTakingPage() {
   const [error] = useState('');
   const submitRef = useRef(false);
 
-  // ---- Bootstrap ----
+  // ---- Bootstrap — query Supabase langsung, tidak butuh auth guru ----
   useEffect(() => {
     if (!state?.examId || !code) { navigate('/ujian'); return; }
-    const found = exams.find(e => e.id === state.examId);
-    if (!found) { navigate('/ujian'); return; }
 
-    // Shuffle if enabled
-    let qs = [...found.questions].sort((a, b) => a.order - b.order);
-    if (found.settings.shuffleQuestions) {
-      qs = qs.sort(() => Math.random() - 0.5);
-    }
-    if (found.settings.shuffleOptions) {
-      qs = qs.map(q => ({
-        ...q,
-        options: q.options ? [...q.options].sort(() => Math.random() - 0.5) : q.options,
-      }));
-    }
-    setQuestions(qs);
-    setExam(found);
+    storage.getExamByCode(code).then(async found => {
+      if (!found || found.id !== state.examId) { navigate('/ujian'); return; }
 
-    // Load or create session
-    const existing = loadSession(code, state.nis);
-    if (existing && state.resume) {
-      setSession(existing);
-      setCurrentIdx(existing.currentQuestionIndex);
-    } else {
-      const newSession = createSession(found, state.studentName, state.nis,
-        submissions.filter(s => s.examId === found.id && s.nis === state.nis && s.isComplete).length + 1
-      );
-      setSession(newSession);
-      setCurrentIdx(0);
-    }
+      // Shuffle if enabled
+      let qs = [...found.questions].sort((a, b) => a.order - b.order);
+      if (found.settings.shuffleQuestions) {
+        qs = qs.sort(() => Math.random() - 0.5);
+      }
+      if (found.settings.shuffleOptions) {
+        qs = qs.map(q => ({
+          ...q,
+          options: q.options ? [...q.options].sort(() => Math.random() - 0.5) : q.options,
+        }));
+      }
+      setQuestions(qs);
+      setExam(found);
+
+      // Load or create session
+      const existing = loadSession(code, state.nis);
+      if (existing && state.resume) {
+        setSession(existing);
+        setCurrentIdx(existing.currentQuestionIndex);
+      } else {
+        // Fetch completed submissions for this student to determine attempt number
+        const subs = await storage.getSubmissionsByExam(found.id);
+        const prevComplete = subs.filter(s => s.nis === state.nis && s.isComplete).length;
+        const newSession = createSession(found, state.studentName, state.nis, prevComplete + 1);
+        setSession(newSession);
+        setCurrentIdx(0);
+      }
+    });
   }, []);
 
   // ---- Submit logic ----

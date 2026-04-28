@@ -1,7 +1,7 @@
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Clock, FileText, BookOpen, AlertTriangle, Play, ChevronRight } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { storage } from '../../utils/storage';
 import { formatExamFormat } from '../../utils/helpers';
 import { createSession } from '../../utils/examSession';
 import type { Exam } from '../../types';
@@ -17,20 +17,26 @@ export default function InstructionsPage() {
   const { code } = useParams<{ code: string }>();
   const location = useLocation();
   const navigate = useNavigate();
-  const { exams } = useApp();
 
   const state = location.state as LocationState | null;
   const [exam, setExam] = useState<Exam | null>(null);
   const [starting, setStarting] = useState(false);
 
   useEffect(() => {
-    if (!state?.examId) { navigate('/ujian'); return; }
-    const found = exams.find(e => e.id === state.examId);
-    if (!found) { navigate('/ujian'); return; }
-    setExam(found);
-  }, [state, exams, navigate]);
+    if (!state?.examId || !code) { navigate('/ujian'); return; }
 
-  if (!exam || !state) return null;
+    // Query langsung ke Supabase by code — murid tidak butuh login
+    storage.getExamByCode(code).then(found => {
+      if (!found || found.id !== state.examId) { navigate('/ujian'); return; }
+      setExam(found);
+    });
+  }, [state, code, navigate]);
+
+  if (!exam || !state) return (
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <span className="spinner spinner-lg" />
+    </div>
+  );
 
   const pgCount = exam.questions.filter(q => q.type === 'MULTIPLE_CHOICE').length;
   const essayCount = exam.questions.filter(q => q.type === 'ESSAY').length;
@@ -41,7 +47,6 @@ export default function InstructionsPage() {
 
   const handleStart = () => {
     setStarting(true);
-    // Create session in localStorage
     createSession(exam, state.studentName, state.nis, state.attemptNumber);
     navigate(`/ujian/${code}/kerjakan`, {
       state: { examId: exam.id, studentName: state.studentName, nis: state.nis, resume: false }

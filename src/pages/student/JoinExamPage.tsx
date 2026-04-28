@@ -1,16 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Hash, User, CreditCard, Search, AlertCircle, ArrowRight, Clock, FileText } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
-import { validateExamAccess, clearSession } from '../../utils/examSession';
+import { storage } from '../../utils/storage';
+import { validateExamAccess } from '../../utils/examSession';
 import { formatExamFormat, formatTimerMode } from '../../utils/helpers';
 import { Spinner } from '../../components/ui';
-import type { Exam } from '../../types';
+import type { Exam, Submission } from '../../types';
 
 type Step = 'code' | 'identity' | 'resume';
 
 export default function JoinExamPage() {
-  const { exams, submissions } = useApp();
   const navigate = useNavigate();
 
   const [step, setStep] = useState<Step>('code');
@@ -20,6 +19,7 @@ export default function JoinExamPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [foundExam, setFoundExam] = useState<Exam | null>(null);
+  const [examSubmissions, setExamSubmissions] = useState<Submission[]>([]);
   const [, setHasResume] = useState(false);
 
   // Format kode saat mengetik
@@ -29,12 +29,16 @@ export default function JoinExamPage() {
     setError('');
   };
 
-  const handleFindExam = (e: React.FormEvent) => {
+  const handleFindExam = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (code.length !== 6) { setError('Kode ujian harus 6 karakter'); return; }
 
-    const exam = exams.find(ex => ex.code === code);
+    setLoading(true);
+    // Query langsung ke Supabase — murid tidak perlu login
+    const exam = await storage.getExamByCode(code);
+    setLoading(false);
+
     if (!exam) { setError(`Kode "${code}" tidak ditemukan. Periksa kembali kode dari guru Anda.`); return; }
     if (exam.status !== 'ACTIVE') {
       const msg = exam.status === 'DRAFT' ? 'Ujian ini belum dipublikasikan.' :
@@ -42,11 +46,15 @@ export default function JoinExamPage() {
       setError(msg); return;
     }
 
+    // Load submissions untuk exam ini (untuk validasi attempt)
+    const subs = await storage.getSubmissionsByExam(exam.id);
+
     setFoundExam(exam);
+    setExamSubmissions(subs);
     setStep('identity');
   };
 
-  const handleIdentitySubmit = (e: React.FormEvent) => {
+  const handleIdentitySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (!name.trim()) { setError('Nama lengkap wajib diisi'); return; }
@@ -54,7 +62,7 @@ export default function JoinExamPage() {
     if (!foundExam) return;
 
     setLoading(true);
-    const access = validateExamAccess(foundExam, nis.trim(), submissions);
+    const access = validateExamAccess(foundExam, nis.trim(), examSubmissions);
     setLoading(false);
 
     if (!access.allowed) { setError(access.reason ?? 'Akses ditolak'); return; }
@@ -76,7 +84,6 @@ export default function JoinExamPage() {
   };
 
   const handleStartFresh = () => {
-    clearSession(foundExam!.code, nis.trim());
     navigate(`/ujian/${foundExam!.code}/instruksi`, {
       state: { examId: foundExam!.id, studentName: name.trim(), nis: nis.trim(), attemptNumber: 1 }
     });
@@ -145,8 +152,8 @@ export default function JoinExamPage() {
               )}
 
               <button type="submit" className="btn btn-primary btn-lg w-full" style={{ justifyContent: 'center', marginTop: 'var(--sp-4)' }}
-                disabled={code.length !== 6}>
-                <Search size={16} /> Cari Ujian
+                disabled={code.length !== 6 || loading}>
+                {loading ? <Spinner /> : <><Search size={16} /> Cari Ujian</>}
               </button>
             </form>
 
