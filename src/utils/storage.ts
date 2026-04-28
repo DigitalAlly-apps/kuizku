@@ -105,51 +105,61 @@ export const storage = {
 
   async saveExam(exam: Exam): Promise<void> {
     // 1. Upsert Exam
+    // Convert empty strings to null for timestamp columns (Postgres rejects '')
+    const activeFrom = exam.activeFrom && exam.activeFrom.trim() !== '' ? exam.activeFrom : null;
+    const activeTo = exam.activeTo && exam.activeTo.trim() !== '' ? exam.activeTo : null;
+
     const { error: examErr } = await supabase.from('exams').upsert({
       id: exam.id,
       teacher_id: exam.teacherId,
       title: exam.title,
-      description: exam.description,
+      description: exam.description || null,
       subject: exam.subject,
       format: exam.format,
       status: exam.status,
       code: exam.code,
       settings: exam.settings,
-      active_from: exam.activeFrom,
-      active_to: exam.activeTo,
+      active_from: activeFrom,
+      active_to: activeTo,
       updated_at: new Date().toISOString()
     });
-    if (examErr) { console.error('Error saving exam:', examErr); return; }
+    if (examErr) { console.error('❌ Error saving exam:', examErr); return; }
 
     // 2. Refresh Questions (Delete old, Insert new)
-    await supabase.from('questions').delete().eq('exam_id', exam.id);
+    const { error: delQErr } = await supabase.from('questions').delete().eq('exam_id', exam.id);
+    if (delQErr) console.error('❌ Error deleting old questions:', delQErr);
+
     if (exam.questions.length > 0) {
       const qInserts = exam.questions.map(q => ({
         id: q.id,
         exam_id: exam.id,
         type: q.type,
         text: q.text,
-        image_url: q.imageUrl,
-        options: q.options,
-        correct_option_id: q.correctOptionId,
-        answer_guide: q.answerGuide,
+        image_url: q.imageUrl || null,
+        options: q.options || null,
+        correct_option_id: q.correctOptionId || null,
+        answer_guide: q.answerGuide || null,
         weight: q.weight,
-        timer_seconds: q.timerSeconds,
-        tags: q.tags,
+        timer_seconds: q.timerSeconds || null,
+        tags: q.tags || [],
         order: q.order
       }));
-      await supabase.from('questions').insert(qInserts);
+      const { error: qErr } = await supabase.from('questions').insert(qInserts);
+      if (qErr) console.error('❌ Error inserting questions:', qErr);
     }
 
     // 3. Refresh Preloaded Students
-    await supabase.from('preloaded_students').delete().eq('exam_id', exam.id);
+    const { error: delSErr } = await supabase.from('preloaded_students').delete().eq('exam_id', exam.id);
+    if (delSErr) console.error('❌ Error deleting old students:', delSErr);
+
     if (exam.preloadedStudents && exam.preloadedStudents.length > 0) {
       const sInserts = exam.preloadedStudents.map(s => ({
         exam_id: exam.id,
         name: s.name,
         nis: s.nis
       }));
-      await supabase.from('preloaded_students').insert(sInserts);
+      const { error: sErr } = await supabase.from('preloaded_students').insert(sInserts);
+      if (sErr) console.error('❌ Error inserting students:', sErr);
     }
   },
 
