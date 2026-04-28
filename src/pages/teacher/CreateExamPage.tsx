@@ -21,6 +21,7 @@ type WizardData = {
   title: string;
   description: string;
   subject: string;
+  className?: string;
   activeFrom: string;
   activeTo: string;
   settings: ExamSettings;
@@ -45,7 +46,7 @@ export default function CreateExamPage() {
 
   const [step, setStep] = useState(1);
   const [data, setData] = useState<WizardData>({
-    title: '', description: '', subject: '', activeFrom: '', activeTo: '',
+    title: '', description: '', subject: '', className: '', activeFrom: '', activeTo: '',
     settings: defaultSettings, format: 'PG_ONLY', questions: [],
   });
   const [createdExam, setCreatedExam] = useState<Exam | null>(null);
