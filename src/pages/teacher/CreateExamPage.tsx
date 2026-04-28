@@ -92,6 +92,7 @@ export default function CreateExamPage() {
       title: data.title,
       description: data.description,
       subject: data.subject,
+      className: data.className,
       format: data.format,
       settings: data.settings,
       activeFrom: data.activeFrom,

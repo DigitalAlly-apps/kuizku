@@ -66,6 +66,7 @@ export interface Exam {
   title: string;
   description: string;
   subject: string;
+  className?: string;     // Added for grouping by class
   format: ExamFormat;
   status: ExamStatus;
   code: string;           // 6-char uppercase alphanumeric
@@ -82,6 +83,7 @@ export interface Exam {
 export interface BankQuestion extends Question {
   teacherId: string;
   subject: string;
+  className?: string; // Added for grouping by class
   usedInExamIds: string[]; // track reuse
   createdAt: string;
   updatedAt: string;

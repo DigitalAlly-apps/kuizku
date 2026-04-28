@@ -12,7 +12,7 @@ const SUBJECTS = [
 
 interface Props {
   initial: {
-    title: string; description: string; subject: string;
+    title: string; description: string; subject: string; className?: string;
     activeFrom: string; activeTo: string; settings: ExamSettings;
   };
   onNext: (data: Props['initial']) => void;
@@ -22,6 +22,7 @@ export default function Step1Setup({ initial, onNext }: Props) {
   const [title, setTitle] = useState(initial.title);
   const [description, setDescription] = useState(initial.description);
   const [subject, setSubject] = useState(initial.subject);
+  const [className, setClassName] = useState(initial.className || '');
   const [activeFrom, setActiveFrom] = useState(initial.activeFrom);
   const [activeTo, setActiveTo] = useState(initial.activeTo);
   const [settings, setSettings] = useState<ExamSettings>(initial.settings);
@@ -40,7 +41,7 @@ export default function Step1Setup({ initial, onNext }: Props) {
   const handleNext = () => {
     const e = validate();
     if (Object.keys(e).length) { setErrors(e); return; }
-    onNext({ title, description, subject, activeFrom, activeTo, settings });
+    onNext({ title, description, subject, className, activeFrom, activeTo, settings });
   };
 
   return (
@@ -62,7 +63,7 @@ export default function Step1Setup({ initial, onNext }: Props) {
             value={description} onChange={e => setDescription(e.target.value)} />
         </div>
 
-        <div className="form-row form-row-3">
+        <div className="form-row form-row-2">
           <div className="form-group">
             <label className="form-label" htmlFor="s1-subject">Mata Pelajaran <span style={{ color: 'var(--danger)' }}>*</span></label>
             <input list="subjects-list" id="s1-subject" className={`form-input ${errors.subject ? 'error' : ''}`}
@@ -73,6 +74,14 @@ export default function Step1Setup({ initial, onNext }: Props) {
             </datalist>
             {errors.subject && <span className="form-error">{errors.subject}</span>}
           </div>
+          <div className="form-group">
+            <label className="form-label" htmlFor="s1-class">Kelas (opsional)</label>
+            <input id="s1-class" className="form-input" placeholder="Contoh: Kelas 10A, Kelas 12 IPA..."
+              value={className} onChange={e => setClassName(e.target.value)} />
+          </div>
+        </div>
+        
+        <div className="form-row form-row-2">
           <div className="form-group">
             <label className="form-label" htmlFor="s1-from">Aktif Mulai (opsional)</label>
             <input id="s1-from" type="datetime-local" className="form-input" value={activeFrom} onChange={e => setActiveFrom(e.target.value)} />
