@@ -162,13 +162,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateExam = async (id: string, data: Partial<Exam>) => {
-    const existing = exams.find(e => e.id === id);
-    if (!existing) return;
-    const updated = { ...existing, ...data, updatedAt: new Date().toISOString() };
+    let updated: Exam | undefined;
     
-    // Optimistic UI
-    setExamsState(prev => prev.map(e => e.id === id ? updated : e));
-    await storage.saveExam(updated);
+    // Use functional state update to guarantee we see the latest exams list,
+    // even if this was called immediately after createExam.
+    setExamsState(prev => {
+      const existing = prev.find(e => e.id === id);
+      if (!existing) return prev;
+      
+      updated = { ...existing, ...data, updatedAt: new Date().toISOString() };
+      return prev.map(e => e.id === id ? updated! : e);
+    });
+
+    if (updated) {
+      await storage.saveExam(updated);
+    }
   };
 
   const deleteExam = async (id: string) => {
