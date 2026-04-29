@@ -111,7 +111,7 @@ export default function ExamListPage() {
     const examSubs = submissions.filter(s => s.examId === exam.id);
     return (
       <div key={exam.id} className="exam-card" style={{ position: 'relative' }}
-        onClick={() => navigate(`/guru/ujian/${exam.id}`)}>
+        onClick={() => navigate(exam.status === 'DRAFT' ? '/guru/ujian?status=DRAFT' : `/guru/hasil?exam=${exam.id}`)}>
         <div className="exam-card-header">
           <div className="exam-card-badges">
             <FormatBadge format={exam.format} />
@@ -126,7 +126,7 @@ export default function ExamListPage() {
             <button className="btn btn-ghost btn-sm btn-icon" title="Salin kode" onClick={() => copyCode(exam.code)}>
               <Copy size={14} />
             </button>
-            <button className="btn btn-ghost btn-sm btn-icon" title="Edit" onClick={() => navigate(`/guru/ujian/${exam.id}/edit`)}>
+            <button className="btn btn-ghost btn-sm btn-icon" title="Edit" onClick={(e) => { e.stopPropagation(); addToast({ type: 'info', title: 'Segera Hadir', message: 'Fitur edit sedang dikembangkan.' }); }}>
               <Edit2 size={14} />
             </button>
             {exam.status !== 'ARCHIVED' && (
