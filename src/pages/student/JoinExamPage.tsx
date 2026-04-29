@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Hash, User, CreditCard, Search, AlertCircle, ArrowRight, Clock, FileText } from 'lucide-react';
+import { Hash, User, CreditCard, ListOrdered, Search, AlertCircle, ArrowRight, Clock, FileText } from 'lucide-react';
 import { storage } from '../../utils/storage';
 import { validateExamAccess } from '../../utils/examSession';
 import { formatExamFormat, formatTimerMode } from '../../utils/helpers';
@@ -16,6 +16,7 @@ export default function JoinExamPage() {
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [nis, setNis] = useState('');
+  const [identityMode, setIdentityMode] = useState<'nisn' | 'noabsen'>('nisn');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [foundExam, setFoundExam] = useState<Exam | null>(null);
@@ -58,11 +59,13 @@ export default function JoinExamPage() {
     e.preventDefault();
     setError('');
     if (!name.trim()) { setError('Nama lengkap wajib diisi'); return; }
-    if (!nis.trim()) { setError('NIS wajib diisi'); return; }
     if (!foundExam) return;
 
+    // Gunakan nis sebagai identifier — bisa NISN, no absen, atau fallback ke nama
+    const identifier = nis.trim() || name.trim();
+
     setLoading(true);
-    const access = validateExamAccess(foundExam, nis.trim(), examSubmissions);
+    const access = validateExamAccess(foundExam, identifier, examSubmissions);
     setLoading(false);
 
     if (!access.allowed) { setError(access.reason ?? 'Akses ditolak'); return; }
@@ -72,20 +75,22 @@ export default function JoinExamPage() {
       setStep('resume');
     } else {
       navigate(`/ujian/${foundExam.code}/instruksi`, {
-        state: { examId: foundExam.id, studentName: name.trim(), nis: nis.trim(), attemptNumber: access.attemptNumber }
+        state: { examId: foundExam.id, studentName: name.trim(), nis: identifier, attemptNumber: access.attemptNumber }
       });
     }
   };
 
   const handleResume = () => {
+    const identifier = nis.trim() || name.trim();
     navigate(`/ujian/${foundExam!.code}/kerjakan`, {
-      state: { examId: foundExam!.id, studentName: name.trim(), nis: nis.trim(), resume: true }
+      state: { examId: foundExam!.id, studentName: name.trim(), nis: identifier, resume: true }
     });
   };
 
   const handleStartFresh = () => {
+    const identifier = nis.trim() || name.trim();
     navigate(`/ujian/${foundExam!.code}/instruksi`, {
-      state: { examId: foundExam!.id, studentName: name.trim(), nis: nis.trim(), attemptNumber: 1 }
+      state: { examId: foundExam!.id, studentName: name.trim(), nis: identifier, attemptNumber: 1 }
     });
   };
 
@@ -182,7 +187,7 @@ export default function JoinExamPage() {
             </div>
 
             <h2 style={{ marginBottom: 4, fontSize: '1.2rem' }}>Data Diri</h2>
-            <p style={styles.subtitle}>Isi nama dan NIS Anda dengan benar</p>
+            <p style={styles.subtitle}>Isi nama Anda. Identitas nomor bersifat opsional.</p>
 
             <form onSubmit={handleIdentitySubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
               <div className="form-group">
@@ -194,14 +199,52 @@ export default function JoinExamPage() {
                 </div>
               </div>
 
+              {/* Toggle: NISN vs No Absen */}
               <div className="form-group">
-                <label className="form-label" htmlFor="student-nis">NIS (Nomor Induk Siswa) <span style={{ color: 'var(--danger)' }}>*</span></label>
-                <div style={{ position: 'relative' }}>
-                  <CreditCard size={16} style={iconStyle} />
-                  <input id="student-nis" className="form-input" placeholder="Contoh: 20240001"
-                    style={{ paddingLeft: 40 }} value={nis} onChange={e => { setNis(e.target.value.replace(/\D/g, '')); setError(''); }} />
+                <label className="form-label">Identitas Nomor <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 400 }}>(opsional)</span></label>
+                <div style={styles.toggleWrap}>
+                  <button
+                    type="button"
+                    style={{ ...styles.toggleBtn, ...(identityMode === 'nisn' ? styles.toggleBtnActive : {}) }}
+                    onClick={() => { setIdentityMode('nisn'); setNis(''); setError(''); }}
+                  >
+                    <CreditCard size={13} /> NISN
+                  </button>
+                  <button
+                    type="button"
+                    style={{ ...styles.toggleBtn, ...(identityMode === 'noabsen' ? styles.toggleBtnActive : {}) }}
+                    onClick={() => { setIdentityMode('noabsen'); setNis(''); setError(''); }}
+                  >
+                    <ListOrdered size={13} /> No Absen
+                  </button>
                 </div>
-                <span className="form-hint">NIS digunakan untuk identifikasi jawaban Anda.</span>
+
+                {identityMode === 'nisn' ? (
+                  <div style={{ position: 'relative', marginTop: 8 }}>
+                    <CreditCard size={16} style={iconStyle} />
+                    <input
+                      id="student-nis"
+                      className="form-input"
+                      placeholder="Contoh: 0012345678 (opsional)"
+                      style={{ paddingLeft: 40 }}
+                      value={nis}
+                      onChange={e => { setNis(e.target.value.replace(/\D/g, '')); setError(''); }}
+                    />
+                  </div>
+                ) : (
+                  <div style={{ position: 'relative', marginTop: 8 }}>
+                    <ListOrdered size={16} style={iconStyle} />
+                    <input
+                      id="student-noabsen"
+                      className="form-input"
+                      placeholder="Contoh: 15 (opsional)"
+                      style={{ paddingLeft: 40 }}
+                      value={nis}
+                      onChange={e => { setNis(e.target.value.replace(/\D/g, '')); setError(''); }}
+                    />
+                  </div>
+                )}
+                <span className="form-hint">Jika tidak diisi, nama Anda akan digunakan sebagai identitas.</span>
               </div>
 
               {/* Pre-loaded student list */}
@@ -283,4 +326,7 @@ const styles: Record<string, React.CSSProperties> = {
   hint: { textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 'var(--sp-5)' },
   examPreview: { padding: 'var(--sp-4)', background: 'var(--surface-2)', borderRadius: 'var(--r-lg)', marginBottom: 'var(--sp-5)', border: '1px solid var(--border)' },
   metaItem: { display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.78rem', color: 'var(--text-muted)' },
+  toggleWrap: { display: 'flex', gap: 6, marginBottom: 4 },
+  toggleBtn: { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 14px', borderRadius: 'var(--r-md)', border: '1.5px solid var(--border-strong)', background: 'var(--surface-2)', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s ease' },
+  toggleBtnActive: { borderColor: 'var(--primary)', background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 600 },
 };
