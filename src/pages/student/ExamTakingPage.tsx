@@ -45,12 +45,20 @@ export default function ExamTakingPage() {
   const [error] = useState('');
   const submitRef = useRef(false);
 
+  const [loadError, setLoadError] = useState('');
+
   // ---- Bootstrap — query Supabase langsung, tidak butuh auth guru ----
   useEffect(() => {
     if (!state?.examId || !code) { navigate('/ujian'); return; }
 
     storage.getExamByCode(code).then(async found => {
       if (!found || found.id !== state.examId) { navigate('/ujian'); return; }
+
+      // Guard: exam harus punya soal
+      if (found.questions.length === 0) {
+        setLoadError('Ujian ini belum memiliki soal. Hubungi guru Anda.');
+        return;
+      }
 
       // Shuffle if enabled
       let qs = [...found.questions].sort((a, b) => a.order - b.order);
@@ -79,6 +87,8 @@ export default function ExamTakingPage() {
         setSession(newSession);
         setCurrentIdx(0);
       }
+    }).catch(() => {
+      setLoadError('Gagal memuat ujian. Periksa koneksi internet Anda.');
     });
   }, []);
 
@@ -167,6 +177,17 @@ export default function ExamTakingPage() {
 
   const goPrev = () => goTo(Math.max(currentIdx - 1, 0));
   const goNextBtn = () => goTo(Math.min(currentIdx + 1, questions.length - 1));
+
+  // ---- Error state ----
+  if (loadError) {
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, padding: 'var(--sp-6)' }}>
+        <div style={{ fontSize: '3rem' }}>⚠️</div>
+        <p style={{ color: 'var(--danger)', fontWeight: 600, textAlign: 'center' }}>{loadError}</p>
+        <button className="btn btn-secondary" onClick={() => navigate('/ujian')}>← Kembali</button>
+      </div>
+    );
+  }
 
   // ---- Loading state ----
   if (!exam || !session || questions.length === 0) {

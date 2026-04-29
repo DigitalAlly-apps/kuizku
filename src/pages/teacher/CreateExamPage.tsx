@@ -7,6 +7,8 @@ import Step3Questions from './wizard/Step3Questions';
 import Step4Review from './wizard/Step4Review';
 import Step5Publish from './wizard/Step5Publish';
 import { useApp, useToast } from '../../context/AppContext';
+import { generateId, generateExamCode } from '../../utils/helpers';
+import { storage } from '../../utils/storage';
 import type { Exam, ExamFormat, ExamSettings, Question } from '../../types';
 
 const STEPS = [
@@ -40,7 +42,7 @@ const defaultSettings: ExamSettings = {
 };
 
 export default function CreateExamPage() {
-  const { currentTeacher, createExam, updateExam } = useApp();
+  const { currentTeacher, exams, refreshExams } = useApp();
   const { addToast } = useToast();
   const navigate = useNavigate();
 
@@ -87,8 +89,15 @@ export default function CreateExamPage() {
   const handleStep4Next = async (questions: Question[]) => {
     update({ questions });
     setStep(5);
-    // Create the exam in storage
-    const exam = await createExam({
+
+    // Build the full exam object atomically (avoids React state race condition
+    // where updateExam(exam.id, { questions }) reads stale state before createExam settles)
+    let code = generateExamCode();
+    while (exams.some(e => e.code === code)) code = generateExamCode();
+
+    const now = new Date().toISOString();
+    const newExam: Exam = {
+      id: generateId(),
       teacherId: currentTeacher!.id,
       title: data.title,
       description: data.description,
@@ -98,10 +107,21 @@ export default function CreateExamPage() {
       settings: data.settings,
       activeFrom: data.activeFrom,
       activeTo: data.activeTo,
-    });
-    // Add questions
-    await updateExam(exam.id, { questions });
-    setCreatedExam({ ...exam, questions });
+      code,
+      status: 'DRAFT',
+      questions,
+      preloadedStudents: [],
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    // Save everything in ONE call — exam + questions saved together
+    await storage.saveExam(newExam);
+
+    // Refresh local state so ExamListPage reflects the new exam
+    await refreshExams();
+
+    setCreatedExam(newExam);
   };
 
   const handleFinish = () => {
