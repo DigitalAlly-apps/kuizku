@@ -299,6 +299,15 @@
 .bank-card-text { font-size: 0.875rem; color: var(--text-primary); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .bank-card-meta { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
 
+/* ---- Section Header ---- */
+.section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-6);
+}
+
 /* ---- Filter Bar ---- */
 .filter-bar {
   display: flex;
@@ -386,10 +395,25 @@
 }
 
 @media (max-width: 768px) {
-  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .stats-grid { grid-template-columns: 1fr; }
   .radio-card-group-3 { grid-template-columns: 1fr; }
   .bank-grid { grid-template-columns: 1fr; }
   
+  .section-header { flex-direction: column; gap: var(--sp-3); }
+  .section-header-action { width: 100%; display: flex; }
+  .section-header-action .btn { flex: 1; justify-content: center; }
+
+  .exam-card-header { flex-direction: column; align-items: flex-start; gap: var(--sp-2); }
+  .exam-card-badges { width: 100%; }
+  .exam-card-actions { width: 100%; justify-content: flex-start; margin-top: var(--sp-2); }
+  
+  .filter-bar { flex-direction: column; align-items: stretch; }
+  .search-input-wrap { width: 100%; }
+  .tabs { overflow-x: auto; padding-bottom: 2px; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+  
+  .exam-code-text { font-size: 1.5rem; }
+  .grading-row { flex-direction: column; gap: var(--sp-3); }
+
   .sidebar {
     transform: translateX(-100%);
     width: 280px;

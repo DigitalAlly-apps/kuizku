@@ -520,6 +520,21 @@ tbody td { padding: var(--sp-3) var(--sp-4); vertical-align: middle; }
   .page-content { padding: var(--sp-4); }
   .form-row-2, .form-row-3 { grid-template-columns: 1fr; }
   .modal-box { padding: var(--sp-5); }
+  
+  .page-header { margin-bottom: var(--sp-5); }
+  .page-header h1 { font-size: 1.35rem; }
+  .page-header p { font-size: 0.85rem; }
+
+  /* Buttons wrap if too many */
+  .btn { padding: 8px 14px; font-size: 0.8rem; white-space: normal; text-align: center; }
+  
+  /* Wizard steps squish heavily on mobile */
+  .wizard-step-label { display: none; }
+  .wizard-step-num { width: 28px; height: 28px; font-size: 0.75rem; }
+  .wizard-connector { margin: 0 8px; }
+  
+  /* Utilities */
+  .gap-6 { gap: var(--sp-4); }
 }
 
 /* ---- Toggle / Switch ---- */
@@ -568,7 +583,7 @@ tbody td { padding: var(--sp-3) var(--sp-4); vertical-align: middle; }
   gap: 4px;
   padding: 2px 8px;
   background: var(--primary-light);
-  border: 1px solid rgba(79,110,247,0.25);
+  border: 1px solid rgba(37,99,235,0.25);
   color: var(--primary);
   border-radius: var(--r-full);
   font-size: 0.75rem;
