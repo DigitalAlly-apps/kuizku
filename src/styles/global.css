@@ -516,7 +516,8 @@ tbody td { padding: var(--sp-3) var(--sp-4); vertical-align: middle; }
 /* ---- Responsive ---- */
 @media (max-width: 768px) {
   :root { --sidebar-width: 0px; }
-  .main-content { margin-left: 0; }
+  .app-layout { flex-direction: column; }
+  .main-content { margin-left: 0; min-height: auto; }
   .page-content { padding: var(--sp-4); }
   .form-row-2, .form-row-3 { grid-template-columns: 1fr; }
   .modal-box { padding: var(--sp-5); }
