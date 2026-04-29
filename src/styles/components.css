@@ -12,9 +12,35 @@
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  z-index: 50;
+  z-index: 60;
   transition: transform var(--transition-slow);
   overflow-y: auto;
+}
+
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: 55;
+  animation: fadeIn 0.2s ease;
+}
+
+.mobile-header {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--header-height);
+  padding: 0 var(--sp-4);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.desktop-theme-toggle {
+  display: flex;
 }
 
 .sidebar-logo {
@@ -363,4 +389,22 @@
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .radio-card-group-3 { grid-template-columns: 1fr; }
   .bank-grid { grid-template-columns: 1fr; }
+  
+  .sidebar {
+    transform: translateX(-100%);
+    width: 280px;
+    box-shadow: var(--shadow-lg);
+  }
+  
+  .sidebar.open {
+    transform: translateX(0);
+  }
+  
+  .mobile-header {
+    display: flex;
+  }
+  
+  .desktop-theme-toggle {
+    display: none;
+  }
 }
