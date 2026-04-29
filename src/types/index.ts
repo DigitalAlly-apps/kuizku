@@ -6,6 +6,7 @@ export type ExamFormat = 'PG_ONLY' | 'ESSAY_ONLY' | 'COMBINATION';
 export type QuestionType = 'MULTIPLE_CHOICE' | 'ESSAY';
 export type TimerMode = 'PER_QUESTION' | 'WHOLE_EXAM' | 'NONE';
 export type ExamStatus = 'DRAFT' | 'ACTIVE' | 'ENDED' | 'ARCHIVED';
+export type ExamType = 'UJIAN' | 'TUGAS' | 'LATIHAN';
 
 // ---- Auth ----
 export interface Teacher {
@@ -67,6 +68,7 @@ export interface Exam {
   description: string;
   subject: string;
   className?: string;     // Added for grouping by class
+  examType: ExamType;    // UJIAN | TUGAS | LATIHAN
   format: ExamFormat;
   status: ExamStatus;
   code: string;           // 6-char uppercase alphanumeric

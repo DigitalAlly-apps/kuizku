@@ -89,6 +89,16 @@ export const storage = {
     };
   },
 
+  async updateTeacher(id: string, data: { name: string; subject: string; institution: string }): Promise<{ error?: string }> {
+    const { error } = await supabase.from('teachers').update({
+      name: data.name,
+      subject: data.subject,
+      institution: data.institution,
+    }).eq('id', id);
+    if (error) return { error: error.message };
+    return {};
+  },
+
   // ---- Exams ----
   async getExamsByTeacher(teacherId: string): Promise<Exam[]> {
     const { data, error } = await supabase.from('exams').select('*, questions(*), preloaded_students(*)').eq('teacher_id', teacherId).order('created_at', { ascending: false });
@@ -116,6 +126,7 @@ export const storage = {
       description: exam.description || null,
       subject: exam.subject,
       class_name: exam.className || null,
+      exam_type: exam.examType || 'UJIAN',
       format: exam.format,
       status: exam.status,
       code: exam.code,
@@ -286,6 +297,7 @@ function dbToExam(db: any): Exam {
     description: db.description,
     subject: db.subject,
     className: db.class_name,
+    examType: (db.exam_type as import('../types').ExamType) || 'UJIAN',
     format: db.format,
     status: db.status,
     code: db.code,

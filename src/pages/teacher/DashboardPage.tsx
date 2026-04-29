@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, FileText, BookOpen, Users, TrendingUp, Clock, CheckCircle } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { StatCard, FormatBadge, StatusBadge, EmptyState, SectionHeader } from '../../components/ui';
+import { StatCard, FormatBadge, StatusBadge, ExamTypeBadge, EmptyState, SectionHeader } from '../../components/ui';
 import { formatRelative } from '../../utils/helpers';
 
 export default function DashboardPage() {
@@ -91,6 +91,7 @@ export default function DashboardPage() {
               <div key={exam.id} className="exam-card" onClick={() => navigate(exam.status === 'DRAFT' ? '/guru/ujian?status=DRAFT' : `/guru/hasil?exam=${exam.id}`)}>
                 <div className="exam-card-header">
                   <div className="exam-card-badges">
+                    <ExamTypeBadge examType={exam.examType} />
                     <FormatBadge format={exam.format} />
                     <StatusBadge status={exam.status} />
                   </div>

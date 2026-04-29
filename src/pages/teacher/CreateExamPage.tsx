@@ -9,7 +9,7 @@ import Step5Publish from './wizard/Step5Publish';
 import { useApp, useToast } from '../../context/AppContext';
 import { generateId, generateExamCode } from '../../utils/helpers';
 import { storage } from '../../utils/storage';
-import type { Exam, ExamFormat, ExamSettings, Question } from '../../types';
+import type { Exam, ExamFormat, ExamSettings, ExamType, Question } from '../../types';
 
 const STEPS = [
   { num: 1, label: 'Pengaturan' },
@@ -24,6 +24,7 @@ type WizardData = {
   description: string;
   subject: string;
   className?: string;
+  examType: ExamType;
   activeFrom: string;
   activeTo: string;
   settings: ExamSettings;
@@ -49,13 +50,13 @@ export default function CreateExamPage() {
   const [step, setStep] = useState(1);
   const [data, setData] = useState<WizardData>({
     title: '', description: '', subject: '', className: '', activeFrom: '', activeTo: '',
-    settings: defaultSettings, format: 'PG_ONLY', questions: [],
+    examType: 'UJIAN', settings: defaultSettings, format: 'PG_ONLY', questions: [],
   });
   const [createdExam, setCreatedExam] = useState<Exam | null>(null);
 
   const update = (partial: Partial<WizardData>) => setData(d => ({ ...d, ...partial }));
 
-  const handleStep1Next = (d: Pick<WizardData, 'title' | 'description' | 'subject' | 'activeFrom' | 'activeTo' | 'settings'>) => {
+  const handleStep1Next = (d: Pick<WizardData, 'title' | 'description' | 'subject' | 'examType' | 'activeFrom' | 'activeTo' | 'settings'>) => {
     update(d);
     setStep(2);
   };
@@ -103,6 +104,7 @@ export default function CreateExamPage() {
       description: data.description,
       subject: data.subject,
       className: data.className,
+      examType: data.examType,
       format: data.format,
       settings: data.settings,
       activeFrom: data.activeFrom,
@@ -156,7 +158,7 @@ export default function CreateExamPage() {
       <div className="card">
         {step === 1 && (
           <Step1Setup
-            initial={{ title: data.title, description: data.description, subject: data.subject, activeFrom: data.activeFrom, activeTo: data.activeTo, settings: data.settings }}
+            initial={{ title: data.title, description: data.description, subject: data.subject, examType: data.examType, activeFrom: data.activeFrom, activeTo: data.activeTo, settings: data.settings }}
             onNext={handleStep1Next}
           />
         )}

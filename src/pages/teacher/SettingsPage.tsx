@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { User, Building, BookOpen, Save } from 'lucide-react';
+import { User, Building, BookOpen, Save, Loader2 } from 'lucide-react';
 import { useAuth, useToast } from '../../context/AppContext';
-
+import { storage } from '../../utils/storage';
 
 const SUBJECTS = [
   'Aqidah Akhlaq', 'Fiqih', 'Qur\'an Hadits', 'Sejarah Kebudayaan Islam (SKI)', 'Bahasa Arab',
@@ -16,10 +16,19 @@ export default function SettingsPage() {
   const [name, setName] = useState(currentTeacher?.name ?? '');
   const [subject, setSubject] = useState(currentTeacher?.subject ?? '');
   const [institution, setInstitution] = useState(currentTeacher?.institution ?? '');
+  const [saving, setSaving] = useState(false);
 
-  const handleSave = () => {
-    // In a real app, update storage — for demo show toast
-    addToast({ type: 'success', title: 'Pengaturan disimpan!', message: 'Perubahan akan aktif setelah login ulang.' });
+  const handleSave = async () => {
+    if (!currentTeacher) return;
+    if (!name.trim()) { addToast({ type: 'error', title: 'Nama tidak boleh kosong' }); return; }
+    setSaving(true);
+    const { error } = await storage.updateTeacher(currentTeacher.id, { name: name.trim(), subject, institution });
+    setSaving(false);
+    if (error) {
+      addToast({ type: 'error', title: 'Gagal menyimpan', message: error });
+    } else {
+      addToast({ type: 'success', title: 'Profil berhasil disimpan!', message: 'Data guru telah diperbarui.' });
+    }
   };
 
   return (
@@ -32,7 +41,7 @@ export default function SettingsPage() {
       <div className="card">
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-4)', marginBottom: 'var(--sp-8)', padding: 'var(--sp-5)', background: 'var(--surface-2)', borderRadius: 'var(--r-lg)' }}>
           <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg, var(--primary), var(--secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', fontWeight: 700, color: 'white' }}>
-            {name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase()}
+            {name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase() || '?'}
           </div>
           <div>
             <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>{name || 'Nama Guru'}</div>
@@ -42,7 +51,7 @@ export default function SettingsPage() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-5)' }}>
           <div className="form-group">
-            <label className="form-label" htmlFor="settings-name">Nama Lengkap</label>
+            <label className="form-label" htmlFor="settings-name">Nama Lengkap <span style={{ color: 'var(--danger)' }}>*</span></label>
             <div style={{ position: 'relative' }}>
               <User size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
               <input id="settings-name" className="form-input" style={{ paddingLeft: 40 }}
@@ -72,8 +81,8 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <button className="btn btn-primary" onClick={handleSave} style={{ alignSelf: 'flex-start' }}>
-            <Save size={16} /> Simpan Perubahan
+          <button className="btn btn-primary" onClick={handleSave} style={{ alignSelf: 'flex-start' }} disabled={saving}>
+            {saving ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Menyimpan...</> : <><Save size={16} /> Simpan Perubahan</>}
           </button>
         </div>
       </div>
@@ -81,7 +90,7 @@ export default function SettingsPage() {
       <div className="card" style={{ marginTop: 'var(--sp-4)' }}>
         <h3 style={{ marginBottom: 'var(--sp-4)' }}>Informasi Akun</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
-          {[['Email', currentTeacher?.email ?? '—'], ['ID Akun', currentTeacher?.id.slice(0, 8) + '...']].map(([label, val]) => (
+          {[['Email', currentTeacher?.email ?? '—'], ['ID Akun', (currentTeacher?.id.slice(0, 8) ?? '—') + '...']].map(([label, val]) => (
             <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--sp-3) 0', borderBottom: '1px solid var(--border)' }}>
               <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{label}</span>
               <span style={{ fontSize: '0.875rem', fontFamily: 'monospace' }}>{val}</span>

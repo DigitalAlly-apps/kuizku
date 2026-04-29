@@ -117,6 +117,21 @@ export function StatusBadge({ status }: { status: import('../../types').ExamStat
   return <Badge variant={variants[status]}>{labels[status]}</Badge>;
 }
 
+export function ExamTypeBadge({ examType }: { examType?: import('../../types').ExamType }) {
+  const config: Record<string, { label: string; color: string; bg: string }> = {
+    UJIAN:   { label: '📝 Ujian',   color: 'var(--danger)',  bg: 'var(--danger-light)' },
+    TUGAS:   { label: '📋 Tugas',   color: 'var(--warning)', bg: 'var(--warning-light)' },
+    LATIHAN: { label: '🎯 Latihan', color: 'var(--success)', bg: 'var(--success-light)' },
+  };
+  const c = config[examType ?? 'UJIAN'] ?? config['UJIAN'];
+  return (
+    <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: 'var(--r-sm)', background: c.bg, color: c.color, fontWeight: 700 }}>
+      {c.label}
+    </span>
+  );
+}
+
+
 // ============================================================
 // Spinner / Loading
 // ============================================================

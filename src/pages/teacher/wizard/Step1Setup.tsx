@@ -1,7 +1,7 @@
 // Step 1 — General Settings
 import { useState } from 'react';
 import { Toggle } from '../../../components/ui';
-import type { ExamSettings } from '../../../types';
+import type { ExamSettings, ExamType } from '../../../types';
 
 const SUBJECTS = [
   'Aqidah Akhlaq', 'Fiqih', 'Qur\'an Hadits', 'Sejarah Kebudayaan Islam (SKI)', 'Bahasa Arab',
@@ -13,7 +13,7 @@ const SUBJECTS = [
 interface Props {
   initial: {
     title: string; description: string; subject: string; className?: string;
-    activeFrom: string; activeTo: string; settings: ExamSettings;
+    activeFrom: string; activeTo: string; settings: ExamSettings; examType: ExamType;
   };
   onNext: (data: Props['initial']) => void;
 }
@@ -26,6 +26,7 @@ export default function Step1Setup({ initial, onNext }: Props) {
   const [activeFrom, setActiveFrom] = useState(initial.activeFrom);
   const [activeTo, setActiveTo] = useState(initial.activeTo);
   const [settings, setSettings] = useState<ExamSettings>(initial.settings);
+  const [examType, setExamType] = useState<ExamType>(initial.examType);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const setSetting = <K extends keyof ExamSettings>(k: K, v: ExamSettings[K]) =>
@@ -41,15 +42,36 @@ export default function Step1Setup({ initial, onNext }: Props) {
   const handleNext = () => {
     const e = validate();
     if (Object.keys(e).length) { setErrors(e); return; }
-    onNext({ title, description, subject, className, activeFrom, activeTo, settings });
+    onNext({ title, description, subject, className, activeFrom, activeTo, settings, examType });
   };
 
   return (
     <div>
       <h2 style={{ marginBottom: 'var(--sp-2)' }}>Pengaturan Ujian</h2>
-      <p style={{ color: 'var(--text-muted)', marginBottom: 'var(--sp-6)' }}>Isi informasi dasar tentang ujian ini.</p>
+      <p style={{ color: 'var(--text-muted)', marginBottom: 'var(--sp-6)' }}>Isi informasi dasar dan tipe kegiatan ini.</p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-5)' }}>
+        {/* Tipe Kegiatan */}
+        <div>
+          <label className="form-label" style={{ display: 'block', marginBottom: 'var(--sp-2)' }}>Tipe Kegiatan <span style={{ color: 'var(--danger)' }}>*</span></label>
+          <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
+            {([
+              ['UJIAN', '📝 Ujian', 'var(--danger)', 'var(--danger-light)'],
+              ['TUGAS', '📋 Tugas', 'var(--warning)', 'var(--warning-light)'],
+              ['LATIHAN', '🎯 Latihan', 'var(--success)', 'var(--success-light)'],
+            ] as const).map(([v, label, color, bg]) => (
+              <button key={v} type="button"
+                style={{
+                  padding: '10px 18px', borderRadius: 'var(--r-md)', border: `2px solid ${examType === v ? color : 'var(--border-strong)'}`,
+                  background: examType === v ? bg : 'var(--surface-2)', color: examType === v ? color : 'var(--text-muted)',
+                  fontWeight: examType === v ? 700 : 500, cursor: 'pointer', transition: 'all 0.15s ease', fontSize: '0.875rem',
+                }}
+                onClick={() => setExamType(v)}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="form-group">
           <label className="form-label" htmlFor="s1-title">Judul Ujian <span style={{ color: 'var(--danger)' }}>*</span></label>
           <input id="s1-title" className={`form-input ${errors.title ? 'error' : ''}`} placeholder="Contoh: UTS Matematika Kelas X Semester 1"

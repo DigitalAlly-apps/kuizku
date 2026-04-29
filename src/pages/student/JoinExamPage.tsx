@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Hash, User, CreditCard, ListOrdered, Search, AlertCircle, ArrowRight, Clock, FileText } from 'lucide-react';
+import { Hash, User, CreditCard, ListOrdered, Search, AlertCircle, ArrowRight, Clock, FileText, Calendar } from 'lucide-react';
 import { storage } from '../../utils/storage';
 import { validateExamAccess } from '../../utils/examSession';
 import { formatExamFormat, formatTimerMode } from '../../utils/helpers';
@@ -171,8 +171,18 @@ export default function JoinExamPage() {
           <div style={styles.card}>
             {/* Exam preview */}
             <div style={styles.examPreview}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
                 <span style={{ fontFamily: 'monospace', fontWeight: 800, color: 'var(--primary)', fontSize: '0.9rem' }}>#{foundExam.code}</span>
+                {/* Type badge */}
+                {(() => {
+                  const typeConfig: Record<string, { label: string; color: string; bg: string }> = {
+                    UJIAN:   { label: '📝 Ujian',   color: 'var(--danger)',  bg: 'var(--danger-light)' },
+                    TUGAS:   { label: '📋 Tugas',   color: 'var(--warning)', bg: 'var(--warning-light)' },
+                    LATIHAN: { label: '🎯 Latihan', color: 'var(--success)', bg: 'var(--success-light)' },
+                  };
+                  const c = typeConfig[(foundExam as any).examType ?? 'UJIAN'] ?? typeConfig['UJIAN'];
+                  return <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: 'var(--r-sm)', background: c.bg, color: c.color, fontWeight: 700 }}>{c.label}</span>;
+                })()}
                 <span className={`badge ${foundExam.format === 'PG_ONLY' ? 'badge-pg' : foundExam.format === 'ESSAY_ONLY' ? 'badge-essay' : 'badge-combo'}`}>
                   {formatExamFormat(foundExam.format)}
                 </span>
@@ -183,6 +193,14 @@ export default function JoinExamPage() {
                 <span style={styles.metaItem}><FileText size={13} /> {totalQ} soal</span>
                 <span style={styles.metaItem}><Hash size={13} /> {totalPts} poin</span>
                 <span style={styles.metaItem}><Clock size={13} /> {formatTimerMode(foundExam.settings.timerMode)}</span>
+                {foundExam.activeTo && (
+                  <span style={{ ...styles.metaItem, color: new Date(foundExam.activeTo) < new Date() ? 'var(--danger)' : 'var(--warning)', fontWeight: 600 }}>
+                    <Calendar size={13} />
+                    {new Date(foundExam.activeTo) < new Date()
+                      ? 'Batas waktu lewat'
+                      : `Deadline: ${new Date(foundExam.activeTo).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
+                  </span>
+                )}
               </div>
             </div>
 

@@ -1,6 +1,6 @@
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { Clock, FileText, BookOpen, AlertTriangle, Play, ChevronRight } from 'lucide-react';
+import { Clock, FileText, BookOpen, AlertTriangle, Play, ChevronRight, Calendar } from 'lucide-react';
 import { storage } from '../../utils/storage';
 import { formatExamFormat } from '../../utils/helpers';
 import { createSession } from '../../utils/examSession';
@@ -59,10 +59,20 @@ export default function InstructionsPage() {
       <div style={styles.container}>
         {/* Header */}
         <div style={styles.card}>
-          <div style={{ display: 'flex', gap: 'var(--sp-3)', marginBottom: 'var(--sp-4)', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 'var(--sp-3)', marginBottom: 'var(--sp-4)', flexWrap: 'wrap', alignItems: 'center' }}>
             <span className={`badge ${exam.format === 'PG_ONLY' ? 'badge-pg' : exam.format === 'ESSAY_ONLY' ? 'badge-essay' : 'badge-combo'}`}>
               {formatExamFormat(exam.format)}
             </span>
+            {/* Tipe Ujian/Tugas */}
+            {(() => {
+              const typeConfig: Record<string, { label: string; color: string; bg: string }> = {
+                UJIAN:   { label: '📝 Ujian',   color: 'var(--danger)',  bg: 'var(--danger-light)' },
+                TUGAS:   { label: '📋 Tugas',   color: 'var(--warning)', bg: 'var(--warning-light)' },
+                LATIHAN: { label: '🎯 Latihan', color: 'var(--success)', bg: 'var(--success-light)' },
+              };
+              const c = typeConfig[(exam as any).examType ?? 'UJIAN'] ?? typeConfig['UJIAN'];
+              return <span style={{ fontSize: '0.78rem', padding: '3px 10px', borderRadius: 'var(--r-sm)', background: c.bg, color: c.color, fontWeight: 700 }}>{c.label}</span>;
+            })()}
             <span style={{ fontFamily: 'monospace', color: 'var(--primary)', fontWeight: 700, fontSize: '0.875rem' }}>#{exam.code}</span>
           </div>
 
@@ -75,14 +85,31 @@ export default function InstructionsPage() {
             </div>
           )}
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'var(--primary-light)', borderRadius: 'var(--r-md)', border: '1px solid rgba(79,110,247,0.2)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'var(--primary-light)', borderRadius: 'var(--r-md)', border: '1px solid rgba(79,110,247,0.2)', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Peserta:</span>
             <strong style={{ color: 'var(--text-primary)' }}>{state.studentName}</strong>
-            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>NIS: {state.nis}</span>
+            {state.nis !== state.studentName && (
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>ID: {state.nis}</span>
+            )}
             {state.attemptNumber > 1 && (
               <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--warning)' }}>Percobaan ke-{state.attemptNumber}</span>
             )}
           </div>
+
+          {/* Deadline info */}
+          {exam.activeTo && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', marginTop: 8,
+              background: new Date(exam.activeTo) < new Date() ? 'var(--danger-light)' : 'var(--warning-light)',
+              borderRadius: 'var(--r-md)',
+              border: `1px solid ${new Date(exam.activeTo) < new Date() ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)'}` }}>
+              <Calendar size={15} style={{ color: new Date(exam.activeTo) < new Date() ? 'var(--danger)' : 'var(--warning)', flexShrink: 0 }} />
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                {new Date(exam.activeTo) < new Date()
+                  ? <><strong style={{ color: 'var(--danger)' }}>Batas waktu sudah lewat</strong> — {new Date(exam.activeTo).toLocaleString('id-ID')}</>
+                  : <>Batas waktu: <strong>{new Date(exam.activeTo).toLocaleString('id-ID', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong></>}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Info Grid */}
