@@ -61,6 +61,18 @@ export default function JoinExamPage() {
     if (!name.trim()) { setError('Nama lengkap wajib diisi'); return; }
     if (!foundExam) return;
 
+    // ---- Whitelist validation: jika ada daftar murid, harus cocok ----
+    if (foundExam.preloadedStudents && foundExam.preloadedStudents.length > 0) {
+      const trimName = name.trim().toLowerCase();
+      const trimNis  = nis.trim();
+      const byNis    = trimNis && foundExam.preloadedStudents.some(s => s.nis === trimNis);
+      const byName   = foundExam.preloadedStudents.some(s => s.name.toLowerCase() === trimName);
+      if (!byNis && !byName) {
+        setError('Nama atau nomor Anda tidak terdaftar di ujian ini. Pilih nama dari daftar atau hubungi guru Anda.');
+        return;
+      }
+    }
+
     // Gunakan nis sebagai identifier — bisa NISN, no absen, atau fallback ke nama
     const identifier = nis.trim() || name.trim();
 

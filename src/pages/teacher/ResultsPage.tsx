@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Download, User, Edit2, BarChart2 } from 'lucide-react';
+import { Download, User, Edit2, BarChart2, RotateCcw, MessageSquare } from 'lucide-react';
 import { useApp, useToast } from '../../context/AppContext';
 import { EmptyState, FormatBadge, StatusBadge, SectionHeader, Modal } from '../../components/ui';
 import { calcMaxMCScore, calcMaxEssayScore, formatDateTime } from '../../utils/helpers';
@@ -10,7 +10,7 @@ import type { Submission } from '../../types';
 
 
 export default function ResultsPage() {
-  const { currentTeacher, exams, submissions, gradeEssay } = useApp();
+  const { currentTeacher, exams, submissions, gradeEssay, returnSubmission, setTeacherFeedback } = useApp();
   const { addToast } = useToast();
   const [searchParams] = useSearchParams();
 
@@ -19,6 +19,7 @@ export default function ResultsPage() {
   const [detailSub, setDetailSub] = useState<Submission | null>(null);
   const [gradingMode, setGradingMode] = useState(false);
   const [gradingScores, setGradingScores] = useState<Record<string, { score: number; comment: string }>>({});
+  const [feedbackText, setFeedbackText] = useState('');
 
   const selectedExam = useMemo(() => myExams.find(e => e.id === selectedExamId), [myExams, selectedExamId]);
   const examSubs = useMemo(() => submissions.filter(s => s.examId === selectedExamId && s.isComplete), [submissions, selectedExamId]);
@@ -41,6 +42,7 @@ export default function ResultsPage() {
     const init: Record<string, { score: number; comment: string }> = {};
     sub.essayScores.forEach(g => { init[g.questionId] = { score: g.score, comment: g.comment ?? '' }; });
     setGradingScores(init);
+    setFeedbackText(sub.teacherFeedback ?? '');
     setGradingMode(true);
   };
 
@@ -49,9 +51,17 @@ export default function ResultsPage() {
     Object.entries(gradingScores).forEach(([qId, { score, comment }]) => {
       gradeEssay(detailSub.id, qId, score, comment);
     });
-    addToast({ type: 'success', title: 'Nilai essay disimpan!' });
+    if (feedbackText.trim()) setTeacherFeedback(detailSub.id, feedbackText.trim());
+    addToast({ type: 'success', title: 'Nilai & feedback disimpan!' });
     setGradingMode(false);
     setDetailSub(null);
+  };
+
+  const handleReturn = (sub: Submission) => {
+    returnSubmission(sub.id);
+    addToast({ type: 'info', title: 'Dikembalikan untuk revisi', message: `Jawaban ${sub.studentName} dibuka kembali.` });
+    setDetailSub(null);
+    setGradingMode(false);
   };
 
   const exportExcel = () => {
@@ -236,9 +246,21 @@ export default function ResultsPage() {
         title={gradingMode ? `Nilai Essay — ${detailSub?.studentName}` : `Detail Jawaban — ${detailSub?.studentName}`}
         size="xl"
         footer={gradingMode ? (
-          <><button className="btn btn-secondary" onClick={() => setGradingMode(false)}>Batal</button>
-            <button className="btn btn-primary" onClick={saveGrading}>Simpan Nilai</button></>
-        ) : undefined}>
+          <>
+            <button className="btn btn-secondary" onClick={() => setGradingMode(false)}>Batal</button>
+            <button className="btn btn-danger btn-sm" onClick={() => detailSub && handleReturn(detailSub)}>
+              <RotateCcw size={13} /> Kembalikan Revisi
+            </button>
+            <button className="btn btn-primary" onClick={saveGrading}>Simpan Nilai</button>
+          </>
+        ) : (
+          <>
+            <button className="btn btn-secondary" onClick={() => { setDetailSub(null); setGradingMode(false); }}>Tutup</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => detailSub && handleReturn(detailSub)}>
+              <RotateCcw size={13} /> Kembalikan Revisi
+            </button>
+          </>
+        )}>
         {detailSub && selectedExam && (
           <div>
             {selectedExam.questions.map((q, idx) => {
@@ -314,6 +336,15 @@ export default function ResultsPage() {
                 </div>
               );
             })}
+            {gradingMode && (
+              <div className="form-group" style={{ marginTop: 'var(--sp-4)', padding: 'var(--sp-4)', background: 'var(--primary-light)', borderRadius: 'var(--r-md)', border: '1px solid rgba(37,99,235,0.15)' }}>
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <MessageSquare size={14} /> Feedback / Komentar Umum untuk Murid
+                </label>
+                <textarea className="form-textarea" rows={2} placeholder="Komentar ini akan tampil di halaman hasil murid..."
+                  value={feedbackText} onChange={e => setFeedbackText(e.target.value)} />
+              </div>
+            )}
           </div>
         )}
       </Modal>

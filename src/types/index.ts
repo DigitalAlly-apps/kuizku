@@ -118,9 +118,11 @@ export interface Submission {
   mcScore: number;         // auto-calculated
   essayScores: EssayGrade[];
   totalScore?: number;     // set after all essays graded
+  teacherFeedback?: string; // komentar/feedback dari guru
   startedAt: string;
   submittedAt?: string;
   isComplete: boolean;
+  isReturned?: boolean;    // dikembalikan guru untuk revisi
 }
 
 // ---- Import Result ----

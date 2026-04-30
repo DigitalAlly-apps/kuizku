@@ -39,6 +39,8 @@ interface AppContextShape {
   submissions: Submission[];
   getExamSubmissions: (examId: string) => Submission[];
   gradeEssay: (submissionId: string, questionId: string, score: number, comment?: string) => Promise<void>;
+  returnSubmission: (submissionId: string) => Promise<void>;
+  setTeacherFeedback: (submissionId: string, feedback: string) => Promise<void>;
   refreshSubmissions: () => Promise<void>;
 
   // Toast notifications
@@ -270,6 +272,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await storage.saveSubmission(updated);
   };
 
+  const returnSubmission = async (submissionId: string) => {
+    const sub = submissions.find(s => s.id === submissionId);
+    if (!sub) return;
+    const updated = { ...sub, isComplete: false, isReturned: true };
+    setSubmissionsState(prev => prev.map(s => s.id === submissionId ? updated : s));
+    await storage.saveSubmission(updated);
+  };
+
+  const setTeacherFeedback = async (submissionId: string, feedback: string) => {
+    const sub = submissions.find(s => s.id === submissionId);
+    if (!sub) return;
+    const updated = { ...sub, teacherFeedback: feedback };
+    setSubmissionsState(prev => prev.map(s => s.id === submissionId ? updated : s));
+    await storage.saveSubmission(updated);
+  };
+
   // ---- Toasts ----
   const addToast = useCallback((toast: Omit<ToastMessage, 'id'>) => {
     const id = uuidv4();
@@ -287,7 +305,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     exams, getExam, createExam, updateExam, deleteExam, duplicateExam,
     publishExam, archiveExam, endExam, refreshExams,
     bankQuestions, addToBankFromQuestion, deleteBankQuestion, updateBankQuestion, refreshBank,
-    submissions, getExamSubmissions, gradeEssay, refreshSubmissions,
+    submissions, getExamSubmissions, gradeEssay, returnSubmission, setTeacherFeedback, refreshSubmissions,
     toasts, addToast, removeToast,
   };
 

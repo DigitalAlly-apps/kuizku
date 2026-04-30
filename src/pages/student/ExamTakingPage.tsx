@@ -45,6 +45,11 @@ export default function ExamTakingPage() {
   const [error] = useState('');
   const submitRef = useRef(false);
 
+  // ---- Anti-cheat ----
+  const [violations, setViolations] = useState(0);
+  const [showViolationWarning, setShowViolationWarning] = useState(false);
+  const MAX_VIOLATIONS = 3;
+
   const [loadError, setLoadError] = useState('');
 
   // ---- Bootstrap — query Supabase langsung, tidak butuh auth guru ----
@@ -92,7 +97,6 @@ export default function ExamTakingPage() {
     });
   }, []);
 
-  // ---- Submit logic ----
   const handleSubmit = useCallback((_autoSubmit = false) => {
     if (submitRef.current || !session || !exam) return;
     submitRef.current = true;
@@ -106,6 +110,24 @@ export default function ExamTakingPage() {
     setSubmitted(true);
     setShowSubmit(false);
   }, [session, exam]);
+
+  // ---- Anti-cheat: visibilitychange listener (after handleSubmit) ----
+  useEffect(() => {
+    if (submitted) return;
+    const handleVisibility = () => {
+      if (document.hidden) {
+        setViolations(prev => {
+          const next = prev + 1;
+          setShowViolationWarning(true);
+          setTimeout(() => setShowViolationWarning(false), 5000);
+          if (next >= MAX_VIOLATIONS) handleSubmit(true);
+          return next;
+        });
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [submitted, handleSubmit]);
 
   // ---- Whole-exam timer ----
   const wholeTimerEnabled = exam?.settings.timerMode === 'WHOLE_EXAM';
@@ -232,6 +254,14 @@ export default function ExamTakingPage() {
         perQUrgency={perQTimer.urgency}
         onSubmitClick={() => setShowSubmit(true)}
       />
+
+      {/* Anti-cheat warning banner */}
+      {showViolationWarning && (
+        <div style={{ background: 'var(--danger)', color: 'white', padding: '10px var(--sp-6)', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, animation: 'fadeIn 0.2s ease' }}>
+          ⚠️ Peringatan: Anda berpindah tab/jendela! ({violations}/{MAX_VIOLATIONS})
+          {violations >= MAX_VIOLATIONS - 1 && ' — Sekali lagi, jawaban akan dikumpulkan otomatis!'}
+        </div>
+      )}
 
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         {/* Main question area */}
