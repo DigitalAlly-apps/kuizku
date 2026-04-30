@@ -292,8 +292,8 @@ export default function ExamListPage() {
       </div>
 
       {/* Filters */}
-      <div className="filter-bar" style={{ flexWrap: 'wrap', gap: 'var(--sp-3)' }}>
-        <div className="search-input-wrap" style={{ flex: '1 1 200px' }}>
+      <div className="filter-bar">
+        <div className="search-input-wrap">
           <Search size={15} />
           <input className="form-input search-input" placeholder="Cari judul, mapel, kelas, atau kode..."
             value={search} onChange={e => setSearch(e.target.value)} id="exam-search" />
@@ -319,7 +319,7 @@ export default function ExamListPage() {
           ))}
         </div>
         {/* Group by */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }} className="group-by-filter">
           <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Kelompokkan:</span>
           {(['kelas', 'mapel', 'tipe', 'none'] as const).map(g => (
             <button key={g} className={`btn btn-sm ${groupBy === g ? 'btn-primary' : 'btn-secondary'}`}

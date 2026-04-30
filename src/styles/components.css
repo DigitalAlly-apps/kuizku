@@ -325,6 +325,8 @@
 .search-input-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
 .search-input { padding-left: 38px; }
 
+.group-by-filter { margin-left: auto; }
+
 /* ---- Tabs ---- */
 .tabs {
   display: flex;
@@ -409,6 +411,7 @@
   
   .filter-bar { flex-direction: column; align-items: stretch; }
   .search-input-wrap { width: 100%; }
+  .group-by-filter { margin-left: 0; width: 100%; justify-content: flex-start; margin-top: var(--sp-2); }
   .tabs { overflow-x: auto; padding-bottom: 2px; white-space: nowrap; -webkit-overflow-scrolling: touch; }
   
   .exam-code-text { font-size: 1.5rem; }
