@@ -192,7 +192,7 @@ export default function ExamListPage() {
               </span>
             )}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} onClick={e => e.stopPropagation()}>
+          <div className="exam-card-actions" onClick={e => e.stopPropagation()}>
             <button className="btn btn-ghost btn-sm btn-icon" title="Salin kode" onClick={() => copyCode(exam.code)}>
               <Copy size={14} />
             </button>
@@ -279,14 +279,16 @@ export default function ExamListPage() {
 
   return (
     <div className="page-content">
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 'var(--sp-6)' }}>
+      <div className="section-header">
         <div>
           <h1>Ujian Saya</h1>
           <p style={{ color: 'var(--text-muted)' }}>{myExams.length} item terdaftar</p>
         </div>
-        <button className="btn btn-primary" onClick={() => navigate('/guru/ujian/baru')}>
-          <Plus size={16} /> Buat Ujian/Tugas
-        </button>
+        <div className="section-header-action">
+          <button className="btn btn-primary w-full" onClick={() => navigate('/guru/ujian/baru')}>
+            <Plus size={16} /> Buat Ujian/Tugas
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
