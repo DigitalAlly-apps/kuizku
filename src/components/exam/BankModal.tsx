@@ -19,6 +19,8 @@ export default function BankModal({ open, format, onAdd, onClose }: Props) {
   const { bankQuestions } = useBank();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'MULTIPLE_CHOICE' | 'ESSAY'>('ALL');
+  const [difficultyFilter, setDifficultyFilter] = useState<'ALL' | 'easy' | 'medium' | 'hard'>('ALL');
+  const [randomCount, setRandomCount] = useState(5);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [preview, setPreview] = useState<BankQuestion | null>(null);
 
@@ -33,13 +35,19 @@ export default function BankModal({ open, format, onAdd, onClose }: Props) {
   const filtered = useMemo(() => {
     return eligible.filter(bq => {
       if (typeFilter !== 'ALL' && bq.type !== typeFilter) return false;
+      if (difficultyFilter !== 'ALL' && !bq.tags.includes(`difficulty:${difficultyFilter}`)) return false;
       if (search.trim()) {
         const s = search.toLowerCase();
         return bq.text.toLowerCase().includes(s) || bq.subject.toLowerCase().includes(s) || bq.tags.some(t => t.toLowerCase().includes(s));
       }
       return true;
     });
-  }, [eligible, typeFilter, search]);
+  }, [eligible, typeFilter, difficultyFilter, search]);
+
+  const selectRandom = () => {
+    const shuffled = [...filtered].sort(() => Math.random() - 0.5).slice(0, Math.max(1, randomCount));
+    setSelected(new Set(shuffled.map(q => q.id)));
+  };
 
   const toggle = (id: string) => {
     setSelected(prev => {
@@ -95,6 +103,19 @@ export default function BankModal({ open, format, onAdd, onClose }: Props) {
                 {f === 'ALL' ? 'Semua' : f === 'MULTIPLE_CHOICE' ? 'PG' : 'Essay'}
               </button>
             ))}
+            <select className="form-select" style={{ width: 130, fontSize: '0.8rem' }} value={difficultyFilter}
+              onChange={e => setDifficultyFilter(e.target.value as typeof difficultyFilter)}>
+              <option value="ALL">Semua Level</option>
+              <option value="easy">Mudah</option>
+              <option value="medium">Sedang</option>
+              <option value="hard">Sulit</option>
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <input className="form-input" type="number" min={1} max={filtered.length || 1} style={{ width: 90, fontSize: '0.8rem' }}
+              value={randomCount} onChange={e => setRandomCount(parseInt(e.target.value) || 1)} />
+            <button className="btn btn-secondary btn-sm" disabled={filtered.length === 0} onClick={selectRandom}>Pilih Acak dari Filter</button>
           </div>
 
           {/* Select all */}

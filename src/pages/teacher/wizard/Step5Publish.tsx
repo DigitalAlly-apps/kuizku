@@ -31,7 +31,7 @@ export default function Step5Publish({ exam, onFinish }: Props) {
     if (exam.activeTo && new Date(exam.activeTo).getTime() <= Date.now()) return 'Deadline ujian sudah lewat. Perbarui "Aktif Hingga" sebelum publish.';
     if (exam.activeFrom && exam.activeTo && new Date(exam.activeFrom).getTime() >= new Date(exam.activeTo).getTime()) return 'Waktu mulai harus lebih awal dari deadline.';
     if (exam.settings.timerMode === 'WHOLE_EXAM' && (!exam.settings.wholExamTimerSeconds || exam.settings.wholExamTimerSeconds <= 0)) return 'Durasi timer keseluruhan harus lebih dari 0.';
-    if (exam.settings.timerMode === 'PER_QUESTION' && exam.questions.some(q => !q.timerSeconds || q.timerSeconds <= 0)) return 'Semua soal wajib memiliki timer per soal lebih dari 0 detik.';
+    if (exam.settings.timerMode === 'PER_QUESTION' && (!exam.settings.perQuestionDefaultSeconds || exam.settings.perQuestionDefaultSeconds <= 0) && exam.questions.some(q => !q.timerSeconds || q.timerSeconds <= 0)) return 'Isi default timer per soal atau timer khusus pada setiap soal.';
     return null;
   };
 

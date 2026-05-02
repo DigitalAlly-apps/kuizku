@@ -216,7 +216,8 @@ export const storage = {
       submitted_at: sub.submittedAt,
       is_complete: sub.isComplete,
       teacher_feedback: sub.teacherFeedback || null,
-      is_returned: sub.isReturned || false
+      is_returned: sub.isReturned || false,
+      anti_cheat_events: sub.antiCheatEvents || []
     });
     if (subErr) { console.error('Error saving submission:', subErr); return; }
 
@@ -359,6 +360,7 @@ function dbToSubmission(db: any): Submission {
     isComplete: db.is_complete,
     teacherFeedback: db.teacher_feedback || undefined,
     isReturned: db.is_returned || false,
+    antiCheatEvents: db.anti_cheat_events || [],
     answers,
     essayScores
   };

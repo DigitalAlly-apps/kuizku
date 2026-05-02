@@ -37,6 +37,26 @@ export default function ResultsPage() {
     return Math.round(total / examSubs.length);
   }, [examSubs]);
 
+  const scoreStats = useMemo(() => {
+    const totals = examSubs.map(sub => sub.mcScore + sub.essayScores.reduce((a, g) => a + g.score, 0)).sort((a, b) => a - b);
+    if (!totals.length) return { median: 0, highest: 0, mastery: 0, distribution: [0, 0, 0, 0] };
+    const mid = Math.floor(totals.length / 2);
+    const median = totals.length % 2 ? totals[mid] : Math.round((totals[mid - 1] + totals[mid]) / 2);
+    const highest = totals[totals.length - 1];
+    const mastery = maxTotal > 0 ? Math.round((totals.filter(v => (v / maxTotal) * 100 >= 70).length / totals.length) * 100) : 0;
+    const distribution = [
+      totals.filter(v => maxTotal > 0 && (v / maxTotal) * 100 < 40).length,
+      totals.filter(v => maxTotal > 0 && (v / maxTotal) * 100 >= 40 && (v / maxTotal) * 100 < 70).length,
+      totals.filter(v => maxTotal > 0 && (v / maxTotal) * 100 >= 70 && (v / maxTotal) * 100 < 85).length,
+      totals.filter(v => maxTotal > 0 && (v / maxTotal) * 100 >= 85).length,
+    ];
+    return { median, highest, mastery, distribution };
+  }, [examSubs, maxTotal]);
+
+  const ranking = useMemo(() => [...examSubs]
+    .sort((a, b) => (b.mcScore + b.essayScores.reduce((s, g) => s + g.score, 0)) - (a.mcScore + a.essayScores.reduce((s, g) => s + g.score, 0)))
+    .slice(0, 5), [examSubs]);
+
   const startGrading = (sub: Submission) => {
     setDetailSub(sub);
     const init: Record<string, { score: number; comment: string }> = {};
@@ -68,10 +88,23 @@ export default function ResultsPage() {
     if (!selectedExam) return;
     const rows = examSubs.map((s, i) => {
       const essayTotal = s.essayScores.reduce((a, g) => a + g.score, 0);
-      return [i + 1, s.studentName, s.nis, s.attemptNumber, s.submittedAt ? formatDateTime(s.submittedAt) : '-', s.mcScore, essayTotal, s.mcScore + essayTotal, maxMC, maxEssay, maxTotal];
+      const details = selectedExam.questions.flatMap((q, qIdx) => {
+        const answer = s.answers.find(a => a.questionId === q.id);
+        const grade = s.essayScores.find(g => g.questionId === q.id);
+        const answerText = q.type === 'MULTIPLE_CHOICE'
+          ? q.options?.find(o => o.id === answer?.selectedOptionId)?.text ?? ''
+          : answer?.essayText ?? '';
+        const score = q.type === 'MULTIPLE_CHOICE'
+          ? (answer?.selectedOptionId === q.correctOptionId ? q.weight : 0)
+          : grade?.score ?? '';
+        const comment = q.type === 'ESSAY' ? grade?.comment ?? '' : '';
+        return [`${qIdx + 1}. ${answerText}`, score, comment];
+      });
+      return [i + 1, s.studentName, s.nis, s.attemptNumber, s.submittedAt ? formatDateTime(s.submittedAt) : '-', s.mcScore, essayTotal, s.mcScore + essayTotal, maxMC, maxEssay, maxTotal, s.antiCheatEvents?.length ?? 0, ...details];
     });
+    const detailHeaders = selectedExam.questions.flatMap((_, i) => [`S${i + 1} Jawaban`, `S${i + 1} Skor`, `S${i + 1} Komentar`]);
     const ws = XLSX.utils.aoa_to_sheet([
-      ['No','Nama','NIS','Percobaan','Waktu Submit','Skor PG','Skor Essay','Total','Maks PG','Maks Essay','Maks Total'],
+      ['No','Nama','NIS','Percobaan','Waktu Submit','Skor PG','Skor Essay','Total','Maks PG','Maks Essay','Maks Total','Pelanggaran Anti-cheat', ...detailHeaders],
       ...rows,
     ]);
     const wb = XLSX.utils.book_new();
@@ -128,11 +161,14 @@ export default function ResultsPage() {
           </div>
 
           {/* Stats */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--sp-3)', marginBottom: 'var(--sp-8)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 'var(--sp-3)', marginBottom: 'var(--sp-8)' }}>
             {[
               { label: 'Total Peserta', value: examSubs.length, color: 'var(--primary)' },
               { label: 'Rata-rata Nilai', value: avgTotal || '—', color: 'var(--success)' },
               { label: 'Maks. Poin', value: maxTotal, color: 'var(--accent)' },
+              { label: 'Median', value: scoreStats.median || '—', color: 'var(--secondary)' },
+              { label: 'Tertinggi', value: scoreStats.highest || '—', color: 'var(--success)' },
+              { label: 'Ketuntasan', value: `${scoreStats.mastery}%`, color: 'var(--warning)' },
               { label: 'Essay Dinilai', value: `${examSubs.filter(s => s.essayScores.length > 0).length}/${examSubs.length}`, color: 'var(--warning)' },
             ].map(s => (
               <div key={s.label} className="stat-card">
@@ -141,6 +177,39 @@ export default function ResultsPage() {
               </div>
             ))}
           </div>
+
+          {examSubs.length > 0 && (
+            <div className="card" style={{ marginBottom: 'var(--sp-8)' }}>
+              <SectionHeader title="Statistik Lanjutan" subtitle="Distribusi nilai dan 5 peringkat teratas" />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-6)' }}>
+                <div>
+                  {[
+                    ['<40%', scoreStats.distribution[0], 'var(--danger)'],
+                    ['40-69%', scoreStats.distribution[1], 'var(--warning)'],
+                    ['70-84%', scoreStats.distribution[2], 'var(--success)'],
+                    ['85-100%', scoreStats.distribution[3], 'var(--primary)'],
+                  ].map(([label, count, color]) => (
+                    <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                      <span style={{ width: 60, fontSize: '0.78rem', color: 'var(--text-muted)' }}>{label}</span>
+                      <div style={{ flex: 1, height: 8, background: 'var(--surface-2)', borderRadius: 'var(--r-full)', overflow: 'hidden' }}>
+                        <div style={{ width: `${examSubs.length ? (Number(count) / examSubs.length) * 100 : 0}%`, height: '100%', background: String(color) }} />
+                      </div>
+                      <strong style={{ fontSize: '0.78rem' }}>{count}</strong>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  {ranking.map((sub, i) => {
+                    const total = sub.mcScore + sub.essayScores.reduce((s, g) => s + g.score, 0);
+                    return <div key={sub.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+                      <span style={{ fontSize: '0.82rem' }}>{i + 1}. {sub.studentName}</span>
+                      <strong style={{ color: 'var(--success)' }}>{total}/{maxTotal}</strong>
+                    </div>;
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Participant Table */}
           <SectionHeader title="Daftar Peserta" subtitle={`${examSubs.length} jawaban masuk`} />
@@ -189,6 +258,7 @@ export default function ResultsPage() {
                         </td>
                         <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                           {sub.submittedAt ? formatDateTime(sub.submittedAt) : '—'}
+                          {(sub.antiCheatEvents?.length ?? 0) > 0 && <div style={{ color: 'var(--danger)', marginTop: 3 }}>{sub.antiCheatEvents!.length} pelanggaran</div>}
                         </td>
                         <td>
                           <div style={{ display: 'flex', gap: 4 }}>
@@ -336,6 +406,12 @@ export default function ResultsPage() {
                 </div>
               );
             })}
+            {(detailSub.antiCheatEvents?.length ?? 0) > 0 && (
+              <div style={{ marginTop: 'var(--sp-4)', padding: 'var(--sp-4)', background: 'var(--danger-light)', borderRadius: 'var(--r-md)', color: 'var(--danger)', fontSize: '0.8rem' }}>
+                <strong>Log Anti-cheat:</strong>{' '}
+                {detailSub.antiCheatEvents!.map(e => `${formatDateTime(e.timestamp)} (pelanggaran ${e.count})`).join(', ')}
+              </div>
+            )}
             {gradingMode && (
               <div className="form-group" style={{ marginTop: 'var(--sp-4)', padding: 'var(--sp-4)', background: 'var(--primary-light)', borderRadius: 'var(--r-md)', border: '1px solid rgba(37,99,235,0.15)' }}>
                 <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

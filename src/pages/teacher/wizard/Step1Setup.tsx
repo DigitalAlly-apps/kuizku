@@ -162,6 +162,15 @@ export default function Step1Setup({ initial, onNext }: Props) {
                 onChange={e => setSetting('wholExamTimerSeconds', parseInt(e.target.value) * 60)} />
             </div>
           )}
+          {settings.timerMode === 'PER_QUESTION' && (
+            <div className="form-group" style={{ marginTop: 'var(--sp-3)', maxWidth: 240 }}>
+              <label className="form-label" htmlFor="s1-perq-timer">Default Timer per Soal (detik)</label>
+              <input id="s1-perq-timer" type="number" className="form-input" min={10} max={3600}
+                value={settings.perQuestionDefaultSeconds ?? 60}
+                onChange={e => setSetting('perQuestionDefaultSeconds', parseInt(e.target.value) || 60)} />
+              <span className="form-hint">Dipakai jika soal tidak punya timer khusus.</span>
+            </div>
+          )}
         </div>
 
         {/* Max Attempts */}
@@ -184,11 +193,24 @@ export default function Step1Setup({ initial, onNext }: Props) {
           <Toggle id="t-key" label="Tampilkan Kunci Jawaban Setelah Ujian"
             hint="Murid bisa melihat kunci jawaban PG setelah ujian ditutup."
             checked={settings.showAnswerKeyAfterSubmit} onChange={v => setSetting('showAnswerKeyAfterSubmit', v)} />
+          <Toggle id="t-release" label="Tahan Nilai Final Sampai Ujian Ditutup"
+            hint="Cocok untuk ujian essay/kombinasi agar nilai dirilis setelah guru menutup ujian."
+            checked={settings.releaseResultsAfterGrading ?? false} onChange={v => setSetting('releaseResultsAfterGrading', v)} />
           <Toggle id="t-shuffle-q" label="Acak Urutan Soal"
             checked={settings.shuffleQuestions} onChange={v => setSetting('shuffleQuestions', v)} />
           <Toggle id="t-shuffle-o" label="Acak Urutan Pilihan Jawaban (PG)"
             hint="Setiap murid mendapatkan urutan pilihan yang berbeda."
             checked={settings.shuffleOptions} onChange={v => setSetting('shuffleOptions', v)} />
+          <div className="form-group" style={{ marginTop: 'var(--sp-4)', maxWidth: 260 }}>
+            <label className="form-label" htmlFor="s1-anticheat">Sensitivitas Anti-cheat</label>
+            <select id="s1-anticheat" className="form-select" value={settings.antiCheatSensitivity ?? 'MEDIUM'}
+              onChange={e => setSetting('antiCheatSensitivity', e.target.value as ExamSettings['antiCheatSensitivity'])}>
+              <option value="OFF">Nonaktif</option>
+              <option value="LOW">Rendah (5 pelanggaran)</option>
+              <option value="MEDIUM">Sedang (3 pelanggaran)</option>
+              <option value="HIGH">Tinggi (1 pelanggaran)</option>
+            </select>
+          </div>
         </div>
       </div>
 

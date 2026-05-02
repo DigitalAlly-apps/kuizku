@@ -25,6 +25,8 @@ export default function QuestionEditor({ format, initial, onSave, onCancel }: Pr
   const [q, setQ] = useState<Partial<Question>>(initial ?? (defaultType === 'MULTIPLE_CHOICE' ? { ...DEFAULT_PG, options: [{ id: generateId(), text: '' }, { id: generateId(), text: '' }] } : { ...DEFAULT_ESSAY }));
   const [errors, setErrors] = useState<string[]>([]);
 
+  const difficulty = (q.tags ?? []).find(t => t.startsWith('difficulty:'))?.replace('difficulty:', '') ?? '';
+
   const setField = (k: keyof Question, v: unknown) => setQ(prev => ({ ...prev, [k]: v }));
 
   const switchType = (t: QuestionType) => {
@@ -151,8 +153,8 @@ export default function QuestionEditor({ format, initial, onSave, onCancel }: Pr
       {/* Essay Guide */}
       {q.type === 'ESSAY' && (
         <div className="form-group" style={{ marginBottom: 'var(--sp-4)' }}>
-          <label className="form-label">Panduan Jawaban <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 400 }}>(hanya terlihat guru)</span></label>
-          <textarea className="form-textarea" rows={3} placeholder="Tulis kunci atau panduan penilaian..."
+          <label className="form-label">Panduan/Rubrik Penilaian <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 400 }}>(hanya terlihat guru)</span></label>
+          <textarea className="form-textarea" rows={3} placeholder="Contoh: 2 poin definisi tepat, 2 poin contoh benar, 1 poin struktur jawaban..."
             value={q.answerGuide ?? ''} onChange={e => setField('answerGuide', e.target.value)} id="q-guide" />
         </div>
       )}
@@ -168,7 +170,22 @@ export default function QuestionEditor({ format, initial, onSave, onCancel }: Pr
           <label className="form-label" htmlFor="q-timer">Timer per Soal (detik, opsional)</label>
           <input id="q-timer" type="number" className="form-input" min={0} placeholder="0 = tidak ada"
             value={q.timerSeconds ?? ''} onChange={e => setField('timerSeconds', e.target.value ? parseInt(e.target.value) : undefined)} />
+          <span className="form-hint">Kosongkan untuk memakai default timer ujian.</span>
         </div>
+      </div>
+
+      <div className="form-group" style={{ marginBottom: 'var(--sp-4)' }}>
+        <label className="form-label" htmlFor="q-difficulty">Tingkat Kesulitan</label>
+        <select id="q-difficulty" className="form-select" value={difficulty}
+          onChange={e => {
+            const cleanTags = (q.tags ?? []).filter(t => !t.startsWith('difficulty:'));
+            setField('tags', e.target.value ? [...cleanTags, `difficulty:${e.target.value}`] : cleanTags);
+          }}>
+          <option value="">Belum ditentukan</option>
+          <option value="easy">Mudah</option>
+          <option value="medium">Sedang</option>
+          <option value="hard">Sulit</option>
+        </select>
       </div>
 
       {/* Tags */}

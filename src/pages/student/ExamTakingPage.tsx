@@ -48,7 +48,7 @@ export default function ExamTakingPage() {
   // ---- Anti-cheat ----
   const [violations, setViolations] = useState(0);
   const [showViolationWarning, setShowViolationWarning] = useState(false);
-  const MAX_VIOLATIONS = 3;
+  const antiCheatEventsRef = useRef<import('../../types').AntiCheatEvent[]>([]);
 
   const [loadError, setLoadError] = useState('');
 
@@ -128,7 +128,7 @@ export default function ExamTakingPage() {
       return;
     }
 
-    const sub = buildSubmission(session, latestExam);
+    const sub = { ...buildSubmission(session, latestExam), antiCheatEvents: antiCheatEventsRef.current };
     setSubmittedData(sub);
 
     // Persist to Supabase, then remove the local in-progress session so it
@@ -144,28 +144,30 @@ export default function ExamTakingPage() {
   useEffect(() => {
     if (!session || !exam || submitted || session.answers.length === 0) return;
     const id = setInterval(() => {
-      void storage.saveSubmission(buildDraftSubmission(session, exam));
+      void storage.saveSubmission({ ...buildDraftSubmission(session, exam), antiCheatEvents: antiCheatEventsRef.current });
     }, 5000);
     return () => clearInterval(id);
   }, [session, exam, submitted]);
 
   // ---- Anti-cheat: visibilitychange listener (after handleSubmit) ----
   useEffect(() => {
-    if (submitted) return;
+    if (submitted || (exam?.settings.antiCheatSensitivity ?? 'MEDIUM') === 'OFF') return;
+    const maxViolations = exam?.settings.antiCheatSensitivity === 'HIGH' ? 1 : exam?.settings.antiCheatSensitivity === 'LOW' ? 5 : 3;
     const handleVisibility = () => {
       if (document.hidden) {
         setViolations(prev => {
           const next = prev + 1;
+          antiCheatEventsRef.current = [...antiCheatEventsRef.current, { type: 'TAB_HIDDEN', timestamp: new Date().toISOString(), count: next }];
           setShowViolationWarning(true);
           setTimeout(() => setShowViolationWarning(false), 5000);
-          if (next >= MAX_VIOLATIONS) handleSubmit(true);
+          if (next >= maxViolations) handleSubmit(true);
           return next;
         });
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, [submitted, handleSubmit]);
+  }, [submitted, handleSubmit, exam]);
 
   // ---- Whole-exam timer ----
   const wholeTimerEnabled = exam?.settings.timerMode === 'WHOLE_EXAM';
@@ -194,7 +196,7 @@ export default function ExamTakingPage() {
   // ---- Per-question timer ----
   const perQEnabled = exam?.settings.timerMode === 'PER_QUESTION';
   const currentQ = questions[currentIdx];
-  const perQSeconds = currentQ?.timerSeconds ?? 60;
+  const perQSeconds = currentQ?.timerSeconds ?? exam?.settings.perQuestionDefaultSeconds ?? 60;
 
   const goNext = useCallback(() => {
     const next = Math.min(currentIdx + 1, questions.length - 1);
@@ -296,8 +298,7 @@ export default function ExamTakingPage() {
       {/* Anti-cheat warning banner */}
       {showViolationWarning && (
         <div style={{ background: 'var(--danger)', color: 'white', padding: '10px var(--sp-6)', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, animation: 'fadeIn 0.2s ease' }}>
-          ⚠️ Peringatan: Anda berpindah tab/jendela! ({violations}/{MAX_VIOLATIONS})
-          {violations >= MAX_VIOLATIONS - 1 && ' — Sekali lagi, jawaban akan dikumpulkan otomatis!'}
+          ⚠️ Peringatan: Anda berpindah tab/jendela! ({violations}/{exam.settings.antiCheatSensitivity === 'HIGH' ? 1 : exam.settings.antiCheatSensitivity === 'LOW' ? 5 : 3})
         </div>
       )}
 

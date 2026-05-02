@@ -13,9 +13,10 @@ interface Props {
 const HISTORY_KEY = 'kuizku_student_history';
 
 export default function ResultScreen({ exam, submission, studentName }: Props) {
-  const showScore     = exam.settings.showScoreAfterSubmit;
-  const showAnswerKey = exam.settings.showAnswerKeyAfterSubmit;
   const hasEssay      = exam.format !== 'PG_ONLY';
+  const finalReleased = !exam.settings.releaseResultsAfterGrading || exam.status === 'ENDED' || !hasEssay;
+  const showScore     = exam.settings.showScoreAfterSubmit && finalReleased;
+  const showAnswerKey = exam.settings.showAnswerKeyAfterSubmit && exam.status === 'ENDED';
   const maxMC         = calcMaxMCScore(exam);
   const mcPct         = maxMC > 0 ? Math.round((submission.mcScore / maxMC) * 100) : 0;
 
@@ -92,7 +93,7 @@ export default function ResultScreen({ exam, submission, studentName }: Props) {
           ) : (
             <div style={{ padding: 'var(--sp-4)', background: 'var(--surface-2)', borderRadius: 'var(--r-md)', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               <Clock size={16} style={{ display: 'inline', marginRight: 6 }} />
-              Nilai akan diumumkan oleh guru.
+              {finalReleased ? 'Nilai akan diumumkan oleh guru.' : 'Nilai final ditahan sampai guru menutup ujian.'}
             </div>
           )}
 

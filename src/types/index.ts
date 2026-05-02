@@ -47,11 +47,14 @@ export interface Question {
 export interface ExamSettings {
   timerMode: TimerMode;
   wholExamTimerSeconds?: number; // if timerMode = WHOLE_EXAM
+  perQuestionDefaultSeconds?: number; // fallback if timerMode = PER_QUESTION
   maxAttempts: number;            // 1 | 2 | 3 | 0 = unlimited
   showScoreAfterSubmit: boolean;
   showAnswerKeyAfterSubmit: boolean;
+  releaseResultsAfterGrading?: boolean;
   shuffleQuestions: boolean;
   shuffleOptions: boolean;        // for MC only
+  antiCheatSensitivity?: 'OFF' | 'LOW' | 'MEDIUM' | 'HIGH';
 }
 
 // ---- Pre-loaded Student List ----
@@ -107,6 +110,12 @@ export interface EssayGrade {
   comment?: string;
 }
 
+export interface AntiCheatEvent {
+  type: 'TAB_HIDDEN';
+  timestamp: string;
+  count: number;
+}
+
 // ---- Submission ----
 export interface Submission {
   id: string;
@@ -119,6 +128,7 @@ export interface Submission {
   essayScores: EssayGrade[];
   totalScore?: number;     // set after all essays graded
   teacherFeedback?: string; // komentar/feedback dari guru
+  antiCheatEvents?: AntiCheatEvent[];
   startedAt: string;
   submittedAt?: string;
   isComplete: boolean;

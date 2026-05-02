@@ -36,11 +36,14 @@ type WizardData = {
 const defaultSettings: ExamSettings = {
   timerMode: 'NONE',
   wholExamTimerSeconds: 3600,
+  perQuestionDefaultSeconds: 60,
   maxAttempts: 1,
   showScoreAfterSubmit: true,
   showAnswerKeyAfterSubmit: false,
+  releaseResultsAfterGrading: false,
   shuffleQuestions: false,
   shuffleOptions: false,
+  antiCheatSensitivity: 'MEDIUM',
 };
 
 export default function CreateExamPage() {

@@ -1,7 +1,9 @@
 // StudentHistoryPage — Riwayat ujian murid (dari localStorage)
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, FileText, Award, BookOpen, History, ArrowRight, Trash2, RotateCcw } from 'lucide-react';
+import { Clock, FileText, Award, BookOpen, History, ArrowRight, Trash2, RotateCcw, Search } from 'lucide-react';
+import { storage } from '../../utils/storage';
+import { calcMaxMCScore } from '../../utils/helpers';
 
 interface HistoryEntry {
   id: string;
@@ -52,7 +54,12 @@ function TypeBadge({ type }: { type?: string }) {
 export default function StudentHistoryPage() {
   const navigate = useNavigate();
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [onlineHistory, setOnlineHistory] = useState<HistoryEntry[]>([]);
   const [name, setName] = useState('');
+  const [lookupCode, setLookupCode] = useState('');
+  const [lookupNis, setLookupNis] = useState('');
+  const [lookupError, setLookupError] = useState('');
+  const [lookupLoading, setLookupLoading] = useState(false);
 
   useEffect(() => {
     try {
@@ -66,6 +73,39 @@ export default function StudentHistoryPage() {
     localStorage.removeItem(HISTORY_KEY);
     setHistory([]);
   };
+
+  const loadOnlineHistory = async () => {
+    setLookupError('');
+    const code = lookupCode.trim().toUpperCase();
+    const nis = lookupNis.trim();
+    if (code.length !== 6 || !nis) { setLookupError('Masukkan kode ujian 6 karakter dan NIS/ID.'); return; }
+    setLookupLoading(true);
+    const exam = await storage.getExamByCode(code);
+    if (!exam) {
+      setLookupLoading(false);
+      setLookupError('Kode ujian tidak ditemukan.');
+      return;
+    }
+    const subs = (await storage.getSubmissionsByExam(exam.id)).filter(s => s.nis === nis && s.isComplete);
+    setOnlineHistory(subs.map(s => ({
+      id: s.id,
+      examTitle: exam.title,
+      examSubject: exam.subject,
+      examCode: exam.code,
+      examType: exam.examType,
+      studentName: s.studentName,
+      nis: s.nis,
+      submittedAt: s.submittedAt,
+      mcScore: s.mcScore,
+      totalScore: s.totalScore,
+      maxMC: calcMaxMCScore(exam),
+    })));
+    setName(subs[0]?.studentName ?? name);
+    setLookupLoading(false);
+    if (subs.length === 0) setLookupError('Belum ada hasil online untuk NIS/ID ini.');
+  };
+
+  const visibleHistory = onlineHistory.length > 0 ? onlineHistory : history;
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
@@ -103,7 +143,20 @@ export default function StudentHistoryPage() {
           )}
         </div>
 
-        {history.length === 0 ? (
+        <div className="card" style={{ marginBottom: 'var(--sp-5)' }}>
+          <h3 style={{ fontSize: '1rem', marginBottom: 'var(--sp-3)' }}>Cari Riwayat Online</h3>
+          <div style={{ display: 'flex', gap: 'var(--sp-3)', flexWrap: 'wrap' }}>
+            <input className="form-input" style={{ flex: '1 1 140px' }} placeholder="Kode ujian" maxLength={6}
+              value={lookupCode} onChange={e => setLookupCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))} />
+            <input className="form-input" style={{ flex: '1 1 180px' }} placeholder="NIS/NISN/ID" value={lookupNis} onChange={e => setLookupNis(e.target.value)} />
+            <button className="btn btn-primary" onClick={loadOnlineHistory} disabled={lookupLoading}>
+              <Search size={14} /> {lookupLoading ? 'Mencari...' : 'Cari'}
+            </button>
+          </div>
+          {lookupError && <p style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 8 }}>{lookupError}</p>}
+        </div>
+
+        {visibleHistory.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 'var(--sp-16) var(--sp-4)' }}>
             <div style={{ fontSize: '3.5rem', marginBottom: 'var(--sp-4)' }}>📚</div>
             <h3 style={{ marginBottom: 8 }}>Belum ada riwayat</h3>
@@ -116,7 +169,7 @@ export default function StudentHistoryPage() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
-            {history.map(entry => {
+            {visibleHistory.map(entry => {
               const scoreColor = getScoreColor(entry.mcScore, entry.maxMC);
               const pct = entry.maxMC > 0 ? Math.round((entry.mcScore / entry.maxMC) * 100) : null;
               return (
