@@ -142,11 +142,11 @@ export default function ResultsPage() {
       <div className="results-page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 'var(--sp-6)' }}>
         <h1>Hasil & Nilai</h1>
         <div className="results-page-actions" style={{ display: 'flex', gap: 'var(--sp-3)', alignItems: 'center' }}>
-          <select className="form-select" value={selectedExamId} onChange={e => setSelectedExamId(e.target.value)} id="result-exam-select" style={{ minWidth: 280 }}>
+          <select className="form-select results-exam-select" value={selectedExamId} onChange={e => setSelectedExamId(e.target.value)} id="result-exam-select">
             {myExams.map(e => <option key={e.id} value={e.id}>{e.title}</option>)}
           </select>
           {examSubs.length > 0 && (
-            <button className="btn btn-secondary" onClick={exportExcel}><Download size={15} /> Export Excel</button>
+            <button className="btn btn-secondary results-export-button" onClick={exportExcel}><Download size={15} /> Export Excel</button>
           )}
         </div>
       </div>
