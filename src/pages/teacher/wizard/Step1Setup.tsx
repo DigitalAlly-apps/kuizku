@@ -1,7 +1,7 @@
 // Step 1 — General Settings
 import { useState } from 'react';
 import { Toggle } from '../../../components/ui';
-import type { ExamSettings, ExamType } from '../../../types';
+import type { ExamSettings, ExamType, PreloadedStudent } from '../../../types';
 
 const SUBJECTS = [
   'Aqidah Akhlaq', 'Fiqih', 'Qur\'an Hadits', 'Sejarah Kebudayaan Islam (SKI)', 'Bahasa Arab',
@@ -14,6 +14,7 @@ interface Props {
   initial: {
     title: string; description: string; subject: string; className?: string;
     activeFrom: string; activeTo: string; settings: ExamSettings; examType: ExamType;
+    preloadedStudents: PreloadedStudent[];
   };
   onNext: (data: Props['initial']) => void;
 }
@@ -27,6 +28,7 @@ export default function Step1Setup({ initial, onNext }: Props) {
   const [activeTo, setActiveTo] = useState(initial.activeTo);
   const [settings, setSettings] = useState<ExamSettings>(initial.settings);
   const [examType, setExamType] = useState<ExamType>(initial.examType);
+  const [studentList, setStudentList] = useState(initial.preloadedStudents.map(s => `${s.name}, ${s.nis}`).join('\n'));
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const setSetting = <K extends keyof ExamSettings>(k: K, v: ExamSettings[K]) =>
@@ -36,13 +38,29 @@ export default function Step1Setup({ initial, onNext }: Props) {
     const e: Record<string, string> = {};
     if (!title.trim()) e.title = 'Judul ujian wajib diisi';
     if (!subject) e.subject = 'Mata pelajaran wajib dipilih';
+    const students = parseStudents(studentList);
+    if (students.duplicates.length > 0) e.students = `NIS/ID duplikat: ${students.duplicates.join(', ')}`;
     return e;
   };
 
   const handleNext = () => {
     const e = validate();
     if (Object.keys(e).length) { setErrors(e); return; }
-    onNext({ title, description, subject, className, activeFrom, activeTo, settings, examType });
+    onNext({ title, description, subject, className, activeFrom, activeTo, settings, examType, preloadedStudents: parseStudents(studentList).students });
+  };
+
+  const parseStudents = (raw: string): { students: PreloadedStudent[]; duplicates: string[] } => {
+    const seen = new Set<string>();
+    const duplicates = new Set<string>();
+    const students = raw.split(/\r?\n/).map(line => line.trim()).filter(Boolean).map(line => {
+      const [nameRaw, nisRaw] = line.split(/[,;\t]/).map(part => part.trim());
+      const name = nameRaw || '';
+      const nis = nisRaw || name;
+      if (seen.has(nis)) duplicates.add(nis);
+      seen.add(nis);
+      return { name, nis };
+    }).filter(s => s.name);
+    return { students, duplicates: [...duplicates] };
   };
 
   return (
@@ -101,6 +119,16 @@ export default function Step1Setup({ initial, onNext }: Props) {
             <input id="s1-class" className="form-input" placeholder="Contoh: Kelas 10A, Kelas 12 IPA..."
               value={className} onChange={e => setClassName(e.target.value)} />
           </div>
+        </div>
+
+        <div className="form-group">
+          <label className="form-label" htmlFor="s1-students">Daftar Peserta (opsional)</label>
+          <textarea id="s1-students" className={`form-textarea ${errors.students ? 'error' : ''}`} rows={5}
+            placeholder={'Satu peserta per baris. Format: Nama, NIS\nContoh:\nAhmad Fauzi, 1001\nSiti Aminah, 1002'}
+            value={studentList}
+            onChange={e => { setStudentList(e.target.value); setErrors(er => ({ ...er, students: '' })); }} />
+          {errors.students && <span className="form-error">{errors.students}</span>}
+          <span className="form-hint">Jika diisi, hanya peserta dalam daftar ini yang bisa masuk ke ujian. Bisa paste dari CSV/Excel dengan kolom Nama dan NIS.</span>
         </div>
         
         <div className="form-row form-row-2">

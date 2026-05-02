@@ -6,7 +6,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { storage } from '../../utils/storage';
 import {
   loadSession, upsertAnswer, updateTimer,
-  updateCurrentIndex, buildSubmission, createSession,
+  updateCurrentIndex, buildSubmission, buildDraftSubmission, createSession, clearSession,
   type ExamSession,
 } from '../../utils/examSession';
 
@@ -97,19 +97,57 @@ export default function ExamTakingPage() {
     });
   }, []);
 
-  const handleSubmit = useCallback((_autoSubmit = false) => {
+  const handleSubmit = useCallback(async (_autoSubmit = false) => {
     if (submitRef.current || !session || !exam) return;
     submitRef.current = true;
 
-    const sub = buildSubmission(session, exam);
+    const latestExam = code ? await storage.getExamByCode(code) : null;
+    if (!latestExam || latestExam.id !== exam.id || latestExam.status !== 'ACTIVE') {
+      submitRef.current = false;
+      setLoadError('Ujian sudah tidak aktif. Jawaban tidak dapat dikumpulkan.');
+      return;
+    }
+
+    const now = Date.now();
+    if (latestExam.activeFrom && new Date(latestExam.activeFrom).getTime() > now) {
+      submitRef.current = false;
+      setLoadError('Ujian belum dibuka. Jawaban tidak dapat dikumpulkan.');
+      return;
+    }
+    if (latestExam.activeTo && new Date(latestExam.activeTo).getTime() < now) {
+      submitRef.current = false;
+      setLoadError('Deadline ujian sudah lewat. Jawaban tidak dapat dikumpulkan.');
+      return;
+    }
+
+    const subs = await storage.getSubmissionsByExam(latestExam.id);
+    const completedAttempts = subs.filter(s => s.nis === session.nis && s.isComplete && s.id !== session.submissionId).length;
+    if (latestExam.settings.maxAttempts > 0 && completedAttempts >= latestExam.settings.maxAttempts) {
+      submitRef.current = false;
+      setLoadError(`Anda sudah mencapai batas percobaan (${latestExam.settings.maxAttempts}x).`);
+      return;
+    }
+
+    const sub = buildSubmission(session, latestExam);
     setSubmittedData(sub);
 
-    // Persist to Supabase
-    storage.saveSubmission(sub);
+    // Persist to Supabase, then remove the local in-progress session so it
+    // cannot be resumed after a completed submit.
+    void storage.saveSubmission(sub).then(() => clearSession(session.examCode, session.nis));
 
     setSubmitted(true);
     setShowSubmit(false);
-  }, [session, exam]);
+  }, [session, exam, code]);
+
+  // Server-side autosave draft. LocalStorage remains for instant resume on the
+  // same device, while Supabase keeps a recoverable draft copy of answers.
+  useEffect(() => {
+    if (!session || !exam || submitted || session.answers.length === 0) return;
+    const id = setInterval(() => {
+      void storage.saveSubmission(buildDraftSubmission(session, exam));
+    }, 5000);
+    return () => clearInterval(id);
+  }, [session, exam, submitted]);
 
   // ---- Anti-cheat: visibilitychange listener (after handleSubmit) ----
   useEffect(() => {

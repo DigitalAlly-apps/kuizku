@@ -119,6 +119,23 @@ export function buildSubmission(session: ExamSession, exam: Exam): Submission {
   };
 }
 
+// ---- Build draft Submission for server-side autosave ----
+export function buildDraftSubmission(session: ExamSession, exam: Exam): Submission {
+  const mcScore = calcMCScore(exam, session.answers);
+  return {
+    id: session.submissionId,
+    examId: exam.id,
+    studentName: session.studentName,
+    nis: session.nis,
+    attemptNumber: session.attemptNumber,
+    answers: session.answers,
+    mcScore,
+    essayScores: [],
+    startedAt: session.startedAt,
+    isComplete: false,
+  };
+}
+
 // ---- Validate access to exam ----
 export interface AccessResult {
   allowed: boolean;

@@ -214,7 +214,9 @@ export const storage = {
       total_score: sub.totalScore,
       started_at: sub.startedAt,
       submitted_at: sub.submittedAt,
-      is_complete: sub.isComplete
+      is_complete: sub.isComplete,
+      teacher_feedback: sub.teacherFeedback || null,
+      is_returned: sub.isReturned || false
     });
     if (subErr) { console.error('Error saving submission:', subErr); return; }
 
@@ -355,6 +357,8 @@ function dbToSubmission(db: any): Submission {
     startedAt: db.started_at,
     submittedAt: db.submitted_at,
     isComplete: db.is_complete,
+    teacherFeedback: db.teacher_feedback || undefined,
+    isReturned: db.is_returned || false,
     answers,
     essayScores
   };

@@ -9,7 +9,7 @@ import Step5Publish from './wizard/Step5Publish';
 import { useApp, useToast } from '../../context/AppContext';
 import { generateId, generateExamCode } from '../../utils/helpers';
 import { storage } from '../../utils/storage';
-import type { Exam, ExamFormat, ExamSettings, ExamType, Question } from '../../types';
+import type { Exam, ExamFormat, ExamSettings, ExamType, PreloadedStudent, Question } from '../../types';
 
 const STEPS = [
   { num: 1, label: 'Pengaturan' },
@@ -30,6 +30,7 @@ type WizardData = {
   settings: ExamSettings;
   format: ExamFormat;
   questions: Question[];
+  preloadedStudents: PreloadedStudent[];
 };
 
 const defaultSettings: ExamSettings = {
@@ -50,13 +51,13 @@ export default function CreateExamPage() {
   const [step, setStep] = useState(1);
   const [data, setData] = useState<WizardData>({
     title: '', description: '', subject: '', className: '', activeFrom: '', activeTo: '',
-    examType: 'UJIAN', settings: defaultSettings, format: 'PG_ONLY', questions: [],
+    examType: 'UJIAN', settings: defaultSettings, format: 'PG_ONLY', questions: [], preloadedStudents: [],
   });
   const [createdExam, setCreatedExam] = useState<Exam | null>(null);
 
   const update = (partial: Partial<WizardData>) => setData(d => ({ ...d, ...partial }));
 
-  const handleStep1Next = (d: Pick<WizardData, 'title' | 'description' | 'subject' | 'examType' | 'activeFrom' | 'activeTo' | 'settings'>) => {
+  const handleStep1Next = (d: Pick<WizardData, 'title' | 'description' | 'subject' | 'className' | 'examType' | 'activeFrom' | 'activeTo' | 'settings' | 'preloadedStudents'>) => {
     update(d);
     setStep(2);
   };
@@ -112,7 +113,7 @@ export default function CreateExamPage() {
       code,
       status: 'DRAFT',
       questions,
-      preloadedStudents: [],
+      preloadedStudents: data.preloadedStudents,
       createdAt: now,
       updatedAt: now,
     };
@@ -158,7 +159,7 @@ export default function CreateExamPage() {
       <div className="card">
         {step === 1 && (
           <Step1Setup
-            initial={{ title: data.title, description: data.description, subject: data.subject, examType: data.examType, activeFrom: data.activeFrom, activeTo: data.activeTo, settings: data.settings }}
+            initial={{ title: data.title, description: data.description, subject: data.subject, className: data.className, examType: data.examType, activeFrom: data.activeFrom, activeTo: data.activeTo, settings: data.settings, preloadedStudents: data.preloadedStudents }}
             onNext={handleStep1Next}
           />
         )}

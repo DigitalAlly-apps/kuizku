@@ -4,7 +4,7 @@
 import { useState, useRef } from 'react';
 import { Upload, Download, CheckCircle, AlertCircle, FileSpreadsheet } from 'lucide-react';
 import { Modal } from '../ui';
-import { parseExcelFile, parseCSVFile, downloadExcelTemplate } from '../../utils/importParser';
+import { parseExcelFile, parseCSVFile, parseWordFile, downloadExcelTemplate } from '../../utils/importParser';
 import type { ImportResult, ExamFormat, Question } from '../../types';
 
 interface Props {
@@ -35,7 +35,8 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
       let res: ImportResult;
       if (ext === 'csv') res = await parseCSVFile(file);
       else if (ext === 'xlsx' || ext === 'xls') res = await parseExcelFile(file);
-      else { setError('Format file tidak didukung. Gunakan .xlsx, .xls, atau .csv'); setLoading(false); return; }
+      else if (ext === 'docx') res = await parseWordFile(file);
+      else { setError('Format file tidak didukung. Gunakan .xlsx, .xls, .csv, atau .docx'); setLoading(false); return; }
 
       // Filter by exam format
       const filtered = filterByFormat(res, format);
@@ -90,7 +91,7 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
 
   return (
     <Modal open={open} onClose={handleClose} title="Import Soal dari File" size="xl"
-      subtitle="Upload file Excel atau CSV berisi daftar soal Anda">
+      subtitle="Upload file Excel, CSV, atau Word (.docx) berisi daftar soal Anda">
       {step === 'upload' && (
         <div>
           {/* Template download */}
@@ -98,7 +99,7 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
             <FileSpreadsheet size={18} style={{ color: 'var(--primary)', flexShrink: 0 }} />
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>Download Template Excel</div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Isi template ini lalu upload kembali. Kolom: Tipe, Pertanyaan, Opsi A–F, Kunci, Bobot, Tag.</div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Isi template ini lalu upload kembali. Word juga didukung: nomor soal, opsi A-F, kunci dengan *A atau Kunci: A, dan [Essay] untuk uraian.</div>
             </div>
             <button className="btn btn-secondary btn-sm" onClick={downloadExcelTemplate}>
               <Download size={14} /> Template
@@ -123,9 +124,9 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
               {loading ? 'Memproses file...' : 'Drag & drop file atau klik untuk pilih'}
             </p>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              Format: .xlsx, .xls, .csv — Maks. 5 MB, 200 soal
+              Format: .xlsx, .xls, .csv, .docx — Maks. 5 MB, 200 soal
             </p>
-            <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: 'none' }}
+            <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv,.docx" style={{ display: 'none' }}
               onChange={e => e.target.files?.[0] && processFile(e.target.files[0])} />
           </div>
 

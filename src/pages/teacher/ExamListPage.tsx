@@ -148,7 +148,24 @@ export default function ExamListPage() {
     setOpenMenuId(null);
   };
 
+  const getPublishError = (exam: Exam): string | null => {
+    if (exam.questions.length === 0) return 'Tambahkan minimal 1 soal sebelum publish.';
+    if (exam.activeTo && new Date(exam.activeTo).getTime() <= Date.now()) return 'Deadline ujian sudah lewat. Perbarui "Aktif Hingga" sebelum publish.';
+    if (exam.activeFrom && exam.activeTo && new Date(exam.activeFrom).getTime() >= new Date(exam.activeTo).getTime()) return 'Waktu mulai harus lebih awal dari deadline.';
+    if (exam.settings.timerMode === 'WHOLE_EXAM' && (!exam.settings.wholExamTimerSeconds || exam.settings.wholExamTimerSeconds <= 0)) return 'Durasi timer keseluruhan harus lebih dari 0.';
+    if (exam.settings.timerMode === 'PER_QUESTION' && exam.questions.some(q => !q.timerSeconds || q.timerSeconds <= 0)) return 'Semua soal wajib memiliki timer per soal lebih dari 0 detik.';
+    return null;
+  };
+
   const handlePublish = (id: string) => {
+    const exam = exams.find(e => e.id === id);
+    if (!exam) return;
+    const error = getPublishError(exam);
+    if (error) {
+      addToast({ type: 'error', title: 'Ujian belum siap dipublish', message: error });
+      setOpenMenuId(null);
+      return;
+    }
     publishExam(id);
     addToast({ type: 'success', title: 'Ujian dipublikasikan!', message: 'Murid sekarang bisa mengerjakan ujian.' });
     setOpenMenuId(null);
