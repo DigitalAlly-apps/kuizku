@@ -139,9 +139,9 @@ export default function ResultsPage() {
 
   return (
     <div className="page-content">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 'var(--sp-6)' }}>
+      <div className="results-page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 'var(--sp-6)' }}>
         <h1>Hasil & Nilai</h1>
-        <div style={{ display: 'flex', gap: 'var(--sp-3)', alignItems: 'center' }}>
+        <div className="results-page-actions" style={{ display: 'flex', gap: 'var(--sp-3)', alignItems: 'center' }}>
           <select className="form-select" value={selectedExamId} onChange={e => setSelectedExamId(e.target.value)} id="result-exam-select" style={{ minWidth: 280 }}>
             {myExams.map(e => <option key={e.id} value={e.id}>{e.title}</option>)}
           </select>
@@ -181,7 +181,7 @@ export default function ResultsPage() {
           {examSubs.length > 0 && (
             <div className="card" style={{ marginBottom: 'var(--sp-8)' }}>
               <SectionHeader title="Statistik Lanjutan" subtitle="Distribusi nilai dan 5 peringkat teratas" />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-6)' }}>
+              <div className="results-advanced-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-6)' }}>
                 <div>
                   {[
                     ['<40%', scoreStats.distribution[0], 'var(--danger)'],
@@ -332,7 +332,7 @@ export default function ResultsPage() {
           </>
         )}>
         {detailSub && selectedExam && (
-          <div>
+          <div className="results-detail-modal-body">
             {selectedExam.questions.map((q, idx) => {
               const answer = detailSub.answers.find(a => a.questionId === q.id);
               const grade = gradingScores[q.id] ?? detailSub.essayScores.find(g => g.questionId === q.id);
@@ -379,7 +379,7 @@ export default function ResultsPage() {
                             </div>
                           )}
                           {gradingMode && (
-                            <div style={{ display: 'flex', gap: 'var(--sp-3)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                            <div className="grading-input-row" style={{ display: 'flex', gap: 'var(--sp-3)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
                               <div className="form-group" style={{ width: 120 }}>
                                 <label className="form-label">Nilai (maks. {q.weight})</label>
                                 <input type="number" className="form-input" min={0} max={q.weight}

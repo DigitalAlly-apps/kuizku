@@ -399,9 +399,9 @@
 @media (max-width: 768px) {
   .stats-grid { grid-template-columns: 1fr; }
   .radio-card-group-3 { grid-template-columns: 1fr; }
-  .bank-grid { grid-template-columns: 1fr; }
+  .bank-grid { grid-template-columns: minmax(0, 1fr); }
   
-  .section-header { flex-direction: column; gap: var(--sp-3); }
+  .section-header { flex-direction: column; gap: var(--sp-3); align-items: stretch; }
   .section-header-action { width: 100%; display: flex; }
   .section-header-action .btn { flex: 1; justify-content: center; }
 
@@ -411,6 +411,8 @@
   
   .filter-bar { flex-direction: column; align-items: stretch; }
   .search-input-wrap { width: 100%; }
+  .filter-bar > * { max-width: 100%; }
+  .filter-bar .btn { flex: 1 1 auto; }
   .group-by-filter { margin-left: 0; width: 100%; justify-content: flex-start; margin-top: var(--sp-2); }
   .tabs { overflow-x: auto; padding-bottom: 2px; white-space: nowrap; -webkit-overflow-scrolling: touch; }
   
@@ -433,5 +435,127 @@
   
   .desktop-theme-toggle {
     display: none;
+  }
+
+  .mobile-header {
+    width: 100%;
+  }
+
+  .sidebar-user {
+    padding-bottom: calc(var(--sp-4) + env(safe-area-inset-bottom));
+  }
+
+  .question-item {
+    gap: var(--sp-2);
+    padding: var(--sp-3);
+  }
+
+  .question-item-drag {
+    display: none;
+  }
+
+  .question-item-actions {
+    flex-direction: column;
+  }
+
+  .exam-card {
+    padding: var(--sp-4);
+  }
+
+  .exam-card-meta {
+    gap: var(--sp-2);
+  }
+
+  .bank-page-layout {
+    flex-direction: column;
+  }
+
+  .bank-preview-panel {
+    width: 100% !important;
+    position: static !important;
+    order: -1;
+  }
+
+  .results-page-header {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: var(--sp-3) !important;
+  }
+
+  .results-page-actions {
+    flex-direction: column;
+    align-items: stretch !important;
+    width: 100%;
+  }
+
+  .results-page-actions .form-select,
+  .results-page-actions .btn {
+    width: 100%;
+    min-width: 0 !important;
+  }
+
+  .results-advanced-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .grading-input-row {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+
+  .grading-input-row .form-group {
+    width: 100% !important;
+  }
+
+  .results-detail-modal-body {
+    font-size: 0.92rem;
+  }
+
+  .exam-edit-grid,
+  .question-source-grid,
+  .review-summary-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .wizard-section-header,
+  .wizard-choice-row,
+  .wizard-nav-row,
+  .settings-profile-card {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+
+  .wizard-nav-row {
+    gap: var(--sp-3);
+  }
+
+  .wizard-nav-row .btn,
+  .settings-action-button {
+    width: 100%;
+    justify-content: center;
+    align-self: stretch !important;
+  }
+
+  .compact-form-group {
+    max-width: none !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .sidebar {
+    width: min(86vw, 300px);
+  }
+
+  .stats-grid,
+  .bank-grid {
+    gap: var(--sp-3);
+  }
+
+  .exam-card-actions .btn-icon {
+    flex: 1 1 38px;
+  }
+
+  .exam-card-meta-item {
+    max-width: 100%;
   }
 }

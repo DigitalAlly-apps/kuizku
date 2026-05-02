@@ -5,6 +5,20 @@
 import { supabase } from '../lib/supabase';
 import type { Teacher, Exam, BankQuestion, Submission, StudentAnswer } from '../types';
 
+const PENDING_SUBMISSION_QUEUE_KEY = 'kuizku_pending_submission_queue';
+
+function readPendingSubmissionQueue(): Submission[] {
+  try {
+    return JSON.parse(localStorage.getItem(PENDING_SUBMISSION_QUEUE_KEY) || '[]') as Submission[];
+  } catch {
+    return [];
+  }
+}
+
+function writePendingSubmissionQueue(queue: Submission[]): void {
+  localStorage.setItem(PENDING_SUBMISSION_QUEUE_KEY, JSON.stringify(queue));
+}
+
 export const storage = {
   // ---- Auth / Teacher ----
   async registerTeacher(data: Omit<Teacher, 'id' | 'createdAt'>): Promise<{ teacher: Teacher | null, error?: string }> {
@@ -95,6 +109,14 @@ export const storage = {
       subject: data.subject,
       institution: data.institution,
     }).eq('id', id);
+    if (error) return { error: error.message };
+    return {};
+  },
+
+  async requestPasswordReset(email: string): Promise<{ error?: string }> {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/login`,
+    });
     if (error) return { error: error.message };
     return {};
   },
@@ -219,7 +241,12 @@ export const storage = {
       is_returned: sub.isReturned || false,
       anti_cheat_events: sub.antiCheatEvents || []
     });
-    if (subErr) { console.error('Error saving submission:', subErr); return; }
+    if (subErr) {
+      console.error('Error saving submission:', subErr);
+      const queue = readPendingSubmissionQueue().filter(item => item.id !== sub.id);
+      writePendingSubmissionQueue([...queue, sub]);
+      return;
+    }
 
     // Upsert Answers
     if (sub.answers.length > 0) {
@@ -239,8 +266,32 @@ export const storage = {
       });
       // Delete old answers for this submission to avoid unique constraint issues then insert
       await supabase.from('student_answers').delete().eq('submission_id', sub.id);
-      await supabase.from('student_answers').insert(aInserts);
+      const { error: answersErr } = await supabase.from('student_answers').insert(aInserts);
+      if (answersErr) {
+        console.error('Error saving student answers:', answersErr);
+        const queue = readPendingSubmissionQueue().filter(item => item.id !== sub.id);
+        writePendingSubmissionQueue([...queue, sub]);
+        return;
+      }
     }
+
+    writePendingSubmissionQueue(readPendingSubmissionQueue().filter(item => item.id !== sub.id));
+  },
+
+  getPendingSubmissionQueueCount(): number {
+    return readPendingSubmissionQueue().length;
+  },
+
+  async syncPendingSubmissions(): Promise<number> {
+    const queue = readPendingSubmissionQueue();
+    if (!queue.length) return 0;
+    let synced = 0;
+    for (const submission of queue) {
+      await this.saveSubmission(submission);
+    }
+    const remaining = readPendingSubmissionQueue();
+    synced = queue.length - remaining.length;
+    return synced;
   },
 
   // ---- Question Bank ----

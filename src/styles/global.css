@@ -967,6 +967,29 @@ tbody td {
 
   .page-content {
     padding: var(--sp-4);
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  h1 {
+    font-size: 1.45rem;
+  }
+
+  h2 {
+    font-size: 1.2rem;
+  }
+
+  h3 {
+    font-size: 1rem;
+  }
+
+  .card {
+    padding: var(--sp-4);
+    border-radius: var(--r-md);
+  }
+
+  .card:hover {
+    transform: none;
   }
 
   .form-row-2,
@@ -975,7 +998,28 @@ tbody td {
   }
 
   .modal-box {
-    padding: var(--sp-5);
+    padding: var(--sp-4);
+    max-height: calc(100dvh - 24px);
+    border-radius: var(--r-lg);
+  }
+
+  .modal-overlay {
+    align-items: flex-end;
+    padding: var(--sp-2);
+  }
+
+  .modal-header {
+    gap: var(--sp-3);
+    margin-bottom: var(--sp-4);
+  }
+
+  .modal-footer {
+    flex-direction: column-reverse;
+    gap: var(--sp-2);
+  }
+
+  .modal-footer .btn {
+    width: 100%;
   }
 
   .page-header {
@@ -998,6 +1042,46 @@ tbody td {
     text-align: center;
   }
 
+  .btn-icon {
+    min-width: 38px;
+    min-height: 38px;
+  }
+
+  .table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    min-width: 720px;
+  }
+
+  thead th,
+  tbody td {
+    padding: 10px 12px;
+  }
+
+  .toast-container {
+    left: var(--sp-3);
+    right: var(--sp-3);
+    bottom: var(--sp-3);
+  }
+
+  .toast {
+    min-width: 0;
+    max-width: none;
+    width: 100%;
+  }
+
+  .toggle-row {
+    align-items: flex-start;
+  }
+
+  .exam-code-display {
+    padding: var(--sp-3);
+  }
+
   /* Wizard steps squish heavily on mobile */
   .wizard-step-label {
     display: none;
@@ -1011,6 +1095,11 @@ tbody td {
 
   .wizard-connector {
     margin: 0 8px;
+  }
+
+  .wizard-steps {
+    overflow-x: auto;
+    padding-bottom: var(--sp-2);
   }
 
   /* Utilities */
@@ -1263,4 +1352,18 @@ tbody td {
 
 .wizard-connector.done {
   background: var(--success);
+}
+
+@media (max-width: 768px) {
+  .toggle-row {
+    align-items: flex-start;
+  }
+
+  .modal-footer {
+    flex-direction: column-reverse;
+  }
+
+  .modal-footer .btn {
+    width: 100%;
+  }
 }

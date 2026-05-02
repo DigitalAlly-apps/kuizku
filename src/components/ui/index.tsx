@@ -1,5 +1,5 @@
 // Reusable UI Components for KuizKu
-import React, { useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { X, CheckCircle, AlertTriangle, Info, AlertCircle } from 'lucide-react';
 import { useToast } from '../../context/AppContext';
 import type { ToastMessage } from '../../types';
@@ -298,6 +298,33 @@ export function SectionHeader({ title, subtitle, action }: { title: string; subt
         {subtitle && <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{subtitle}</p>}
       </div>
       {action && <div className="section-header-action">{action}</div>}
+    </div>
+  );
+}
+
+export function NetworkStatusBanner() {
+  const [online, setOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const goOnline = () => setOnline(true);
+    const goOffline = () => setOnline(false);
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    return () => {
+      window.removeEventListener('online', goOnline);
+      window.removeEventListener('offline', goOffline);
+    };
+  }, []);
+
+  return (
+    <div style={{
+      position: 'fixed', bottom: 16, left: 16, zIndex: 60,
+      padding: '8px 12px', borderRadius: 'var(--r-md)',
+      background: online ? 'rgba(16,185,129,0.92)' : 'rgba(239,68,68,0.92)',
+      color: 'white', fontSize: '0.78rem', fontWeight: 600,
+      boxShadow: 'var(--shadow-lg)',
+    }}>
+      {online ? 'Online: sinkronisasi aktif' : 'Offline: submit akan diantrikan'}
     </div>
   );
 }

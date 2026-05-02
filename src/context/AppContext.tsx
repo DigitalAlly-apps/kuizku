@@ -299,6 +299,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
 
+  useEffect(() => {
+    const syncPending = async () => {
+      const synced = await storage.syncPendingSubmissions();
+      if (synced > 0) {
+        addToast({ type: 'success', title: 'Sinkronisasi offline berhasil', message: `${synced} submission tertunda berhasil dikirim.` });
+        if (currentTeacher) await refreshSubmissions();
+      }
+    };
+
+    void syncPending();
+    const handleOnline = () => { void syncPending(); };
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [currentTeacher, addToast]);
+
   const value: AppContextShape = {
     currentTeacher, isLoading,
     login, register, logout,

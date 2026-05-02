@@ -72,7 +72,7 @@ export default function Step1Setup({ initial, onNext }: Props) {
         {/* Tipe Kegiatan */}
         <div>
           <label className="form-label" style={{ display: 'block', marginBottom: 'var(--sp-2)' }}>Tipe Kegiatan <span style={{ color: 'var(--danger)' }}>*</span></label>
-          <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
+          <div className="wizard-choice-row" style={{ display: 'flex', gap: 'var(--sp-2)' }}>
             {([
               ['UJIAN', '📝 Ujian', 'var(--danger)', 'var(--danger-light)'],
               ['TUGAS', '📋 Tugas', 'var(--warning)', 'var(--warning-light)'],
@@ -155,7 +155,7 @@ export default function Step1Setup({ initial, onNext }: Props) {
             ))}
           </div>
           {settings.timerMode === 'WHOLE_EXAM' && (
-            <div className="form-group" style={{ marginTop: 'var(--sp-3)', maxWidth: 200 }}>
+            <div className="form-group compact-form-group" style={{ marginTop: 'var(--sp-3)', maxWidth: 200 }}>
               <label className="form-label" htmlFor="s1-timer">Durasi Total (menit)</label>
               <input id="s1-timer" type="number" className="form-input" min={5} max={300}
                 value={Math.round((settings.wholExamTimerSeconds ?? 3600) / 60)}
@@ -163,7 +163,7 @@ export default function Step1Setup({ initial, onNext }: Props) {
             </div>
           )}
           {settings.timerMode === 'PER_QUESTION' && (
-            <div className="form-group" style={{ marginTop: 'var(--sp-3)', maxWidth: 240 }}>
+            <div className="form-group compact-form-group" style={{ marginTop: 'var(--sp-3)', maxWidth: 240 }}>
               <label className="form-label" htmlFor="s1-perq-timer">Default Timer per Soal (detik)</label>
               <input id="s1-perq-timer" type="number" className="form-input" min={10} max={3600}
                 value={settings.perQuestionDefaultSeconds ?? 60}
@@ -174,7 +174,7 @@ export default function Step1Setup({ initial, onNext }: Props) {
         </div>
 
         {/* Max Attempts */}
-        <div className="form-group" style={{ maxWidth: 240 }}>
+        <div className="form-group compact-form-group" style={{ maxWidth: 240 }}>
           <label className="form-label" htmlFor="s1-attempts">Maks. Percobaan</label>
           <select id="s1-attempts" className="form-select" value={settings.maxAttempts}
             onChange={e => setSetting('maxAttempts', parseInt(e.target.value))}>
@@ -201,7 +201,7 @@ export default function Step1Setup({ initial, onNext }: Props) {
           <Toggle id="t-shuffle-o" label="Acak Urutan Pilihan Jawaban (PG)"
             hint="Setiap murid mendapatkan urutan pilihan yang berbeda."
             checked={settings.shuffleOptions} onChange={v => setSetting('shuffleOptions', v)} />
-          <div className="form-group" style={{ marginTop: 'var(--sp-4)', maxWidth: 260 }}>
+          <div className="form-group compact-form-group" style={{ marginTop: 'var(--sp-4)', maxWidth: 260 }}>
             <label className="form-label" htmlFor="s1-anticheat">Sensitivitas Anti-cheat</label>
             <select id="s1-anticheat" className="form-select" value={settings.antiCheatSensitivity ?? 'MEDIUM'}
               onChange={e => setSetting('antiCheatSensitivity', e.target.value as ExamSettings['antiCheatSensitivity'])}>
@@ -214,7 +214,7 @@ export default function Step1Setup({ initial, onNext }: Props) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'var(--sp-8)' }}>
+      <div className="wizard-nav-row" style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'var(--sp-8)' }}>
         <button className="btn btn-primary btn-lg" onClick={handleNext}>Lanjut: Pilih Format →</button>
       </div>
     </div>

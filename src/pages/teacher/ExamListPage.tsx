@@ -429,7 +429,7 @@ export default function ExamListPage() {
               <input className="form-input" value={editTitle} onChange={e => setEditTitle(e.target.value)} />
             </div>
             {/* Subject + Class */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-3)' }}>
+            <div className="exam-edit-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-3)' }}>
               <div className="form-group">
                 <label className="form-label">Mata Pelajaran</label>
                 <input className="form-input" value={editSubject} onChange={e => setEditSubject(e.target.value)} />
@@ -445,7 +445,7 @@ export default function ExamListPage() {
               <textarea className="form-textarea" rows={2} value={editDesc} onChange={e => setEditDesc(e.target.value)} />
             </div>
             {/* Deadline */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-3)' }}>
+            <div className="exam-edit-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-3)' }}>
               <div className="form-group">
                 <label className="form-label">Aktif Mulai</label>
                 <input type="datetime-local" className="form-input" value={editFrom} onChange={e => setEditFrom(e.target.value)} />

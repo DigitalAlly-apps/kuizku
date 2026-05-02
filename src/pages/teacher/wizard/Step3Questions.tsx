@@ -90,7 +90,7 @@ export default function Step3Questions({ format, subject, initial, onNext, onBac
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 'var(--sp-4)' }}>
+      <div className="wizard-section-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 'var(--sp-4)' }}>
         <div>
           <h2>Input Soal</h2>
           <p style={{ color: 'var(--text-muted)' }}>Tambahkan soal melalui salah satu jalur di bawah ini.</p>
@@ -103,7 +103,7 @@ export default function Step3Questions({ format, subject, initial, onNext, onBac
       </div>
 
       {/* 4 input paths */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--sp-3)', marginBottom: 'var(--sp-6)' }}>
+      <div className="question-source-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--sp-3)', marginBottom: 'var(--sp-6)' }}>
         {[
           { key: 'manual', icon: <Plus size={20} />, label: 'Input Manual', hint: 'Tulis soal baru', color: 'var(--primary)', bg: 'var(--primary-light)' },
           { key: 'import', icon: <Upload size={20} />, label: 'Import File', hint: 'Excel / CSV', color: 'var(--success)', bg: 'var(--success-light)' },
@@ -208,7 +208,7 @@ export default function Step3Questions({ format, subject, initial, onNext, onBac
         onConfirm={() => dupDialogId && handleDuplicate(dupDialogId)}
         onCancel={() => setDupDialogId(null)} />
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--sp-8)', paddingTop: 'var(--sp-6)', borderTop: '1px solid var(--border)' }}>
+      <div className="wizard-nav-row" style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--sp-8)', paddingTop: 'var(--sp-6)', borderTop: '1px solid var(--border)' }}>
         <button className="btn btn-secondary" onClick={onBack}>← Kembali</button>
         <button className="btn btn-primary btn-lg" onClick={handleNext} disabled={questions.length === 0}>
           Lanjut: Review ({questions.length} soal) →

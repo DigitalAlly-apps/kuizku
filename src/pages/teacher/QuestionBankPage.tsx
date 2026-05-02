@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react';
-import { Search, BookOpen, Trash2, Edit2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Search, BookOpen, Trash2, Edit2, ChevronDown, ChevronRight, Share2, Download } from 'lucide-react';
 import { useApp, useToast } from '../../context/AppContext';
 import { EmptyState, ConfirmDialog, Modal } from '../../components/ui';
 import QuestionEditor from '../../components/exam/QuestionEditor';
 import type { BankQuestion } from '../../types';
+import { storage } from '../../utils/storage';
 
 const optLetters = 'ABCDEF';
 
@@ -18,6 +19,8 @@ export default function QuestionBankPage() {
   const [preview, setPreview] = useState<BankQuestion | null>(null);
   const [groupBy, setGroupBy] = useState<'kelas' | 'mapel' | 'none'>('kelas');
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [shareOpen, setShareOpen] = useState(false);
+  const [sharedPayload, setSharedPayload] = useState('');
 
   const myBank = useMemo(() =>
     bankQuestions.filter(bq => bq.teacherId === currentTeacher?.id), [bankQuestions, currentTeacher]);
@@ -78,11 +81,70 @@ export default function QuestionBankPage() {
     addToast({ type: 'success', title: 'Soal diperbarui.' });
   };
 
+  const handleShare = async (q: BankQuestion) => {
+    const payload = JSON.stringify({
+      subject: q.subject,
+      className: q.className,
+      question: {
+        type: q.type,
+        text: q.text,
+        options: q.options,
+        correctOptionId: q.correctOptionId,
+        answerGuide: q.answerGuide,
+        weight: q.weight,
+        timerSeconds: q.timerSeconds,
+        tags: q.tags,
+        order: 0,
+      },
+    }, null, 2);
+    await navigator.clipboard.writeText(payload);
+    addToast({ type: 'success', title: 'Soal siap dibagikan', message: 'Payload JSON soal disalin ke clipboard.' });
+  };
+
+  const handleImportShared = async () => {
+    if (!currentTeacher) return;
+    try {
+      const parsed = JSON.parse(sharedPayload);
+      const q = parsed.question;
+      const now = new Date().toISOString();
+      await storage.saveBankQuestion({
+        id: crypto.randomUUID(),
+        teacherId: currentTeacher.id,
+        subject: parsed.subject || currentTeacher.subject || 'Umum',
+        className: parsed.className,
+        usedInExamIds: [],
+        createdAt: now,
+        updatedAt: now,
+        type: q.type,
+        text: q.text,
+        imageUrl: q.imageUrl,
+        options: q.options,
+        correctOptionId: q.correctOptionId,
+        answerGuide: q.answerGuide,
+        weight: q.weight,
+        timerSeconds: q.timerSeconds,
+        tags: q.tags || [],
+        order: 0,
+      });
+      setShareOpen(false);
+      setSharedPayload('');
+      addToast({ type: 'success', title: 'Soal bersama berhasil diimport' });
+      location.reload();
+    } catch {
+      addToast({ type: 'error', title: 'Format soal bersama tidak valid' });
+    }
+  };
+
   return (
     <div className="page-content">
       <div className="page-header">
         <h1>Bank Soal</h1>
         <p>Repositori soal pribadi Anda — {myBank.length} soal tersimpan.</p>
+        <div style={{ marginTop: 'var(--sp-3)' }}>
+          <button className="btn btn-secondary btn-sm" onClick={() => setShareOpen(true)}>
+            <Download size={14} /> Import Soal Bersama
+          </button>
+        </div>
       </div>
 
       {/* Filter Bar */}
@@ -119,7 +181,7 @@ export default function QuestionBankPage() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 'var(--sp-5)' }}>
+      <div className="bank-page-layout" style={{ display: 'flex', gap: 'var(--sp-5)' }}>
         {/* Question List Grouped */}
         <div style={{ flex: 1, minWidth: 0 }}>
           {filtered.length === 0 ? (
@@ -187,6 +249,9 @@ export default function QuestionBankPage() {
                                 <button className="btn btn-ghost btn-sm btn-icon" title="Hapus" onClick={() => setDeleteId(bq.id)}>
                                   <Trash2 size={13} style={{ color: 'var(--danger)' }} />
                                 </button>
+                                <button className="btn btn-ghost btn-sm btn-icon" title="Bagikan" onClick={() => handleShare(bq)}>
+                                  <Share2 size={13} style={{ color: 'var(--primary)' }} />
+                                </button>
                               </div>
                             </div>
                           ))}
@@ -202,7 +267,7 @@ export default function QuestionBankPage() {
 
         {/* Preview Panel */}
         {preview && (
-          <div style={{ width: 300, flexShrink: 0, background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 'var(--r-lg)', padding: 'var(--sp-5)', height: 'fit-content', position: 'sticky', top: 100 }}>
+          <div className="bank-preview-panel" style={{ width: 300, flexShrink: 0, background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 'var(--r-lg)', padding: 'var(--sp-5)', height: 'fit-content', position: 'sticky', top: 100 }}>
             <div style={{ fontWeight: 700, marginBottom: 'var(--sp-3)' }}>Preview Soal</div>
             <span className={`badge ${preview.type === 'MULTIPLE_CHOICE' ? 'badge-pg' : 'badge-essay'}`} style={{ marginBottom: 'var(--sp-3)', display: 'inline-flex' }}>
               {preview.type === 'MULTIPLE_CHOICE' ? 'Pilihan Ganda' : 'Essay'}
@@ -240,6 +305,11 @@ export default function QuestionBankPage() {
             <div style={{ marginTop: 'var(--sp-3)', fontSize: '0.75rem', color: 'var(--text-muted)', paddingTop: 'var(--sp-3)', borderTop: '1px solid var(--border)' }}>
               Bobot: {preview.weight} poin · Dipakai: {preview.usedInExamIds.length}x
             </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 'var(--sp-3)' }}>
+              <button className="btn btn-secondary btn-sm" onClick={() => handleShare(preview)}>
+                <Share2 size={13} /> Bagikan JSON
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -259,6 +329,17 @@ export default function QuestionBankPage() {
       <ConfirmDialog open={!!deleteId} title="Hapus dari Bank Soal?"
         message="Soal ini akan dihapus dari bank soal. Soal di ujian yang sudah dibuat tidak terpengaruh."
         confirmLabel="Hapus" danger onConfirm={handleDelete} onCancel={() => setDeleteId(null)} />
+
+      <Modal open={shareOpen} onClose={() => setShareOpen(false)} title="Import Soal Bersama" size="lg">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Tempel payload JSON soal yang dibagikan guru lain, lalu import ke bank soal Anda.</p>
+          <textarea className="form-textarea" rows={10} placeholder="Paste JSON soal di sini..." value={sharedPayload} onChange={e => setSharedPayload(e.target.value)} />
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--sp-3)' }}>
+            <button className="btn btn-secondary" onClick={() => setShareOpen(false)}>Batal</button>
+            <button className="btn btn-primary" onClick={handleImportShared}>Import</button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

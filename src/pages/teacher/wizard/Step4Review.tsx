@@ -39,7 +39,7 @@ export default function Step4Review({ data, onNext, onBack }: Props) {
       <p style={{ color: 'var(--text-muted)', marginBottom: 'var(--sp-6)' }}>Periksa soal dan urutkan dengan drag-and-drop.</p>
 
       {/* Summary */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--sp-3)', marginBottom: 'var(--sp-6)' }}>
+      <div className="review-summary-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--sp-3)', marginBottom: 'var(--sp-6)' }}>
         {[
           { label: 'Judul', value: data.title },
           { label: 'Mata Pelajaran', value: data.subject },
@@ -103,7 +103,7 @@ export default function Step4Review({ data, onNext, onBack }: Props) {
         </div>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--sp-8)', paddingTop: 'var(--sp-6)', borderTop: '1px solid var(--border)' }}>
+      <div className="wizard-nav-row" style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--sp-8)', paddingTop: 'var(--sp-6)', borderTop: '1px solid var(--border)' }}>
         <button className="btn btn-secondary" onClick={onBack}>← Kembali</button>
         <button className="btn btn-success btn-lg" onClick={() => onNext(questions)} disabled={questions.length === 0}>
           ✓ Simpan & Publikasikan

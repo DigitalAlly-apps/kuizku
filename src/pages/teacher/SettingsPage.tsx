@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { User, Building, BookOpen, Save, Loader2 } from 'lucide-react';
+import { User, Building, BookOpen, Save, Loader2, Mail, Shield } from 'lucide-react';
 import { useAuth, useToast } from '../../context/AppContext';
 import { storage } from '../../utils/storage';
 
@@ -17,6 +17,7 @@ export default function SettingsPage() {
   const [subject, setSubject] = useState(currentTeacher?.subject ?? '');
   const [institution, setInstitution] = useState(currentTeacher?.institution ?? '');
   const [saving, setSaving] = useState(false);
+  const [sendingReset, setSendingReset] = useState(false);
 
   const handleSave = async () => {
     if (!currentTeacher) return;
@@ -31,6 +32,18 @@ export default function SettingsPage() {
     }
   };
 
+  const handleResetPassword = async () => {
+    if (!currentTeacher?.email) return;
+    setSendingReset(true);
+    const { error } = await storage.requestPasswordReset(currentTeacher.email);
+    setSendingReset(false);
+    if (error) {
+      addToast({ type: 'error', title: 'Gagal kirim email reset', message: error });
+      return;
+    }
+    addToast({ type: 'success', title: 'Email reset terkirim', message: `Cek inbox/spam untuk ${currentTeacher.email}.` });
+  };
+
   return (
     <div className="page-content" style={{ maxWidth: 600 }}>
       <div className="page-header">
@@ -39,7 +52,7 @@ export default function SettingsPage() {
       </div>
 
       <div className="card">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-4)', marginBottom: 'var(--sp-8)', padding: 'var(--sp-5)', background: 'var(--surface-2)', borderRadius: 'var(--r-lg)' }}>
+        <div className="settings-profile-card" style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-4)', marginBottom: 'var(--sp-8)', padding: 'var(--sp-5)', background: 'var(--surface-2)', borderRadius: 'var(--r-lg)' }}>
           <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg, var(--primary), var(--secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', fontWeight: 700, color: 'white' }}>
             {name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase() || '?'}
           </div>
@@ -81,7 +94,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <button className="btn btn-primary" onClick={handleSave} style={{ alignSelf: 'flex-start' }} disabled={saving}>
+          <button className="btn btn-primary settings-action-button" onClick={handleSave} style={{ alignSelf: 'flex-start' }} disabled={saving}>
             {saving ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Menyimpan...</> : <><Save size={16} /> Simpan Perubahan</>}
           </button>
         </div>
@@ -96,6 +109,22 @@ export default function SettingsPage() {
               <span style={{ fontSize: '0.875rem', fontFamily: 'monospace' }}>{val}</span>
             </div>
           ))}
+        </div>
+      </div>
+
+      <div className="card" style={{ marginTop: 'var(--sp-4)' }}>
+        <h3 style={{ marginBottom: 'var(--sp-4)' }}>Keamanan & Pemulihan</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
+          <div style={{ display: 'flex', gap: 'var(--sp-3)', alignItems: 'flex-start' }}>
+            <Shield size={18} style={{ color: 'var(--primary)', marginTop: 2 }} />
+            <div>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>Reset password via email</div>
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Sistem akan mengirim tautan pemulihan ke email akun Anda.</div>
+            </div>
+          </div>
+          <button className="btn btn-secondary settings-action-button" onClick={handleResetPassword} disabled={sendingReset} style={{ alignSelf: 'flex-start' }}>
+            {sendingReset ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Mengirim...</> : <><Mail size={16} /> Kirim Email Reset Password</>}
+          </button>
         </div>
       </div>
     </div>
