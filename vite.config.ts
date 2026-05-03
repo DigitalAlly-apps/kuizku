@@ -11,8 +11,8 @@ export default defineConfig({
         enabled: true
       },
       manifest: {
-        name: 'KuizKu - Ujian Online',
-        short_name: 'KuizKu',
+        name: 'Ujianly - Ujian Online',
+        short_name: 'Ujianly',
         description: 'Platform Ujian & Kuis Online untuk Guru dan Murid Indonesia',
         theme_color: '#4F6EF7',
         background_color: '#0C0E1A',

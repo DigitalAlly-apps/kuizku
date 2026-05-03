@@ -1,9 +1,9 @@
-# KuizKu — Setup & Run Guide
+# Ujianly — Setup & Run Guide
 
 ## Install & Start
 
 ```bash
-cd /home/miqdad/Documents/kuizku/kuizku
+cd /path/to/ujianly
 npm install
 npm run dev
 ```

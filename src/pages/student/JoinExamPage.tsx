@@ -117,7 +117,7 @@ export default function JoinExamPage() {
         {/* Logo */}
         <div style={styles.logo}>
           <div style={styles.logoIcon}>⚡</div>
-          <span style={styles.logoText}>KuizKu</span>
+          <span style={styles.logoText}>Ujianly</span>
         </div>
 
         {/* Step: Enter Code */}

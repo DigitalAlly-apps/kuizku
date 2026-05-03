@@ -1,5 +1,5 @@
 // ============================================================
-// KuizKu — Global App Context (Supabase Integration)
+// Ujianly — Global App Context (Supabase Integration)
 // ============================================================
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';

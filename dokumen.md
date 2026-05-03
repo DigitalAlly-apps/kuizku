@@ -1,10 +1,10 @@
-# KuizKu - Ringkasan Lengkap Aplikasi
+# Ujianly - Ringkasan Lengkap Aplikasi
 
-Dokumen ini dibuat agar agent AI bisa memahami keseluruhan aplikasi KuizKu hanya dari satu file ini.
+Dokumen ini dibuat agar agent AI bisa memahami keseluruhan aplikasi Ujianly hanya dari satu file ini.
 
 ## Gambaran Umum
 
-KuizKu adalah aplikasi web/PWA untuk membuat, membagikan, mengerjakan, dan menilai ujian online. Target pengguna utamanya adalah guru dan murid Indonesia.
+Ujianly adalah aplikasi web/PWA untuk membuat, membagikan, mengerjakan, dan menilai ujian online. Target pengguna utamanya adalah guru dan murid Indonesia.
 
 Aplikasi memiliki dua mode utama:
 
@@ -207,7 +207,7 @@ Catatan data layer:
 
 - `saveExam` mengganti seluruh daftar questions dan preloaded_students setiap simpan.
 - `saveSubmission` mengganti seluruh daftar student_answers setiap simpan.
-- Jika simpan submission gagal, submission masuk localStorage queue `kuizku_pending_submission_queue`.
+- Jika simpan submission gagal, submission masuk localStorage queue `ujianly_pending_submission_queue`.
 - Queue offline disinkronkan saat app init dan saat event browser `online` di `AppContext`.
 
 ## Global State dan Context
@@ -451,8 +451,8 @@ Session lokal dikelola oleh `src/utils/examSession.ts`.
 Key localStorage:
 
 - `kk_session_${code}_${nis}` untuk session ujian aktif.
-- `kuizku_student_history` untuk riwayat hasil murid.
-- `kuizku_pending_submission_queue` untuk queue submission yang gagal dikirim.
+- `ujianly_student_history` untuk riwayat hasil murid.
+- `ujianly_pending_submission_queue` untuk queue submission yang gagal dikirim.
 
 Isi session:
 
@@ -558,13 +558,13 @@ Aturan tampilan skor:
 - Kunci jawaban hanya tampil jika `showAnswerKeyAfterSubmit` true dan exam status `ENDED`.
 - Feedback guru tampil jika ada di submission.
 
-`ResultScreen` menyimpan ringkasan ke localStorage `kuizku_student_history`, maksimal 50 entry.
+`ResultScreen` menyimpan ringkasan ke localStorage `ujianly_student_history`, maksimal 50 entry.
 
 ### Riwayat Murid
 
 Route `/riwayat`, file `StudentHistoryPage.tsx`.
 
-Riwayat berasal dari localStorage `kuizku_student_history`, bukan Supabase. Artinya riwayat lokal bergantung pada device/browser yang sama.
+Riwayat berasal dari localStorage `ujianly_student_history`, bukan Supabase. Artinya riwayat lokal bergantung pada device/browser yang sama.
 
 ## Import, Export, dan Scoring
 
@@ -587,8 +587,8 @@ Konfigurasi PWA ada di `vite.config.ts` memakai `vite-plugin-pwa`.
 
 Manifest:
 
-- `name`: `KuizKu - Ujian Online`
-- `short_name`: `KuizKu`
+- `name`: `Ujianly - Ujian Online`
+- `short_name`: `Ujianly`
 - `description`: platform ujian dan kuis online untuk guru/murid Indonesia.
 - `theme_color`: `#4F6EF7`
 - `background_color`: `#0C0E1A`
@@ -633,7 +633,7 @@ Komponen UI reusable berada di `src/components/ui/index.tsx`, termasuk loading, 
 - Nama field `wholExamTimerSeconds` typo tetapi aktif dipakai di banyak tempat.
 - Murid tidak login; akses ujian publik berdasarkan kode exam dan validasi di client/Supabase query.
 - `saveExam` dan `saveSubmission` menggunakan pola hapus lalu insert ulang untuk child rows. Perubahan pada children harus mempertimbangkan efek overwrite.
-- Hasil murid lokal (`kuizku_student_history`) tidak otomatis sinkron antar device.
+- Hasil murid lokal (`ujianly_student_history`) tidak otomatis sinkron antar device.
 - Autosave memiliki dua lapis: localStorage session untuk resume cepat dan draft submission Supabase untuk recoverability.
 - Queue offline hanya untuk submission, bukan semua operasi guru.
 - Anti-cheat saat ini hanya mendeteksi tab/window hidden.

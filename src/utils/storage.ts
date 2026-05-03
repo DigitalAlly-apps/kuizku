@@ -1,11 +1,11 @@
 // ============================================================
-// KuizKu — Supabase Data Layer
+// Ujianly — Supabase Data Layer
 // Replaces old localStorage implementation
 // ============================================================
 import { supabase } from '../lib/supabase';
 import type { Teacher, Exam, BankQuestion, Submission, StudentAnswer } from '../types';
 
-const PENDING_SUBMISSION_QUEUE_KEY = 'kuizku_pending_submission_queue';
+const PENDING_SUBMISSION_QUEUE_KEY = 'ujianly_pending_submission_queue';
 
 function readPendingSubmissionQueue(): Submission[] {
   try {

@@ -29,7 +29,7 @@ export default function Sidebar({ open, onClose, toggleTheme, theme }: { open?: 
     <aside className={`sidebar ${open ? 'open' : ''}`}>
       <NavLink to="/guru/dashboard" className="sidebar-logo" onClick={handleNavClick}>
         <div className="sidebar-logo-icon">⚡</div>
-        <span className="sidebar-logo-text">KuizKu</span>
+        <span className="sidebar-logo-text">Ujianly</span>
       </NavLink>
 
       <nav className="sidebar-nav">

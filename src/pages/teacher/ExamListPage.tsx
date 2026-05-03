@@ -137,7 +137,7 @@ export default function ExamListPage() {
 
   const shareWhatsApp = (code: string, title: string) => {
     const url = `${window.location.origin}/ujian/${code}`;
-    const text = encodeURIComponent(`📝 *${title}*\n\nKode: *${code}*\nLink: ${url}\n\n_KuizKu — Platform Ujian Online_`);
+    const text = encodeURIComponent(`📝 *${title}*\n\nKode: *${code}*\nLink: ${url}\n\n_Ujianly - Platform Ujian Online_`);
     window.open(`https://wa.me/?text=${text}`, '_blank');
     setOpenMenuId(null);
   };

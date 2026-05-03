@@ -30,7 +30,7 @@ export default function LoginPage() {
       <div style={styles.card}>
         <div style={styles.logo}>
           <div style={styles.logoIcon}>⚡</div>
-          <span style={styles.logoText}>KuizKu</span>
+          <span style={styles.logoText}>Ujianly</span>
         </div>
 
         <h1 style={styles.title}>Selamat Datang Kembali</h1>
@@ -80,8 +80,8 @@ export default function LoginPage() {
         {/* Demo hint */}
         <div style={styles.demoHint}>
           <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-            Demo: Belum ada akun?{' '}
-            <Link to="/daftar" style={{ color: 'var(--accent)' }}>Buat akun baru</Link> — data tersimpan di browser.
+            Belum ada akun?{' '}
+            <Link to="/daftar" style={{ color: 'var(--accent)' }}>Buat akun baru</Link> untuk mulai memakai Ujianly.
           </p>
         </div>
       </div>

@@ -1,4 +1,4 @@
-// Reusable UI Components for KuizKu
+// Reusable UI Components for Ujianly
 import React, { useEffect, useRef, useState } from 'react';
 import { X, CheckCircle, AlertTriangle, Info, AlertCircle } from 'lucide-react';
 import { useToast } from '../../context/AppContext';

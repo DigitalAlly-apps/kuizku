@@ -31,7 +31,7 @@ export default function TeacherLayout() {
       <div className="mobile-header">
         <div className="sidebar-logo">
           <div className="sidebar-logo-icon">⚡</div>
-          <span className="sidebar-logo-text">KuizKu</span>
+          <span className="sidebar-logo-text">Ujianly</span>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button className="btn btn-ghost btn-icon" onClick={toggleTheme}>

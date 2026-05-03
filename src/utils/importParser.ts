@@ -1,5 +1,5 @@
 // ============================================================
-// KuizKu — File Import Parser (Excel / CSV / Word)
+// Ujianly — File Import Parser (Excel / CSV / Word)
 // ============================================================
 // Supports: .xlsx, .xls, .csv, .docx
 
@@ -325,7 +325,7 @@ export function downloadExcelTemplate(): void {
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Template Soal');
-  XLSX.writeFile(wb, 'template_soal_kuizku.xlsx');
+  XLSX.writeFile(wb, 'template_soal_ujianly.xlsx');
 }
 
 // ---- Export Results ----

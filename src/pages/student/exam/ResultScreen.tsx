@@ -10,7 +10,7 @@ interface Props {
   studentName: string;
 }
 
-const HISTORY_KEY = 'kuizku_student_history';
+const HISTORY_KEY = 'ujianly_student_history';
 
 export default function ResultScreen({ exam, submission, studentName }: Props) {
   const hasEssay      = exam.format !== 'PG_ONLY';

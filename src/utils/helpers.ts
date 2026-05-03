@@ -1,5 +1,5 @@
 // ============================================================
-// KuizKu — Utility Functions
+// Ujianly — Utility Functions
 // ============================================================
 
 import { v4 as uuidv4 } from 'uuid';
@@ -180,7 +180,7 @@ export function validateExam(exam: Partial<Exam>): string[] {
 // ---- Hash (demo-only, not cryptographically strong for prod) ----
 export async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
-  const data = encoder.encode(password + 'kuizku_salt_v1');
+  const data = encoder.encode(password + 'ujianly_salt_v1');
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');

@@ -36,7 +36,7 @@ export default function RegisterPage() {
       <div style={styles.card}>
         <div style={styles.logo}>
           <div style={styles.logoIcon}>⚡</div>
-          <span style={styles.logoText}>KuizKu</span>
+          <span style={styles.logoText}>Ujianly</span>
         </div>
         <h1 style={{ textAlign: 'center', fontSize: '1.3rem', marginBottom: 4 }}>Daftar Akun Guru</h1>
         <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: 'var(--sp-6)' }}>

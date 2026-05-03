@@ -1,5 +1,5 @@
 // ============================================================
-// KuizKu — Student Exam Session Manager
+// Ujianly — Student Exam Session Manager
 // Handles: autosave, resume, attempt tracking, timer state
 // ============================================================
 
