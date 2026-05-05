@@ -136,12 +136,17 @@ export default function QuestionView({
           })}
 
           {selectedId && (
-            <button
-              type="button"
-              onClick={() => onAnswer({ questionId: question.id, questionType: 'MULTIPLE_CHOICE', selectedOptionId: undefined })}
-              style={{ alignSelf: 'flex-start', background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.78rem', cursor: 'pointer', padding: '4px 0' }}>
-              × Hapus pilihan
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--sp-3)', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.78rem', color: 'var(--success)', fontWeight: 600 }}>
+                ✓ Jawaban tersimpan otomatis
+              </span>
+              <button
+                type="button"
+                onClick={() => onAnswer({ questionId: question.id, questionType: 'MULTIPLE_CHOICE', selectedOptionId: undefined })}
+                style={{ alignSelf: 'flex-start', background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.78rem', cursor: 'pointer', padding: '4px 0' }}>
+                × Hapus pilihan
+              </button>
+            </div>
           )}
         </div>
       )}
@@ -179,7 +184,7 @@ export default function QuestionView({
           borderRadius: 'var(--r-md)', fontSize: '0.8rem', color: 'var(--danger)',
           animation: 'pulse 1s infinite', textAlign: 'center', fontWeight: 600,
         }}>
-          ⚠️ Waktu hampir habis! Soal akan berpindah otomatis.
+          ⚠️ Waktu soal hampir habis. Simpan jawaban Anda sebelum berpindah otomatis.
         </div>
       )}
     </div>

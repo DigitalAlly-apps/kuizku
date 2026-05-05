@@ -1,5 +1,5 @@
-// ExamHeader — sticky top bar with timer, progress, and submit button
-import { Clock, Send } from 'lucide-react';
+// ExamHeader — sticky top bar with timer and progress
+import { Clock } from 'lucide-react';
 import { formatTimer } from '../../../utils/helpers';
 import type { TimerMode } from '../../../types';
 
@@ -14,13 +14,12 @@ interface Props {
   wholeUrgency?: string;
   perQRemaining?: number;
   perQUrgency?: string;
-  onSubmitClick: () => void;
+  perQProgressPct?: number;
 }
 
 export default function ExamHeader({
   examTitle, studentName, currentIdx, total, answeredCount,
-  timerMode, wholeRemaining, wholeUrgency, perQRemaining, perQUrgency,
-  onSubmitClick,
+  timerMode, wholeRemaining, wholeUrgency, perQRemaining, perQUrgency, perQProgressPct,
 }: Props) {
   const urgencyColor = (u?: string) =>
     u === 'critical' ? 'var(--danger)' : u === 'warning' ? 'var(--warning)' : 'var(--text-primary)';
@@ -28,14 +27,16 @@ export default function ExamHeader({
   const progressPct = Math.round((answeredCount / total) * 100);
 
   return (
-    <header style={{
+    <header className="exam-header" style={{
       position: 'sticky', top: 0, zIndex: 50,
-      background: 'rgba(12,14,26,0.92)',
+      background: 'rgba(255,255,255,0.94)',
       backdropFilter: 'blur(12px)',
+      WebkitBackdropFilter: 'blur(12px)',
       borderBottom: '1px solid var(--border)',
+      boxShadow: '0 1px 10px rgba(15, 23, 42, 0.05)',
     }}>
       {/* Main bar */}
-      <div style={{
+      <div className="exam-header-main" style={{
         display: 'flex', alignItems: 'center', gap: 'var(--sp-4)',
         padding: '0 var(--sp-6)', height: 60,
       }}>
@@ -73,11 +74,15 @@ export default function ExamHeader({
           <span> / {total}</span>
         </div>
 
-        {/* Submit button */}
-        <button className="btn btn-success btn-sm" onClick={onSubmitClick}
-          style={{ gap: 6, flexShrink: 0 }}>
-          <Send size={14} /> Kumpulkan
-        </button>
+        <div className="exam-header-completion" style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '6px 10px', borderRadius: 'var(--r-full)',
+          background: answeredCount === total ? 'var(--success-light)' : 'var(--surface-2)',
+          color: answeredCount === total ? 'var(--success)' : 'var(--text-muted)',
+          fontSize: '0.78rem', fontWeight: 700, whiteSpace: 'nowrap',
+        }}>
+          {answeredCount}/{total} dijawab
+        </div>
       </div>
 
       {/* Progress bar */}
@@ -92,7 +97,7 @@ export default function ExamHeader({
 
       {/* Per-question timer bar */}
       {timerMode === 'PER_QUESTION' && perQRemaining !== undefined && (
-        <div style={{
+        <div className="exam-per-question-timer" style={{
           display: 'flex', alignItems: 'center', gap: 8,
           padding: '4px var(--sp-6)',
           background: perQUrgency === 'critical' ? 'rgba(239,68,68,0.08)' : 'transparent',
@@ -106,6 +111,7 @@ export default function ExamHeader({
           <div style={{ flex: 1, height: 4, background: 'var(--surface-2)', borderRadius: 'var(--r-full)', overflow: 'hidden' }}>
             <div style={{
               height: '100%',
+              width: `${perQProgressPct ?? 100}%`,
               background: urgencyColor(perQUrgency),
               borderRadius: 'var(--r-full)',
               transition: 'width 1s linear',

@@ -596,6 +596,7 @@ tbody td {
   inset: 0;
   background: rgba(0, 0, 0, 0.65);
   backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   z-index: 100;
   display: flex;
   align-items: center;
@@ -615,6 +616,33 @@ tbody td {
   overflow-y: auto;
   animation: slideUp 0.2s ease;
   box-shadow: var(--shadow-lg);
+}
+
+/* ---- Student Exam Taking ---- */
+.exam-taking-shell {
+  height: 100vh;
+}
+
+.exam-header {
+  color: var(--text-primary);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+[data-theme="dark"] .exam-header {
+  background: rgba(30, 41, 59, 0.94) !important;
+  box-shadow: 0 1px 14px rgba(0, 0, 0, 0.28) !important;
+}
+
+.exam-taking-body {
+  min-height: 0;
+}
+
+.exam-question-scroll {
+  min-width: 0;
+}
+
+.question-nav-panel {
+  min-height: 0;
 }
 
 .modal-lg {
@@ -999,6 +1027,7 @@ tbody td {
 
   .modal-box {
     padding: var(--sp-4);
+    max-height: calc(100vh - 24px);
     max-height: calc(100dvh - 24px);
     border-radius: var(--r-lg);
   }
@@ -1080,6 +1109,89 @@ tbody td {
 
   .exam-code-display {
     padding: var(--sp-3);
+  }
+
+  .exam-taking-shell {
+    height: auto !important;
+    min-height: 100vh !important;
+    min-height: 100dvh !important;
+  }
+
+  .exam-header-main {
+    height: auto !important;
+    min-height: 58px;
+    padding: var(--sp-3) var(--sp-4) !important;
+    gap: var(--sp-3) !important;
+    flex-wrap: wrap;
+  }
+
+  .exam-header-main > div:first-child {
+    flex-basis: calc(100% - 112px) !important;
+  }
+
+  .exam-per-question-timer {
+    padding: 6px var(--sp-4) !important;
+  }
+
+  .exam-taking-body {
+    flex-direction: column !important;
+    overflow: visible !important;
+  }
+
+  .exam-question-scroll {
+    overflow: visible !important;
+    padding: var(--sp-4) !important;
+    padding-bottom: calc(240px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .question-nav-panel {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 48;
+    width: 100% !important;
+    max-height: 230px;
+    border-left: none !important;
+    border-top: 1px solid var(--border-strong);
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+    box-shadow: 0 -10px 28px rgba(15, 23, 42, 0.14);
+    padding: var(--sp-4) var(--sp-4) calc(var(--sp-4) + env(safe-area-inset-bottom)) !important;
+  }
+
+  .question-nav-grid {
+    grid-template-columns: repeat(8, minmax(34px, 1fr)) !important;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    margin-bottom: var(--sp-3) !important;
+  }
+
+  .question-nav-grid button {
+    min-width: 34px;
+    min-height: 34px;
+    aspect-ratio: auto !important;
+  }
+
+  .question-nav-panel > div:first-child,
+  .question-nav-panel > div:nth-child(2) {
+    display: none !important;
+  }
+
+  .question-nav-panel > div:nth-child(4) {
+    margin-bottom: var(--sp-3) !important;
+  }
+
+  .question-nav-submit {
+    margin-top: 0 !important;
+    min-height: 42px;
+  }
+
+  .submit-dialog-actions {
+    flex-direction: column-reverse;
+  }
+
+  .submit-dialog-actions .btn {
+    width: 100%;
   }
 
   /* Wizard steps squish heavily on mobile */

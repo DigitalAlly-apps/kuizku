@@ -212,6 +212,9 @@ export default function ExamTakingPage() {
       else handleSubmit(true);
     }, [currentIdx, questions.length, goNext, handleSubmit]),
   });
+  const perQProgressPct = perQEnabled && perQSeconds > 0
+    ? Math.max(0, Math.min(100, Math.round((perQTimer.remaining / perQSeconds) * 100)))
+    : undefined;
 
   // Reset per-Q timer when question changes
   useEffect(() => {
@@ -279,7 +282,7 @@ export default function ExamTakingPage() {
   const answeredIds = new Set(session.answers.map(a => a.questionId));
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
+    <div className="exam-taking-shell" style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
       {/* Header with timer */}
       <ExamHeader
         examTitle={exam.title}
@@ -292,19 +295,19 @@ export default function ExamTakingPage() {
         wholeUrgency={wholeTimer.urgency}
         perQRemaining={perQEnabled ? perQTimer.remaining : undefined}
         perQUrgency={perQTimer.urgency}
-        onSubmitClick={() => setShowSubmit(true)}
+        perQProgressPct={perQProgressPct}
       />
 
       {/* Anti-cheat warning banner */}
       {showViolationWarning && (
         <div style={{ background: 'var(--danger)', color: 'white', padding: '10px var(--sp-6)', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, animation: 'fadeIn 0.2s ease' }}>
-          ⚠️ Peringatan: Anda berpindah tab/jendela! ({violations}/{exam.settings.antiCheatSensitivity === 'HIGH' ? 1 : exam.settings.antiCheatSensitivity === 'LOW' ? 5 : 3})
+          ⚠️ Tetap di halaman ujian. Aktivitas keluar halaman tercatat ({violations}/{exam.settings.antiCheatSensitivity === 'HIGH' ? 1 : exam.settings.antiCheatSensitivity === 'LOW' ? 5 : 3}).
         </div>
       )}
 
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      <div className="exam-taking-body" style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         {/* Main question area */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--sp-6)' }}>
+        <div className="exam-question-scroll" style={{ flex: 1, overflowY: 'auto', padding: 'var(--sp-6)' }}>
           <div style={{ maxWidth: 720, margin: '0 auto' }}>
             <QuestionView
               question={currentQ}

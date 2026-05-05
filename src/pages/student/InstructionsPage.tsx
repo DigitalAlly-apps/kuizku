@@ -136,7 +136,7 @@ export default function InstructionsPage() {
               'Pastikan koneksi internet Anda stabil sebelum memulai.',
               'Jawaban tersimpan otomatis setiap kali Anda menjawab.',
               ...(exam.settings.timerMode === 'WHOLE_EXAM' ? [`Waktu ujian ${totalMins} menit. Ujian otomatis dikumpul saat waktu habis.`] : []),
-              ...(exam.settings.timerMode === 'PER_QUESTION' ? ['Setiap soal memiliki batas waktu. Soal otomatis berpindah saat waktu habis.'] : []),
+              ...(exam.settings.timerMode === 'PER_QUESTION' ? ['Setiap soal memiliki batas waktu. Saat waktu habis, sistem otomatis berpindah ke soal berikutnya atau mengumpulkan ujian di soal terakhir.'] : []),
               ...(exam.settings.shuffleQuestions ? ['Urutan soal diacak — berbeda tiap peserta.'] : []),
               ...(essayCount > 0 ? ['Soal essay dinilai oleh guru secara manual setelah ujian selesai.'] : []),
               `Anda memiliki ${exam.settings.maxAttempts === 0 ? 'percobaan tidak terbatas' : `maksimal ${exam.settings.maxAttempts}x percobaan`}.`,

@@ -14,7 +14,7 @@ export default function QuestionNav({ questions, currentIdx, answeredIds, onGoTo
   const unanswered = questions.length - answered;
 
   return (
-    <aside style={{
+    <aside className="question-nav-panel" style={{
       width: 220, flexShrink: 0,
       background: 'var(--surface)',
       borderLeft: '1px solid var(--border)',
@@ -43,32 +43,49 @@ export default function QuestionNav({ questions, currentIdx, answeredIds, onGoTo
       </div>
 
       {/* Number grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--sp-2)', marginBottom: 'var(--sp-5)' }}>
+      <div className="question-nav-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--sp-2)', marginBottom: 'var(--sp-5)' }}>
         {questions.map((q, idx) => {
           const isAnswered = answeredIds.has(q.id);
           const isCurrent = idx === currentIdx;
           return (
-            <button
-              key={q.id}
-              onClick={() => onGoTo(idx)}
-              title={`Soal ${idx + 1}${isAnswered ? ' (sudah dijawab)' : ' (belum dijawab)'}`}
-              style={{
-                width: '100%', aspectRatio: '1',
-                borderRadius: 'var(--r-sm)',
-                border: `2px solid ${isCurrent ? 'var(--primary)' : isAnswered ? 'var(--success)' : 'var(--border-strong)'}`,
+              <button
+                key={q.id}
+                onClick={() => onGoTo(idx)}
+                title={`Soal ${idx + 1}${isAnswered ? ' (sudah dijawab)' : ' (belum dijawab)'}`}
+                aria-label={`Soal ${idx + 1}, ${isCurrent ? 'sedang dibuka' : isAnswered ? 'sudah dijawab' : 'belum dijawab'}`}
+                style={{
+                  position: 'relative',
+                  width: '100%', aspectRatio: '1',
+                  borderRadius: 'var(--r-sm)',
+                  border: `2px solid ${isCurrent ? 'var(--primary)' : isAnswered ? 'var(--success)' : 'var(--border-strong)'}`,
                 background: isCurrent ? 'var(--primary)' : isAnswered ? 'var(--success-light)' : 'var(--surface-2)',
                 color: isCurrent ? 'white' : isAnswered ? 'var(--success)' : 'var(--text-muted)',
                 fontWeight: isCurrent || isAnswered ? 700 : 400,
                 fontSize: '0.8rem',
                 cursor: 'pointer',
-                transition: 'all 0.12s ease',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-            >
-              {idx + 1}
-            </button>
-          );
-        })}
+                  transition: 'all 0.12s ease',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: isCurrent ? '0 0 0 2px var(--primary-light)' : 'none',
+                }}
+              >
+                <span>{idx + 1}</span>
+                {isAnswered && (
+                  <span aria-hidden="true" style={{
+                    position: 'absolute', right: 2, bottom: 1,
+                    fontSize: '0.58rem', lineHeight: 1, fontWeight: 900,
+                    color: isCurrent ? 'white' : 'var(--success)',
+                  }}>✓</span>
+                )}
+                {isCurrent && (
+                  <span aria-hidden="true" style={{
+                    position: 'absolute', left: 3, top: 3,
+                    width: 5, height: 5, borderRadius: '50%',
+                    background: 'currentColor', opacity: 0.9,
+                  }} />
+                )}
+              </button>
+            );
+          })}
       </div>
 
       {/* Summary */}
@@ -84,7 +101,7 @@ export default function QuestionNav({ questions, currentIdx, answeredIds, onGoTo
       </div>
 
       {/* Submit button */}
-      <button className="btn btn-success btn-sm w-full" style={{ justifyContent: 'center', marginTop: 'auto' }} onClick={onSubmit}>
+      <button className="btn btn-success btn-sm w-full question-nav-submit" style={{ justifyContent: 'center', marginTop: 'auto' }} onClick={onSubmit}>
         ✓ Kumpulkan
       </button>
     </aside>
