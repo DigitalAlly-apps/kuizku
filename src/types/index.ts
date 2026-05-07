@@ -7,6 +7,8 @@ export type QuestionType = 'MULTIPLE_CHOICE' | 'ESSAY';
 export type TimerMode = 'PER_QUESTION' | 'WHOLE_EXAM' | 'NONE';
 export type ExamStatus = 'DRAFT' | 'ACTIVE' | 'ENDED' | 'ARCHIVED';
 export type ExamType = 'UJIAN' | 'TUGAS' | 'LATIHAN';
+export type PlanKey = 'free' | 'pro_manual' | 'pro_monthly';
+export type SubscriptionStatus = 'free' | 'active' | 'expired' | 'past_due';
 
 // ---- Auth ----
 export interface Teacher {
@@ -17,6 +19,64 @@ export interface Teacher {
   subject: string;
   institution: string;
   createdAt: string;
+}
+
+// ---- Billing / SaaS ----
+export interface Workspace {
+  id: string;
+  name: string;
+  type: 'individual' | 'bimbel';
+  ownerId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Subscription {
+  id: string;
+  workspaceId: string;
+  planKey: PlanKey;
+  status: SubscriptionStatus;
+  currentPeriodStart?: string;
+  currentPeriodEnd?: string;
+  promoPaymentsUsed?: number;
+  manualPaymentNote?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UsageCounter {
+  id: string;
+  workspaceId: string;
+  periodMonth: string;
+  submissionCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BillingSnapshot {
+  workspace: Workspace | null;
+  subscription: Subscription;
+}
+
+export interface FeatureAccess {
+  planKey: PlanKey;
+  isPro: boolean;
+  limits: {
+    activeExams: number;
+    monthlySubmissions: number;
+    bankQuestions: number;
+  };
+  usage: {
+    activeExams: number;
+    monthlySubmissions: number;
+    bankQuestions: number;
+  };
+  canImport: boolean;
+  canExport: boolean;
+  canUseTimer: boolean;
+  canUseAntiCheat: boolean;
+  canPublishExam: boolean;
+  canAddBankQuestion: boolean;
 }
 
 // ---- Question Option (for Multiple Choice) ----

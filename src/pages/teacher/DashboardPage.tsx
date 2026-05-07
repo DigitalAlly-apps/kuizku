@@ -1,12 +1,12 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, FileText, BookOpen, Users, TrendingUp, Clock, CheckCircle } from 'lucide-react';
+import { Plus, FileText, BookOpen, Users, TrendingUp, Clock, CheckCircle, CreditCard, MessageSquareWarning } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { StatCard, FormatBadge, StatusBadge, ExamTypeBadge, EmptyState, SectionHeader } from '../../components/ui';
 import { formatRelative } from '../../utils/helpers';
 
 export default function DashboardPage() {
-  const { currentTeacher, exams, submissions } = useApp();
+  const { currentTeacher, exams, submissions, featureAccess } = useApp();
   const navigate = useNavigate();
 
   const myExams = useMemo(() => exams.filter(e => e.teacherId === currentTeacher?.id), [exams, currentTeacher]);
@@ -26,6 +26,24 @@ export default function DashboardPage() {
   const recentExams = useMemo(() => [...myExams].sort((a, b) =>
     new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
   ).slice(0, 5), [myExams]);
+
+  const actionStats = useMemo(() => {
+    const activeExamIds = new Set(myExams.filter(e => e.status === 'ACTIVE').map(e => e.id));
+    const activeSubmissions = submissions.filter(s => activeExamIds.has(s.examId) && s.isComplete);
+    const essayPending = submissions.filter(s => {
+      const exam = myExams.find(e => e.id === s.examId);
+      if (!exam || !s.isComplete || exam.format === 'PG_ONLY') return false;
+      const essayCount = exam.questions.filter(q => q.type === 'ESSAY').length;
+      return s.essayScores.length < essayCount;
+    }).length;
+    const notSubmitted = myExams.reduce((sum, exam) => {
+      const preloaded = exam.preloadedStudents?.length ?? 0;
+      if (!preloaded || exam.status !== 'ACTIVE') return sum;
+      const submitted = submissions.filter(s => s.examId === exam.id && s.isComplete).length;
+      return sum + Math.max(0, preloaded - submitted);
+    }, 0);
+    return { activeSubmissions: activeSubmissions.length, essayPending, notSubmitted };
+  }, [myExams, submissions]);
 
   const hour = new Date().getHours();
   const greeting = hour < 11 ? 'Selamat Pagi' : hour < 15 ? 'Selamat Siang' : hour < 18 ? 'Selamat Sore' : 'Selamat Malam';
@@ -52,6 +70,35 @@ export default function DashboardPage() {
           color="var(--accent)" bg="var(--accent-light)" />
         <StatCard label="Pengerjaan Hari Ini" value={stats.todaySubmissions} icon={<Users size={20} />}
           color="var(--warning)" bg="var(--warning-light)" />
+      </div>
+
+      <div className="dashboard-plan-grid" style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 'var(--sp-4)', marginBottom: 'var(--sp-8)' }}>
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--sp-3)' }}>
+            <div>
+              <h3 style={{ marginBottom: 2 }}>Pemakaian Paket</h3>
+              <p style={{ fontSize: '0.85rem' }}>{featureAccess.isPro ? 'Paket Pro aktif' : 'Paket Free aktif'}</p>
+            </div>
+            <button className="btn btn-secondary btn-sm" onClick={() => navigate('/guru/billing')}>
+              <CreditCard size={14} /> Billing
+            </button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--sp-3)' }} className="dashboard-usage-grid">
+            <UsageItem label="Ujian Aktif" value={featureAccess.usage.activeExams} limit={featureAccess.limits.activeExams} />
+            <UsageItem label="Jawaban/Bulan" value={featureAccess.usage.monthlySubmissions} limit={featureAccess.limits.monthlySubmissions} />
+            <UsageItem label="Bank Soal" value={featureAccess.usage.bankQuestions} limit={featureAccess.limits.bankQuestions} />
+          </div>
+        </div>
+
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <MessageSquareWarning size={18} style={{ color: 'var(--warning)' }} />
+            <h3 style={{ margin: 0 }}>Perlu Perhatian</h3>
+          </div>
+          <ActionRow label="Peserta sudah mengumpulkan di ujian aktif" value={actionStats.activeSubmissions} color="var(--success)" />
+          <ActionRow label="Peserta terdaftar belum mengerjakan" value={actionStats.notSubmitted} color="var(--warning)" />
+          <ActionRow label="Jawaban essay belum dinilai" value={actionStats.essayPending} color="var(--secondary)" />
+        </div>
       </div>
 
       {/* Quick Actions */}
@@ -133,6 +180,32 @@ export default function DashboardPage() {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+function UsageItem({ label, value, limit }: { label: string; value: number; limit: number }) {
+  const pct = Math.min(100, Math.round((value / limit) * 100));
+  const color = pct >= 85 ? 'var(--warning)' : 'var(--primary)';
+  return (
+    <div style={{ padding: 'var(--sp-3)', background: 'var(--surface-2)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+        <strong>{value}/{limit}</strong>
+        <span style={{ color, fontSize: '0.75rem', fontWeight: 700 }}>{pct}%</span>
+      </div>
+      <div style={{ height: 5, background: 'var(--surface-3)', borderRadius: 'var(--r-full)', overflow: 'hidden', marginBottom: 6 }}>
+        <div style={{ width: `${pct}%`, height: '100%', background: color }} />
+      </div>
+      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{label}</div>
+    </div>
+  );
+}
+
+function ActionRow({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--sp-3)', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+      <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{label}</span>
+      <strong style={{ color }}>{value}</strong>
     </div>
   );
 }

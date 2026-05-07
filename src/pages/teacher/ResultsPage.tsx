@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Download, User, Edit2, BarChart2, RotateCcw, MessageSquare } from 'lucide-react';
 import { useApp, useToast } from '../../context/AppContext';
 import { EmptyState, FormatBadge, StatusBadge, SectionHeader, Modal } from '../../components/ui';
@@ -10,8 +10,9 @@ import type { Submission } from '../../types';
 
 
 export default function ResultsPage() {
-  const { currentTeacher, exams, submissions, gradeEssay, returnSubmission, setTeacherFeedback } = useApp();
+  const { currentTeacher, exams, submissions, gradeEssay, returnSubmission, setTeacherFeedback, featureAccess } = useApp();
   const { addToast } = useToast();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   const myExams = useMemo(() => exams.filter(e => e.teacherId === currentTeacher?.id && e.status !== 'DRAFT'), [exams, currentTeacher]);
@@ -86,6 +87,11 @@ export default function ResultsPage() {
 
   const exportExcel = () => {
     if (!selectedExam) return;
+    if (!featureAccess.canExport) {
+      addToast({ type: 'info', title: 'Export tersedia di Pro', message: 'Upgrade ke Pro untuk export rekap nilai ke Excel.' });
+      navigate('/guru/billing');
+      return;
+    }
     const rows = examSubs.map((s, i) => {
       const essayTotal = s.essayScores.reduce((a, g) => a + g.score, 0);
       const details = selectedExam.questions.flatMap((q, qIdx) => {
@@ -146,7 +152,7 @@ export default function ResultsPage() {
             {myExams.map(e => <option key={e.id} value={e.id}>{e.title}</option>)}
           </select>
           {examSubs.length > 0 && (
-            <button className="btn btn-secondary results-export-button" onClick={exportExcel}><Download size={15} /> Export Excel</button>
+            <button className="btn btn-secondary results-export-button" onClick={exportExcel}><Download size={15} /> {featureAccess.canExport ? 'Export Excel' : 'Upgrade untuk Export'}</button>
           )}
         </div>
       </div>

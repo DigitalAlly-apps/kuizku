@@ -1141,7 +1141,7 @@ tbody td {
   .exam-question-scroll {
     overflow: visible !important;
     padding: var(--sp-4) !important;
-    padding-bottom: calc(240px + env(safe-area-inset-bottom)) !important;
+    padding-bottom: calc(205px + env(safe-area-inset-bottom)) !important;
   }
 
   .question-nav-panel {
@@ -1151,7 +1151,7 @@ tbody td {
     bottom: 0;
     z-index: 48;
     width: 100% !important;
-    max-height: 230px;
+    max-height: 195px;
     border-left: none !important;
     border-top: 1px solid var(--border-strong);
     border-radius: var(--r-xl) var(--r-xl) 0 0;
@@ -1184,6 +1184,10 @@ tbody td {
   .question-nav-submit {
     margin-top: 0 !important;
     min-height: 42px;
+  }
+
+  .exam-header-progress-text {
+    display: none !important;
   }
 
   .submit-dialog-actions {

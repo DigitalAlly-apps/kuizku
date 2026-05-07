@@ -301,7 +301,7 @@ export default function ExamTakingPage() {
       {/* Anti-cheat warning banner */}
       {showViolationWarning && (
         <div style={{ background: 'var(--danger)', color: 'white', padding: '10px var(--sp-6)', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, animation: 'fadeIn 0.2s ease' }}>
-          ⚠️ Tetap di halaman ujian. Aktivitas keluar halaman tercatat ({violations}/{exam.settings.antiCheatSensitivity === 'HIGH' ? 1 : exam.settings.antiCheatSensitivity === 'LOW' ? 5 : 3}).
+          Tetap di halaman ujian. Perpindahan aplikasi/tab tercatat ({violations}/{exam.settings.antiCheatSensitivity === 'HIGH' ? 1 : exam.settings.antiCheatSensitivity === 'LOW' ? 5 : 3}).
         </div>
       )}
 

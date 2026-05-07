@@ -121,7 +121,7 @@ export default function ExamHeader({
       )}
 
       {/* Answered progress text */}
-      <div style={{
+      <div className="exam-header-progress-text" style={{
         display: 'flex', alignItems: 'center', gap: 8,
         padding: '4px var(--sp-6)',
         fontSize: '0.72rem', color: 'var(--text-muted)',

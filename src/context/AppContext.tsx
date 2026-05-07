@@ -2,8 +2,8 @@
 // Ujianly — Global App Context (Supabase Integration)
 // ============================================================
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import type { Teacher, Exam, Submission, BankQuestion, ToastMessage } from '../types';
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
+import type { Teacher, Exam, Submission, BankQuestion, ToastMessage, Workspace, Subscription, FeatureAccess } from '../types';
 import { storage } from '../utils/storage';
 import { generateId, generateExamCode } from '../utils/helpers';
 import { v4 as uuidv4 } from 'uuid';
@@ -15,6 +15,12 @@ interface AppContextShape {
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (data: Omit<Teacher, 'id' | 'createdAt' | 'password'> & { password: string }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
+
+  // Billing / feature gates
+  currentWorkspace: Workspace | null;
+  subscription: Subscription | null;
+  featureAccess: FeatureAccess;
+  refreshBilling: () => Promise<void>;
 
   // Exams
   exams: Exam[];
@@ -51,11 +57,32 @@ interface AppContextShape {
 
 const AppContext = createContext<AppContextShape | null>(null);
 
+const PLAN_LIMITS = {
+  free: { activeExams: 3, monthlySubmissions: 30, bankQuestions: 20 },
+  pro_manual: { activeExams: 50, monthlySubmissions: 2000, bankQuestions: 1000 },
+  pro_monthly: { activeExams: 50, monthlySubmissions: 2000, bankQuestions: 1000 },
+} as const;
+
+function createFallbackSubscription(teacherId = 'anonymous'): Subscription {
+  const now = new Date().toISOString();
+  return {
+    id: `free_${teacherId}`,
+    workspaceId: `workspace_${teacherId}`,
+    planKey: 'free',
+    status: 'free',
+    promoPaymentsUsed: 0,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [currentTeacher, setCurrentTeacher] = useState<Teacher | null>(null);
   const [exams, setExamsState] = useState<Exam[]>([]);
   const [bankQuestions, setBankState] = useState<BankQuestion[]>([]);
   const [submissions, setSubmissionsState] = useState<Submission[]>([]);
+  const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(null);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -63,14 +90,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const loadTeacherData = async (teacher: Teacher) => {
     setIsLoading(true);
     try {
-      const [exs, bqs, subs] = await Promise.all([
+      const [exs, bqs, subs, billing] = await Promise.all([
         storage.getExamsByTeacher(teacher.id),
         storage.getBankQuestions(teacher.id),
-        storage.getSubmissionsByTeacher(teacher.id)
+        storage.getSubmissionsByTeacher(teacher.id),
+        storage.getBillingSnapshot(teacher),
       ]);
       setExamsState(exs);
       setBankState(bqs);
       setSubmissionsState(subs);
+      setCurrentWorkspace(billing.workspace);
+      setSubscription(billing.subscription);
     } catch (e) {
       console.error('Failed to load teacher data:', e);
     }
@@ -100,6 +130,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const refreshSubmissions = async () => {
     if (currentTeacher) setSubmissionsState(await storage.getSubmissionsByTeacher(currentTeacher.id));
   };
+  const refreshBilling = async () => {
+    if (!currentTeacher) return;
+    const billing = await storage.getBillingSnapshot(currentTeacher);
+    setCurrentWorkspace(billing.workspace);
+    setSubscription(billing.subscription);
+  };
 
   // ---- Auth ----
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
@@ -122,6 +158,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setExamsState([]);
       setBankState([]);
       setSubmissionsState([]);
+      setCurrentWorkspace(null);
+      setSubscription(createFallbackSubscription(teacher.id));
       setIsLoading(false);
       return { success: true };
     }
@@ -135,7 +173,45 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setExamsState([]);
     setBankState([]);
     setSubmissionsState([]);
+    setCurrentWorkspace(null);
+    setSubscription(null);
   };
+
+  const featureAccess = useMemo<FeatureAccess>(() => {
+    const activeSubscription = subscription ?? createFallbackSubscription(currentTeacher?.id);
+    const isExpired = activeSubscription.currentPeriodEnd
+      ? new Date(activeSubscription.currentPeriodEnd).getTime() < Date.now()
+      : false;
+    const isPro = activeSubscription.planKey !== 'free' && activeSubscription.status === 'active' && !isExpired;
+    const planKey = isPro ? activeSubscription.planKey : 'free';
+    const limits = PLAN_LIMITS[planKey];
+    const now = new Date();
+    const month = now.getMonth();
+    const year = now.getFullYear();
+    const monthlySubmissions = submissions.filter(s => {
+      if (!s.isComplete || !s.submittedAt) return false;
+      const submitted = new Date(s.submittedAt);
+      return submitted.getMonth() === month && submitted.getFullYear() === year;
+    }).length;
+    const usage = {
+      activeExams: exams.filter(e => e.status === 'ACTIVE').length,
+      monthlySubmissions,
+      bankQuestions: bankQuestions.length,
+    };
+
+    return {
+      planKey,
+      isPro,
+      limits,
+      usage,
+      canImport: isPro,
+      canExport: isPro,
+      canUseTimer: isPro,
+      canUseAntiCheat: isPro,
+      canPublishExam: usage.activeExams < limits.activeExams,
+      canAddBankQuestion: usage.bankQuestions < limits.bankQuestions,
+    };
+  }, [subscription, currentTeacher, exams, submissions, bankQuestions]);
 
   // ---- Exam CRUD ----
   const getExam = useCallback((id: string) => exams.find(e => e.id === id), [exams]);
@@ -317,6 +393,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const value: AppContextShape = {
     currentTeacher, isLoading,
     login, register, logout,
+    currentWorkspace, subscription, featureAccess, refreshBilling,
     exams, getExam, createExam, updateExam, deleteExam, duplicateExam,
     publishExam, archiveExam, endExam, refreshExams,
     bankQuestions, addToBankFromQuestion, deleteBankQuestion, updateBankQuestion, refreshBank,

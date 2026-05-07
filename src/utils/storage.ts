@@ -3,9 +3,22 @@
 // Replaces old localStorage implementation
 // ============================================================
 import { supabase } from '../lib/supabase';
-import type { Teacher, Exam, BankQuestion, Submission, StudentAnswer } from '../types';
+import type { Teacher, Exam, BankQuestion, Submission, StudentAnswer, BillingSnapshot, Subscription, Workspace } from '../types';
 
 const PENDING_SUBMISSION_QUEUE_KEY = 'ujianly_pending_submission_queue';
+
+function defaultFreeSubscription(teacherId: string): Subscription {
+  const now = new Date().toISOString();
+  return {
+    id: `free_${teacherId}`,
+    workspaceId: `workspace_${teacherId}`,
+    planKey: 'free',
+    status: 'free',
+    promoPaymentsUsed: 0,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
 
 function readPendingSubmissionQueue(): Submission[] {
   try {
@@ -111,6 +124,55 @@ export const storage = {
     }).eq('id', id);
     if (error) return { error: error.message };
     return {};
+  },
+
+  async getBillingSnapshot(teacher: Teacher): Promise<BillingSnapshot> {
+    const fallback: BillingSnapshot = {
+      workspace: null,
+      subscription: defaultFreeSubscription(teacher.id),
+    };
+
+    const { data: wsData, error: wsErr } = await supabase.from('workspaces')
+      .select('*')
+      .eq('owner_id', teacher.id)
+      .maybeSingle();
+
+    if (wsErr || !wsData) return fallback;
+
+    const workspace: Workspace = {
+      id: wsData.id,
+      name: wsData.name || `${teacher.name} Workspace`,
+      type: wsData.type || 'individual',
+      ownerId: wsData.owner_id,
+      createdAt: wsData.created_at,
+      updatedAt: wsData.updated_at,
+    };
+
+    const { data: subData, error: subErr } = await supabase.from('subscriptions')
+      .select('*')
+      .eq('workspace_id', workspace.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (subErr || !subData) {
+      return { workspace, subscription: { ...fallback.subscription, workspaceId: workspace.id } };
+    }
+
+    const subscription: Subscription = {
+      id: subData.id,
+      workspaceId: subData.workspace_id,
+      planKey: subData.plan_key || 'free',
+      status: subData.status || 'free',
+      currentPeriodStart: subData.current_period_start || undefined,
+      currentPeriodEnd: subData.current_period_end || undefined,
+      promoPaymentsUsed: subData.promo_payments_used ?? 0,
+      manualPaymentNote: subData.manual_payment_note || undefined,
+      createdAt: subData.created_at,
+      updatedAt: subData.updated_at,
+    };
+
+    return { workspace, subscription };
   },
 
   async requestPasswordReset(email: string): Promise<{ error?: string }> {
