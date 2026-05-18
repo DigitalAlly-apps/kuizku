@@ -219,7 +219,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const createExam = async (data: Omit<Exam, 'id' | 'code' | 'status' | 'questions' | 'createdAt' | 'updatedAt' | 'preloadedStudents'>): Promise<Exam> => {
     let code = generateExamCode();
     while (exams.some(e => e.code === code)) code = generateExamCode();
-    
+
     const now = new Date().toISOString();
     const newExam: Exam = {
       ...data,
@@ -232,8 +232,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       createdAt: now,
       updatedAt: now,
     };
-    
-    // Optimistic UI
+
     setExamsState(prev => [newExam, ...prev]);
     await storage.saveExam(newExam);
     return newExam;
@@ -241,13 +240,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const updateExam = async (id: string, data: Partial<Exam>) => {
     let updated: Exam | undefined;
-    
-    // Use functional state update to guarantee we see the latest exams list,
-    // even if this was called immediately after createExam.
+
     setExamsState(prev => {
       const existing = prev.find(e => e.id === id);
       if (!existing) return prev;
-      
       updated = { ...existing, ...data, updatedAt: new Date().toISOString() };
       return prev.map(e => e.id === id ? updated! : e);
     });
@@ -265,10 +261,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const duplicateExam = async (id: string): Promise<Exam> => {
     const original = exams.find(e => e.id === id);
     if (!original) throw new Error('Exam not found');
-    
+
     let code = generateExamCode();
     while (exams.some(e => e.code === code)) code = generateExamCode();
-    
+
     const now = new Date().toISOString();
     const copy: Exam = {
       ...original,
@@ -280,7 +276,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       createdAt: now,
       updatedAt: now,
     };
-    
+
     setExamsState(prev => [copy, ...prev]);
     await storage.saveExam(copy);
     return copy;
@@ -299,7 +295,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       await storage.saveBankQuestion(updated);
       return;
     }
-    
+
     const now = new Date().toISOString();
     const bq: BankQuestion = {
       ...q,
@@ -310,7 +306,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       createdAt: now,
       updatedAt: now,
     };
-    
+
     setBankState(prev => [bq, ...prev]);
     await storage.saveBankQuestion(bq);
   };
@@ -340,7 +336,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const newEssayScores = existingGrade
       ? sub.essayScores.map(g => g.questionId === questionId ? { ...g, score, comment } : g)
       : [...sub.essayScores, { questionId, score, comment }];
-      
+
     const essayTotal = newEssayScores.reduce((sum, g) => sum + g.score, 0);
     const updated = { ...sub, essayScores: newEssayScores, totalScore: sub.mcScore + essayTotal };
 

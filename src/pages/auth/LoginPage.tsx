@@ -76,14 +76,6 @@ export default function LoginPage() {
           Belum punya akun?{' '}
           <Link to="/daftar" style={{ color: 'var(--primary)', fontWeight: 600 }}>Daftar sekarang</Link>
         </p>
-
-        {/* Demo hint */}
-        <div style={styles.demoHint}>
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-            Belum ada akun?{' '}
-            <Link to="/daftar" style={{ color: 'var(--accent)' }}>Buat akun baru</Link> untuk mulai memakai Ujianly.
-          </p>
-        </div>
       </div>
     </div>
   );
@@ -147,5 +139,4 @@ const styles: Record<string, React.CSSProperties> = {
   form: { display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' },
   inputIcon: { position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' },
   eyeBtn: { position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex' },
-  demoHint: { marginTop: 'var(--sp-5)', paddingTop: 'var(--sp-4)', borderTop: '1px solid var(--border)' },
 };

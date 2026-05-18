@@ -4,8 +4,6 @@ import { User, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AppContext';
 import { Spinner } from '../../components/ui';
 
-// removed duplicated import
-
 export default function RegisterPage() {
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -65,8 +63,6 @@ export default function RegisterPage() {
                 value={form.email} onChange={e => set('email', e.target.value)} />
             </div>
           </div>
-
-          {/* Removed Subject and Institution rows */}
 
           <div className="form-group">
             <label className="form-label" htmlFor="reg-password">Password</label>

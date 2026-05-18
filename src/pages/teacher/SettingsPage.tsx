@@ -5,8 +5,8 @@ import { storage } from '../../utils/storage';
 
 const SUBJECTS = [
   'Aqidah Akhlaq', 'Fiqih', 'Qur\'an Hadits', 'Sejarah Kebudayaan Islam (SKI)', 'Bahasa Arab',
-  'Matematika', 'Bahasa Indonesia', 'Bahasa Inggris', 'IPA', 'IPS', 
-  'Fisika', 'Kimia', 'Biologi', 'Geografi', 'Sejarah', 'PKn', 
+  'Matematika', 'Bahasa Indonesia', 'Bahasa Inggris', 'IPA', 'IPS',
+  'Fisika', 'Kimia', 'Biologi', 'Geografi', 'Sejarah', 'PKn',
   'Seni Budaya', 'PJOK', 'Prakarya', 'Ekonomi', 'Sosiologi', 'Lainnya'
 ];
 
@@ -52,7 +52,7 @@ export default function SettingsPage() {
       </div>
 
       <div className="card">
-        <div className="settings-profile-card" style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-4)', marginBottom: 'var(--sp-8)', padding: 'var(--sp-5)', background: 'var(--surface-2)', borderRadius: 'var(--r-lg)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-4)', marginBottom: 'var(--sp-8)', padding: 'var(--sp-5)', background: 'var(--surface-2)', borderRadius: 'var(--r-lg)' }}>
           <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg, var(--primary), var(--secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', fontWeight: 700, color: 'white' }}>
             {name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase() || '?'}
           </div>
@@ -94,7 +94,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <button className="btn btn-primary settings-action-button" onClick={handleSave} style={{ alignSelf: 'flex-start' }} disabled={saving}>
+          <button className="btn btn-primary" onClick={handleSave} style={{ alignSelf: 'flex-start' }} disabled={saving}>
             {saving ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Menyimpan...</> : <><Save size={16} /> Simpan Perubahan</>}
           </button>
         </div>
@@ -122,7 +122,7 @@ export default function SettingsPage() {
               <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Sistem akan mengirim tautan pemulihan ke email akun Anda.</div>
             </div>
           </div>
-          <button className="btn btn-secondary settings-action-button" onClick={handleResetPassword} disabled={sendingReset} style={{ alignSelf: 'flex-start' }}>
+          <button className="btn btn-secondary" onClick={handleResetPassword} disabled={sendingReset} style={{ alignSelf: 'flex-start' }}>
             {sendingReset ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Mengirim...</> : <><Mail size={16} /> Kirim Email Reset Password</>}
           </button>
         </div>

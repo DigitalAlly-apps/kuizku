@@ -41,7 +41,6 @@ export const storage = {
       password: data.password,
     });
 
-    // Handle common Supabase auth errors with friendly messages
     if (authErr) {
       console.error('Supabase Auth Error:', authErr);
       if (authErr.message.includes('User already registered') || authErr.message.includes('already been registered')) {
@@ -51,14 +50,11 @@ export const storage = {
     }
     if (!authData.user) return { teacher: null, error: 'Gagal membuat akun.' };
 
-    // Supabase "phantom user" detection:
-    // When email confirmation is ON, re-registering an existing email returns a fake success
-    // with an empty identities array instead of an error (to prevent email enumeration).
     if (!authData.user.identities || authData.user.identities.length === 0) {
       return { teacher: null, error: 'Email ini sudah terdaftar. Silakan login atau gunakan email lain.' };
     }
 
-    // 2. Upsert into public.teachers (handles case where auth user exists but teachers row was deleted)
+    // 2. Upsert into public.teachers
     const teacher: Teacher = {
       id: authData.user.id,
       name: data.name,
@@ -86,19 +82,21 @@ export const storage = {
       return { teacher: null, error: 'Email atau password salah' };
     }
     if (!authData.user) return { teacher: null, error: 'User tidak ditemukan' };
-    
+
     const { data: tData, error: dbErr } = await supabase.from('teachers').select('*').eq('id', authData.user.id).single();
     if (dbErr || !tData) return { teacher: null, error: 'Data profil guru tidak ditemukan di database' };
 
-    return { teacher: {
-      id: tData.id,
-      name: tData.name,
-      email: tData.email,
-      password: '',
-      subject: tData.subject || '',
-      institution: tData.institution || '',
-      createdAt: tData.created_at
-    } };
+    return {
+      teacher: {
+        id: tData.id,
+        name: tData.name,
+        email: tData.email,
+        password: '',
+        subject: tData.subject || '',
+        institution: tData.institution || '',
+        createdAt: tData.created_at
+      }
+    };
   },
 
   async logout(): Promise<void> {
@@ -187,7 +185,6 @@ export const storage = {
   async getExamsByTeacher(teacherId: string): Promise<Exam[]> {
     const { data, error } = await supabase.from('exams').select('*, questions(*), preloaded_students(*)').eq('teacher_id', teacherId).order('created_at', { ascending: false });
     if (error || !data) return [];
-    
     return data.map(dbToExam);
   },
 
@@ -198,8 +195,6 @@ export const storage = {
   },
 
   async saveExam(exam: Exam): Promise<void> {
-    // 1. Upsert Exam
-    // Convert empty strings to null for timestamp columns (Postgres rejects '')
     const activeFrom = exam.activeFrom && exam.activeFrom.trim() !== '' ? exam.activeFrom : null;
     const activeTo = exam.activeTo && exam.activeTo.trim() !== '' ? exam.activeTo : null;
 
@@ -221,7 +216,6 @@ export const storage = {
     });
     if (examErr) { console.error('❌ Error saving exam:', examErr); return; }
 
-    // 2. Refresh Questions (Delete old, Insert new)
     const { error: delQErr } = await supabase.from('questions').delete().eq('exam_id', exam.id);
     if (delQErr) console.error('❌ Error deleting old questions:', delQErr);
 
@@ -244,7 +238,6 @@ export const storage = {
       if (qErr) console.error('❌ Error inserting questions:', qErr);
     }
 
-    // 3. Refresh Preloaded Students
     const { error: delSErr } = await supabase.from('preloaded_students').delete().eq('exam_id', exam.id);
     if (delSErr) console.error('❌ Error deleting old students:', delSErr);
 
@@ -265,16 +258,14 @@ export const storage = {
 
   // ---- Submissions ----
   async getSubmissionsByTeacher(teacherId: string): Promise<Submission[]> {
-    // Requires joining submissions with exams where teacher_id matches
-    // For simplicity in prototype, we'll fetch exams then submissions
     const exams = await this.getExamsByTeacher(teacherId);
     if (!exams.length) return [];
-    
+
     const examIds = exams.map(e => e.id);
     const { data, error } = await supabase.from('submissions')
       .select('*, student_answers(*)')
       .in('exam_id', examIds);
-      
+
     if (error || !data) return [];
     return data.map(dbToSubmission);
   },
@@ -310,10 +301,8 @@ export const storage = {
       return;
     }
 
-    // Upsert Answers
     if (sub.answers.length > 0) {
       const aInserts = sub.answers.map(a => {
-        // Also find grade if exists
         const grade = sub.essayScores?.find(g => g.questionId === a.questionId);
         return {
           submission_id: sub.id,
@@ -326,7 +315,6 @@ export const storage = {
           essay_comment: grade?.comment
         };
       });
-      // Delete old answers for this submission to avoid unique constraint issues then insert
       await supabase.from('student_answers').delete().eq('submission_id', sub.id);
       const { error: answersErr } = await supabase.from('student_answers').insert(aInserts);
       if (answersErr) {
@@ -422,8 +410,8 @@ function dbToExam(db: any): Exam {
     activeTo: db.active_to,
     createdAt: db.created_at,
     updatedAt: db.updated_at,
-    preloadedStudents: db.preloaded_students?.map((s:any) => ({ name: s.name, nis: s.nis })) || [],
-    questions: (db.questions || []).map((q:any) => ({
+    preloadedStudents: db.preloaded_students?.map((s: any) => ({ name: s.name, nis: s.nis })) || [],
+    questions: (db.questions || []).map((q: any) => ({
       id: q.id,
       type: q.type,
       text: q.text,
@@ -435,15 +423,15 @@ function dbToExam(db: any): Exam {
       timerSeconds: q.timer_seconds,
       tags: q.tags || [],
       order: q.order
-    })).sort((a:any, b:any) => a.order - b.order)
+    })).sort((a: any, b: any) => a.order - b.order)
   };
 }
 
 function dbToSubmission(db: any): Submission {
   const answers: StudentAnswer[] = [];
   const essayScores: any[] = [];
-  
-  (db.student_answers || []).forEach((a:any) => {
+
+  (db.student_answers || []).forEach((a: any) => {
     answers.push({
       questionId: a.question_id,
       questionType: a.question_type,
