@@ -15,7 +15,6 @@ export interface Teacher {
   id: string;
   name: string;
   email: string;
-  password: string; // hashed (SHA-256 in browser, demo-only)
   subject: string;
   institution: string;
   createdAt: string;

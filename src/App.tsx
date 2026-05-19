@@ -2,7 +2,7 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
 import TeacherLayout from './components/layout/TeacherLayout';
-import { ToastContainer, PageLoader, NetworkStatusBanner } from './components/ui';
+import { ToastContainer, PageLoader, NetworkStatusBanner, ErrorBoundary } from './components/ui';
 
 // ---- Lazy-loaded pages (code splitting) ----
 const LandingPage      = lazy(() => import('./pages/LandingPage'));
@@ -25,10 +25,11 @@ const StudentHistoryPage  = lazy(() => import('./pages/student/StudentHistoryPag
 
 function App() {
   return (
-    <AppProvider>
-      <BrowserRouter>
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
+    <ErrorBoundary>
+      <AppProvider>
+        <BrowserRouter>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
             {/* Landing */}
             <Route path="/" element={<LandingPage />} />
 
@@ -56,11 +57,12 @@ function App() {
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </Suspense>
-        <NetworkStatusBanner />
-        <ToastContainer />
-      </BrowserRouter>
-    </AppProvider>
+          </Suspense>
+          <NetworkStatusBanner />
+          <ToastContainer />
+        </BrowserRouter>
+      </AppProvider>
+    </ErrorBoundary>
   );
 }
 

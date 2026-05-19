@@ -34,10 +34,10 @@ function writePendingSubmissionQueue(queue: Submission[]): void {
 
 export const storage = {
   // ---- Auth / Teacher ----
-  async registerTeacher(data: Omit<Teacher, 'id' | 'createdAt'>): Promise<{ teacher: Teacher | null, error?: string }> {
+  async registerTeacher(data: Omit<Teacher, 'id' | 'createdAt'> & { password: string }): Promise<{ teacher: Teacher | null, error?: string }> {
     // 1. SignUp to Supabase Auth
     const { data: authData, error: authErr } = await supabase.auth.signUp({
-      email: data.email,
+      email: data.email.toLowerCase().trim(),
       password: data.password,
     });
 
@@ -59,7 +59,6 @@ export const storage = {
       id: authData.user.id,
       name: data.name,
       email: data.email,
-      password: '',
       subject: data.subject,
       institution: data.institution,
       createdAt: new Date().toISOString()
@@ -76,7 +75,11 @@ export const storage = {
   },
 
   async loginTeacher(email: string, password: string): Promise<{ teacher: Teacher | null, error?: string }> {
-    const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({ email, password });
+    // Lowercase email agar case-insensitive (Supabase Auth case-sensitive)
+    const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
+      email: email.toLowerCase().trim(),
+      password,
+    });
     if (authErr) {
       if (authErr.message.includes('Email not confirmed')) return { teacher: null, error: 'Email belum dikonfirmasi. Silakan cek inbox/spam email Anda.' };
       return { teacher: null, error: 'Email atau password salah' };
@@ -94,7 +97,6 @@ export const storage = {
         id: tData.id,
         name: tData.name,
         email: tData.email,
-        password: '',
         subject: tData.subject || '',
         institution: tData.institution || '',
         createdAt: tData.created_at
@@ -112,7 +114,7 @@ export const storage = {
     const { data: tData } = await supabase.from('teachers').select('*').eq('id', user.id).single();
     if (!tData) return null;
     return {
-      id: tData.id, name: tData.name, email: tData.email, password: '',
+      id: tData.id, name: tData.name, email: tData.email,
       subject: tData.subject || '', institution: tData.institution || '', createdAt: tData.created_at
     };
   },
@@ -197,11 +199,11 @@ export const storage = {
     return dbToExam(data);
   },
 
-  async saveExam(exam: Exam): Promise<void> {
+  async saveExam(exam: Exam): Promise<{ error?: string }> {
     const activeFrom = exam.activeFrom && exam.activeFrom.trim() !== '' ? exam.activeFrom : null;
     const activeTo = exam.activeTo && exam.activeTo.trim() !== '' ? exam.activeTo : null;
 
-    const { error: examErr } = await supabase.from('exams').upsert({
+    const examPayload = {
       id: exam.id,
       teacher_id: exam.teacherId,
       title: exam.title,
@@ -215,44 +217,61 @@ export const storage = {
       settings: exam.settings,
       active_from: activeFrom,
       active_to: activeTo,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+    };
+
+    const questionsPayload = exam.questions.map(q => ({
+      id: q.id,
+      type: q.type,
+      text: q.text,
+      image_url: q.imageUrl || null,
+      options: q.options || null,
+      correct_option_id: q.correctOptionId || null,
+      answer_guide: q.answerGuide || null,
+      weight: q.weight,
+      timer_seconds: q.timerSeconds ?? null,
+      tags: q.tags || [],
+      order: q.order,
+    }));
+
+    const studentsPayload = (exam.preloadedStudents || []).map(s => ({
+      name: s.name,
+      nis: s.nis,
+    }));
+
+    const { error } = await supabase.rpc('save_exam_full', {
+      p_exam: examPayload,
+      p_questions: questionsPayload,
+      p_students: studentsPayload,
     });
-    if (examErr) { console.error('❌ Error saving exam:', examErr); return; }
 
-    const { error: delQErr } = await supabase.from('questions').delete().eq('exam_id', exam.id);
-    if (delQErr) console.error('❌ Error deleting old questions:', delQErr);
-
-    if (exam.questions.length > 0) {
-      const qInserts = exam.questions.map(q => ({
-        id: q.id,
-        exam_id: exam.id,
-        type: q.type,
-        text: q.text,
-        image_url: q.imageUrl || null,
-        options: q.options || null,
-        correct_option_id: q.correctOptionId || null,
-        answer_guide: q.answerGuide || null,
-        weight: q.weight,
-        timer_seconds: q.timerSeconds || null,
-        tags: q.tags || [],
-        order: q.order
-      }));
-      const { error: qErr } = await supabase.from('questions').insert(qInserts);
-      if (qErr) console.error('❌ Error inserting questions:', qErr);
+    if (error) {
+      console.error('❌ saveExam RPC error:', error);
+      return { error: error.message };
     }
+    return {};
+  },
 
-    const { error: delSErr } = await supabase.from('preloaded_students').delete().eq('exam_id', exam.id);
-    if (delSErr) console.error('❌ Error deleting old students:', delSErr);
+  // Update hanya metadata exam (judul, deskripsi, dll) tanpa menyentuh soal
+  async updateExamMeta(id: string, data: {
+    title?: string; description?: string; subject?: string; className?: string;
+    examType?: string; activeFrom?: string | null; activeTo?: string | null;
+    status?: string; settings?: object; updatedAt?: string;
+  }): Promise<{ error?: string }> {
+    const payload: Record<string, unknown> = { updated_at: data.updatedAt ?? new Date().toISOString() };
+    if (data.title !== undefined) payload.title = data.title;
+    if (data.description !== undefined) payload.description = data.description || null;
+    if (data.subject !== undefined) payload.subject = data.subject;
+    if (data.className !== undefined) payload.class_name = data.className || null;
+    if (data.examType !== undefined) payload.exam_type = data.examType;
+    if (data.activeFrom !== undefined) payload.active_from = data.activeFrom || null;
+    if (data.activeTo !== undefined) payload.active_to = data.activeTo || null;
+    if (data.status !== undefined) payload.status = data.status;
+    if (data.settings !== undefined) payload.settings = data.settings;
 
-    if (exam.preloadedStudents && exam.preloadedStudents.length > 0) {
-      const sInserts = exam.preloadedStudents.map(s => ({
-        exam_id: exam.id,
-        name: s.name,
-        nis: s.nis
-      }));
-      const { error: sErr } = await supabase.from('preloaded_students').insert(sInserts);
-      if (sErr) console.error('❌ Error inserting students:', sErr);
-    }
+    const { error } = await supabase.from('exams').update(payload).eq('id', id);
+    if (error) return { error: error.message };
+    return {};
   },
 
   async deleteExam(id: string): Promise<void> {

@@ -51,9 +51,13 @@ export default function ExamTakingPage() {
   const antiCheatEventsRef = useRef<import('../../types').AntiCheatEvent[]>([]);
 
   const [loadError, setLoadError] = useState('');
+  const bootstrapRef = useRef(false); // guard agar bootstrap tidak jalan 2x (StrictMode)
 
   // ---- Bootstrap — query Supabase langsung, tidak butuh auth guru ----
   useEffect(() => {
+    if (bootstrapRef.current) return;
+    bootstrapRef.current = true;
+
     if (!state?.examId || !code) { navigate('/ujian'); return; }
 
     storage.getExamByCode(code).then(async found => {
@@ -92,8 +96,9 @@ export default function ExamTakingPage() {
         setSession(newSession);
         setCurrentIdx(0);
       }
-    }).catch(() => {
-      setLoadError('Gagal memuat ujian. Periksa koneksi internet Anda.');
+    }).catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      setLoadError(`Gagal memuat ujian: ${msg}`);
     });
   }, []);
 

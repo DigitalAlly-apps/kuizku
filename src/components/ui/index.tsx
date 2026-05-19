@@ -328,3 +328,6 @@ export function NetworkStatusBanner() {
     </div>
   );
 }
+
+// Re-export ErrorBoundary
+export { ErrorBoundary } from './ErrorBoundary';

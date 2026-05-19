@@ -27,7 +27,7 @@ interface AppContextShape {
   currentTeacher: Teacher | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  register: (data: Omit<Teacher, 'id' | 'createdAt' | 'password'> & { password: string }) => Promise<{ success: boolean; error?: string }>;
+  register: (data: Omit<Teacher, 'id' | 'createdAt'> & { password: string }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
 
   // Feature access (always unlocked)
@@ -131,7 +131,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return { success: false, error };
   };
 
-  const register = async (data: Omit<Teacher, 'id' | 'createdAt' | 'password'> & { password: string }): Promise<{ success: boolean; error?: string }> => {
+  const register = async (data: Omit<Teacher, 'id' | 'createdAt'> & { password: string }): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
     const { teacher, error } = await storage.registerTeacher(data);
     if (teacher) {
@@ -167,15 +167,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return newExam;
   };
 
+  // updateExam: kalau data hanya berisi field meta (tidak ada questions/preloadedStudents),
+  // pakai updateExamMeta — hanya UPDATE satu row, soal tidak disentuh sama sekali.
+  // Kalau ada questions/preloadedStudents, pakai saveExam (RPC transactional).
   const updateExam = async (id: string, data: Partial<Exam>) => {
+    const updatedAt = new Date().toISOString();
     let updated: Exam | undefined;
     setExamsState(prev => {
       const existing = prev.find(e => e.id === id);
       if (!existing) return prev;
-      updated = { ...existing, ...data, updatedAt: new Date().toISOString() };
+      updated = { ...existing, ...data, updatedAt };
       return prev.map(e => e.id === id ? updated! : e);
     });
-    if (updated) await storage.saveExam(updated);
+    if (!updated) return;
+
+    const hasQuestions = data.questions !== undefined;
+    const hasStudents = data.preloadedStudents !== undefined;
+
+    if (hasQuestions || hasStudents) {
+      await storage.saveExam(updated);
+    } else {
+      await storage.updateExamMeta(id, {
+        title: data.title,
+        description: data.description,
+        subject: data.subject,
+        className: data.className,
+        examType: data.examType,
+        activeFrom: data.activeFrom,
+        activeTo: data.activeTo,
+        status: data.status,
+        settings: data.settings,
+        updatedAt,
+      });
+    }
   };
 
   const deleteExam = async (id: string) => {
@@ -247,7 +271,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const returnSubmission = async (submissionId: string) => {
     const sub = submissions.find(s => s.id === submissionId);
     if (!sub) return;
-    const updated = { ...sub, isComplete: false, isReturned: true };
+    // Jangan flip isComplete — cukup set isReturned: true
+    // isComplete tetap true agar submission masih muncul di tab Hasil
+    const updated = { ...sub, isReturned: true };
     setSubmissionsState(prev => prev.map(s => s.id === submissionId ? updated : s));
     await storage.saveSubmission(updated);
   };
