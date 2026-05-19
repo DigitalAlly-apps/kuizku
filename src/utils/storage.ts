@@ -83,6 +83,9 @@ export const storage = {
     }
     if (!authData.user) return { teacher: null, error: 'User tidak ditemukan' };
 
+    // Pastikan session sudah tersimpan sebelum query DB
+    await supabase.auth.getSession();
+
     const { data: tData, error: dbErr } = await supabase.from('teachers').select('*').eq('id', authData.user.id).single();
     if (dbErr || !tData) return { teacher: null, error: 'Data profil guru tidak ditemukan di database' };
 

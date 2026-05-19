@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, FileText, BookOpen, BarChart2, Settings, LogOut, Moon, Sun, CreditCard } from 'lucide-react';
+import { LayoutDashboard, FileText, BookOpen, BarChart2, Settings, LogOut, Moon, Sun } from 'lucide-react';
 import { useAuth } from '../../context/AppContext';
 
 const navItems = [
@@ -7,7 +7,6 @@ const navItems = [
   { to: '/guru/ujian', icon: FileText, label: 'Ujian Saya' },
   { to: '/guru/bank-soal', icon: BookOpen, label: 'Bank Soal' },
   { to: '/guru/hasil', icon: BarChart2, label: 'Hasil & Nilai' },
-  { to: '/guru/billing', icon: CreditCard, label: 'Paket & Billing' },
 ];
 
 export default function Sidebar({ open, onClose, toggleTheme, theme }: { open?: boolean, onClose?: () => void, toggleTheme?: () => void, theme?: string }) {

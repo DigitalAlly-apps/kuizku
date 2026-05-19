@@ -1,7 +1,6 @@
 // Step 1 — General Settings
 import { useState } from 'react';
 import { Toggle } from '../../../components/ui';
-import { useApp, useToast } from '../../../context/AppContext';
 import type { ExamSettings, ExamType, PreloadedStudent } from '../../../types';
 
 const SUBJECTS = [
@@ -21,8 +20,6 @@ interface Props {
 }
 
 export default function Step1Setup({ initial, onNext }: Props) {
-  const { featureAccess } = useApp();
-  const { addToast } = useToast();
   const [title, setTitle] = useState(initial.title);
   const [description, setDescription] = useState(initial.description);
   const [subject, setSubject] = useState(initial.subject);
@@ -36,10 +33,6 @@ export default function Step1Setup({ initial, onNext }: Props) {
 
   const setSetting = <K extends keyof ExamSettings>(k: K, v: ExamSettings[K]) =>
     setSettings(s => ({ ...s, [k]: v }));
-
-  const requirePro = (feature: string) => {
-    addToast({ type: 'info', title: 'Fitur Pro', message: `${feature} tersedia di paket Pro. Buka menu Paket & Billing untuk upgrade.` });
-  };
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -156,14 +149,10 @@ export default function Step1Setup({ initial, onNext }: Props) {
             {([['NONE', 'Tanpa Timer'], ['WHOLE_EXAM', 'Keseluruhan Ujian'], ['PER_QUESTION', 'Per Soal']] as const).map(([v, l]) => (
               <button key={v} type="button"
                 className={`btn btn-sm ${settings.timerMode === v ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => {
-                  if (v !== 'NONE' && !featureAccess.canUseTimer) { requirePro('Countdown/timer ujian'); return; }
-                  setSetting('timerMode', v);
-                }}>
+                onClick={() => setSetting('timerMode', v)}>
                 {l}
               </button>
             ))}
-          {!featureAccess.canUseTimer && <span className="form-hint">Countdown/timer tersedia untuk paket Pro.</span>}
           </div>
           {settings.timerMode === 'WHOLE_EXAM' && (
             <div className="form-group compact-form-group" style={{ marginTop: 'var(--sp-3)', maxWidth: 200 }}>

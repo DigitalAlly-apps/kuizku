@@ -28,7 +28,7 @@ function formatDeadline(iso?: string): string {
 }
 
 export default function ExamListPage() {
-  const { currentTeacher, exams, updateExam, deleteExam, duplicateExam, publishExam, archiveExam, endExam, submissions, featureAccess } = useApp();
+  const { currentTeacher, exams, updateExam, deleteExam, duplicateExam, publishExam, archiveExam, endExam, submissions } = useApp();
   const { addToast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -149,7 +149,6 @@ export default function ExamListPage() {
   };
 
   const getPublishError = (exam: Exam): string | null => {
-    if (!featureAccess.canPublishExam && exam.status !== 'ACTIVE') return `Paket Free mendukung ${featureAccess.limits.activeExams} ujian aktif. Upgrade ke Pro untuk publish lebih banyak ujian.`;
     if (exam.questions.length === 0) return 'Tambahkan minimal 1 soal sebelum publish.';
     if (exam.activeTo && new Date(exam.activeTo).getTime() <= Date.now()) return 'Deadline ujian sudah lewat. Perbarui "Aktif Hingga" sebelum publish.';
     if (exam.activeFrom && exam.activeTo && new Date(exam.activeFrom).getTime() >= new Date(exam.activeTo).getTime()) return 'Waktu mulai harus lebih awal dari deadline.';
@@ -164,7 +163,6 @@ export default function ExamListPage() {
     const error = getPublishError(exam);
     if (error) {
       addToast({ type: 'error', title: 'Ujian belum siap dipublish', message: error });
-      if (!featureAccess.canPublishExam) navigate('/guru/billing');
       setOpenMenuId(null);
       return;
     }

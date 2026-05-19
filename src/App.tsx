@@ -16,7 +16,6 @@ const CreateExamPage   = lazy(() => import('./pages/teacher/CreateExamPage'));
 const QuestionBankPage = lazy(() => import('./pages/teacher/QuestionBankPage'));
 const ResultsPage      = lazy(() => import('./pages/teacher/ResultsPage'));
 const SettingsPage     = lazy(() => import('./pages/teacher/SettingsPage'));
-const BillingPage      = lazy(() => import('./pages/teacher/BillingPage'));
 
 // Student
 const JoinExamPage        = lazy(() => import('./pages/student/JoinExamPage'));
@@ -51,7 +50,6 @@ function App() {
               <Route path="ujian/baru" element={<CreateExamPage />} />
               <Route path="bank-soal"  element={<QuestionBankPage />} />
               <Route path="hasil"      element={<ResultsPage />} />
-              <Route path="billing"    element={<BillingPage />} />
               <Route path="pengaturan" element={<SettingsPage />} />
             </Route>
 

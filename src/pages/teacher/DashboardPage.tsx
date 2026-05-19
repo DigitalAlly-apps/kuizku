@@ -1,12 +1,12 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, FileText, BookOpen, Users, TrendingUp, Clock, CheckCircle, CreditCard, MessageSquareWarning } from 'lucide-react';
+import { Plus, FileText, BookOpen, Users, TrendingUp, Clock, CheckCircle, MessageSquareWarning } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { StatCard, FormatBadge, StatusBadge, ExamTypeBadge, EmptyState, SectionHeader } from '../../components/ui';
 import { formatRelative } from '../../utils/helpers';
 
 export default function DashboardPage() {
-  const { currentTeacher, exams, submissions, featureAccess } = useApp();
+  const { currentTeacher, exams, submissions } = useApp();
   const navigate = useNavigate();
 
   const myExams = useMemo(() => exams.filter(e => e.teacherId === currentTeacher?.id), [exams, currentTeacher]);
@@ -73,23 +73,6 @@ export default function DashboardPage() {
       </div>
 
       <div className="dashboard-plan-grid" style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 'var(--sp-4)', marginBottom: 'var(--sp-8)' }}>
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--sp-3)' }}>
-            <div>
-              <h3 style={{ marginBottom: 2 }}>Pemakaian Paket</h3>
-              <p style={{ fontSize: '0.85rem' }}>{featureAccess.isPro ? 'Paket Pro aktif' : 'Paket Free aktif'}</p>
-            </div>
-            <button className="btn btn-secondary btn-sm" onClick={() => navigate('/guru/billing')}>
-              <CreditCard size={14} /> Billing
-            </button>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--sp-3)' }} className="dashboard-usage-grid">
-            <UsageItem label="Ujian Aktif" value={featureAccess.usage.activeExams} limit={featureAccess.limits.activeExams} />
-            <UsageItem label="Jawaban/Bulan" value={featureAccess.usage.monthlySubmissions} limit={featureAccess.limits.monthlySubmissions} />
-            <UsageItem label="Bank Soal" value={featureAccess.usage.bankQuestions} limit={featureAccess.limits.bankQuestions} />
-          </div>
-        </div>
-
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <MessageSquareWarning size={18} style={{ color: 'var(--warning)' }} />
@@ -180,23 +163,6 @@ export default function DashboardPage() {
           </button>
         </div>
       )}
-    </div>
-  );
-}
-
-function UsageItem({ label, value, limit }: { label: string; value: number; limit: number }) {
-  const pct = Math.min(100, Math.round((value / limit) * 100));
-  const color = pct >= 85 ? 'var(--warning)' : 'var(--primary)';
-  return (
-    <div style={{ padding: 'var(--sp-3)', background: 'var(--surface-2)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
-        <strong>{value}/{limit}</strong>
-        <span style={{ color, fontSize: '0.75rem', fontWeight: 700 }}>{pct}%</span>
-      </div>
-      <div style={{ height: 5, background: 'var(--surface-3)', borderRadius: 'var(--r-full)', overflow: 'hidden', marginBottom: 6 }}>
-        <div style={{ width: `${pct}%`, height: '100%', background: color }} />
-      </div>
-      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{label}</div>
     </div>
   );
 }

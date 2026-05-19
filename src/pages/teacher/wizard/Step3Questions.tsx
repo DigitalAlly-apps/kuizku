@@ -20,7 +20,7 @@ interface Props {
 type ActiveModal = 'manual' | 'import' | 'bank' | 'edit' | null;
 
 export default function Step3Questions({ format, subject, initial, onNext, onBack }: Props) {
-  const { addToBankFromQuestion, featureAccess } = useApp();
+  const { addToBankFromQuestion } = useApp();
   const { addToast } = useToast();
   const [questions, setQuestions] = useState<Question[]>(initial);
   const [activeModal, setActiveModal] = useState<ActiveModal>(null);
@@ -110,18 +110,12 @@ export default function Step3Questions({ format, subject, initial, onNext, onBac
           { key: 'bank', icon: <BookOpen size={20} />, label: 'Bank Soal', hint: 'Pakai soal lama', color: 'var(--secondary)', bg: 'var(--secondary-light)' },
         ].map(btn => (
           <button key={btn.key} className="card" style={{ border: `1px solid ${btn.color}30`, background: btn.bg, cursor: 'pointer', textAlign: 'center', padding: 'var(--sp-4)', transition: 'all 0.15s ease' }}
-            onClick={() => {
-              if (btn.key === 'import' && !featureAccess.canImport) {
-                addToast({ type: 'info', title: 'Import tersedia di Pro', message: 'Upgrade ke Pro untuk import soal dari Excel atau CSV.' });
-                return;
-              }
-              setActiveModal(btn.key as ActiveModal);
-            }}
+            onClick={() => setActiveModal(btn.key as ActiveModal)}
             onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-2px)')}
             onMouseLeave={e => (e.currentTarget.style.transform = '')}>
             <div style={{ color: btn.color, marginBottom: 6 }}>{btn.icon}</div>
             <div style={{ fontWeight: 700, fontSize: '0.875rem', color: btn.color }}>{btn.label}</div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{btn.key === 'import' && !featureAccess.canImport ? 'Pro' : btn.hint}</div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{btn.hint}</div>
           </button>
         ))}
         {/* Format info card */}
