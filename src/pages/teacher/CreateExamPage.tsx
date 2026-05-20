@@ -57,6 +57,7 @@ export default function CreateExamPage() {
     examType: 'UJIAN', settings: defaultSettings, format: 'PG_ONLY', questions: [], preloadedStudents: [],
   });
   const [createdExam, setCreatedExam] = useState<Exam | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const update = (partial: Partial<WizardData>) => setData(d => ({ ...d, ...partial }));
 
@@ -93,10 +94,8 @@ export default function CreateExamPage() {
 
   const handleStep4Next = async (questions: Question[]) => {
     update({ questions });
-    setStep(5);
+    setSaving(true);
 
-    // Build the full exam object atomically (avoids React state race condition
-    // where updateExam(exam.id, { questions }) reads stale state before createExam settles)
     let code = generateExamCode();
     while (exams.some(e => e.code === code)) code = generateExamCode();
 
@@ -121,13 +120,17 @@ export default function CreateExamPage() {
       updatedAt: now,
     };
 
-    // Save everything in ONE call — exam + questions saved together
-    await storage.saveExam(newExam);
+    const { error } = await storage.saveExam(newExam);
+    if (error) {
+      addToast({ type: 'error', title: 'Gagal menyimpan ujian', message: error });
+      setSaving(false);
+      return;
+    }
 
-    // Refresh local state so ExamListPage reflects the new exam
     await refreshExams();
-
     setCreatedExam(newExam);
+    setSaving(false);
+    setStep(5);
   };
 
   const handleFinish = () => {
@@ -187,6 +190,7 @@ export default function CreateExamPage() {
             data={data}
             onNext={handleStep4Next}
             onBack={() => setStep(3)}
+            saving={saving}
           />
         )}
         {step === 5 && createdExam && (

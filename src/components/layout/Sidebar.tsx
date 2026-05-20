@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, FileText, BookOpen, BarChart2, Settings, LogOut, Moon, Sun } from 'lucide-react';
 import { useAuth } from '../../context/AppContext';
+import { APP_CONFIG } from '../../lib/appConfig';
 
 const navItems = [
   { to: '/guru/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -28,8 +29,8 @@ export default function Sidebar({ open, onClose, toggleTheme, theme }: { open?: 
   return (
     <aside className={`sidebar ${open ? 'open' : ''}`}>
       <NavLink to="/guru/dashboard" className="sidebar-logo" onClick={handleNavClick}>
-        <div className="sidebar-logo-icon">⚡</div>
-        <span className="sidebar-logo-text">Ujianly</span>
+        <div className="sidebar-logo-icon">{APP_CONFIG.icon}</div>
+        <span className="sidebar-logo-text">{APP_CONFIG.name}</span>
       </NavLink>
 
       <nav className="sidebar-nav">

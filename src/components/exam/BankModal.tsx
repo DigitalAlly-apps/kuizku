@@ -87,9 +87,9 @@ export default function BankModal({ open, format, onAdd, onClose }: Props) {
   return (
     <Modal open={open} onClose={onClose} title="Pilih dari Bank Soal" size="xl"
       subtitle={`${eligible.length} soal tersedia di bank soal Anda`}>
-      <div style={{ display: 'flex', gap: 'var(--sp-5)', height: 500 }}>
+      <div className="bank-modal-body">
         {/* Left — list */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)', minWidth: 0 }}>
+        <div className="bank-modal-list">
           {/* Search & filter */}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <div style={{ position: 'relative', flex: 1 }}>
@@ -155,7 +155,7 @@ export default function BankModal({ open, format, onAdd, onClose }: Props) {
         </div>
 
         {/* Right — preview */}
-        <div style={{ width: 280, flexShrink: 0, borderLeft: '1px solid var(--border)', paddingLeft: 'var(--sp-5)', overflowY: 'auto' }}>
+        <div className="bank-modal-preview">
           {preview ? (
             <div>
               <div style={{ fontWeight: 700, marginBottom: 'var(--sp-3)', fontSize: '0.875rem' }}>Preview Soal</div>

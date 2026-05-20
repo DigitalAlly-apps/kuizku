@@ -17,11 +17,11 @@ alter table public.student_answers drop column if exists workspace_id;
 alter table public.bank_questions  drop column if exists workspace_id;
 
 -- Drop helper functions billing yang tidak dipakai lagi
-drop function if exists public.set_user_plan(text, text, integer, text);
-drop function if exists public.list_user_plans();
-drop function if exists public.sync_teacher_to_subscription();
-drop function if exists public.sync_teacher_update_to_subscriptions();
-drop function if exists public.sync_teacher_to_sub();
+drop function if exists public.set_user_plan(text, text, integer, text) cascade;
+drop function if exists public.list_user_plans() cascade;
+drop function if exists public.sync_teacher_to_subscription() cascade;
+drop function if exists public.sync_teacher_update_to_subscriptions() cascade;
+drop function if exists public.sync_teacher_to_sub() cascade;
 
 -- Verifikasi
 select table_name

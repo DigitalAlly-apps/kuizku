@@ -3,13 +3,6 @@ import { User, Building, BookOpen, Save, Loader2, Mail, Shield } from 'lucide-re
 import { useAuth, useToast } from '../../context/AppContext';
 import { storage } from '../../utils/storage';
 
-const SUBJECTS = [
-  'Aqidah Akhlaq', 'Fiqih', 'Qur\'an Hadits', 'Sejarah Kebudayaan Islam (SKI)', 'Bahasa Arab',
-  'Matematika', 'Bahasa Indonesia', 'Bahasa Inggris', 'IPA', 'IPS',
-  'Fisika', 'Kimia', 'Biologi', 'Geografi', 'Sejarah', 'PKn',
-  'Seni Budaya', 'PJOK', 'Prakarya', 'Ekonomi', 'Sosiologi', 'Lainnya'
-];
-
 export default function SettingsPage() {
   const { currentTeacher } = useAuth();
   const { addToast } = useToast();
@@ -76,12 +69,9 @@ export default function SettingsPage() {
             <label className="form-label" htmlFor="settings-subject">Mata Pelajaran</label>
             <div style={{ position: 'relative' }}>
               <BookOpen size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-              <input list="subjects-list" id="settings-subject" className="form-input" style={{ paddingLeft: 40 }}
-                placeholder="Contoh: Bahasa Arab, Matematika..."
+              <input id="settings-subject" className="form-input" style={{ paddingLeft: 40 }}
+                placeholder="Contoh: Matematika, Bahasa Indonesia..."
                 value={subject} onChange={e => setSubject(e.target.value)} />
-              <datalist id="subjects-list">
-                {SUBJECTS.map(s => <option key={s} value={s} />)}
-              </datalist>
             </div>
           </div>
 

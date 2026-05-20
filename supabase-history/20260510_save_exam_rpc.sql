@@ -69,7 +69,11 @@ begin
     q->>'answer_guide',
     (q->>'weight')::numeric,
     nullif(q->>'timer_seconds', '')::integer,
-    coalesce(q->'tags', '[]'::jsonb),
+    -- Convert jsonb array → text[] (kolom tags di DB tipe text[])
+    coalesce(
+      (select array_agg(value::text) from jsonb_array_elements_text(coalesce(q->'tags', '[]'::jsonb))),
+      array[]::text[]
+    ),
     (q->>'order')::integer
   from jsonb_array_elements(p_questions) as q
   where jsonb_array_length(p_questions) > 0;

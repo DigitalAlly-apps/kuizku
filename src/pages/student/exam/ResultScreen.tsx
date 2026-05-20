@@ -2,6 +2,7 @@
 import { useEffect } from 'react';
 import { CheckCircle, Clock, BookOpen, Home, History } from 'lucide-react';
 import { formatDateTime, calcMaxMCScore } from '../../../utils/helpers';
+import { storage } from '../../../utils/storage';
 import type { Exam, Submission } from '../../../types';
 
 interface Props {
@@ -20,11 +21,27 @@ export default function ResultScreen({ exam, submission, studentName }: Props) {
   const maxMC         = calcMaxMCScore(exam);
   const mcPct         = maxMC > 0 ? Math.round((submission.mcScore / maxMC) * 100) : 0;
 
-  // ---- Save to student history (localStorage) ----
+  // ---- Save to Supabase student_history + localStorage fallback ----
   useEffect(() => {
+    const entry = {
+      examCode: exam.code,
+      examTitle: exam.title,
+      studentName,
+      nis: submission.nis,
+      mcScore: submission.mcScore,
+      totalScore: submission.totalScore,
+      maxScore: maxMC,
+      submittedAt: submission.submittedAt ?? new Date().toISOString(),
+      showScore: exam.settings.showScoreAfterSubmit,
+    };
+
+    // Simpan ke Supabase (tidak perlu auth)
+    void storage.saveStudentHistory(entry);
+
+    // Tetap simpan ke localStorage sebagai fallback offline
     try {
       const existing = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-      const entry = {
+      const localEntry = {
         id: submission.id,
         examId: exam.id,
         examTitle: exam.title,
@@ -39,7 +56,7 @@ export default function ResultScreen({ exam, submission, studentName }: Props) {
         maxMC,
       };
       const filtered = existing.filter((h: { id: string }) => h.id !== submission.id);
-      localStorage.setItem(HISTORY_KEY, JSON.stringify([entry, ...filtered].slice(0, 50)));
+      localStorage.setItem(HISTORY_KEY, JSON.stringify([localEntry, ...filtered].slice(0, 50)));
     } catch { /* ignore */ }
   }, []);
 

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AppContext';
 import { Spinner } from '../../components/ui';
+import { APP_CONFIG } from '../../lib/appConfig';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -29,8 +30,8 @@ export default function LoginPage() {
       <div style={styles.bg} />
       <div style={styles.card}>
         <div style={styles.logo}>
-          <div style={styles.logoIcon}>⚡</div>
-          <span style={styles.logoText}>Ujianly</span>
+          <div style={styles.logoIcon}>{APP_CONFIG.icon}</div>
+          <span style={styles.logoText}>{APP_CONFIG.name}</span>
         </div>
 
         <h1 style={styles.title}>Selamat Datang Kembali</h1>

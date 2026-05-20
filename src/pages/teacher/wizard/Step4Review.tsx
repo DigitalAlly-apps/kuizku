@@ -9,11 +9,12 @@ interface Props {
   data: { title: string; subject: string; format: ExamFormat; settings: ExamSettings; questions: Question[] };
   onNext: (questions: Question[]) => void;
   onBack: () => void;
+  saving?: boolean;
 }
 
 const optLetters = 'ABCDEF';
 
-export default function Step4Review({ data, onNext, onBack }: Props) {
+export default function Step4Review({ data, onNext, onBack, saving = false }: Props) {
   const [questions, setQuestions] = useState<Question[]>(data.questions);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
 
@@ -105,8 +106,8 @@ export default function Step4Review({ data, onNext, onBack }: Props) {
 
       <div className="wizard-nav-row" style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--sp-8)', paddingTop: 'var(--sp-6)', borderTop: '1px solid var(--border)' }}>
         <button className="btn btn-secondary" onClick={onBack}>← Kembali</button>
-        <button className="btn btn-success btn-lg" onClick={() => onNext(questions)} disabled={questions.length === 0}>
-          ✓ Simpan & Publikasikan
+        <button className="btn btn-success btn-lg" onClick={() => onNext(questions)} disabled={questions.length === 0 || saving}>
+          {saving ? '⏳ Menyimpan...' : '✓ Simpan & Lanjutkan'}
         </button>
       </div>
     </div>

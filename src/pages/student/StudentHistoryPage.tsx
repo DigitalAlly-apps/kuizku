@@ -76,33 +76,60 @@ export default function StudentHistoryPage() {
 
   const loadOnlineHistory = async () => {
     setLookupError('');
-    const code = lookupCode.trim().toUpperCase();
     const nis = lookupNis.trim();
-    if (code.length !== 6 || !nis) { setLookupError('Masukkan kode ujian 6 karakter dan NIS/ID.'); return; }
+    if (!nis) { setLookupError('Masukkan NIS/ID Anda.'); return; }
     setLookupLoading(true);
-    const exam = await storage.getExamByCode(code);
-    if (!exam) {
+
+    // Cari dari tabel student_history di Supabase
+    const supabaseHistory = await storage.getStudentHistory(nis);
+    if (supabaseHistory.length > 0) {
+      setOnlineHistory(supabaseHistory.map(r => ({
+        id: r.id,
+        examTitle: r.examTitle,
+        examSubject: '',
+        examCode: r.examCode,
+        examType: undefined,
+        studentName: r.studentName,
+        nis: r.nis,
+        submittedAt: r.submittedAt,
+        mcScore: r.mcScore,
+        totalScore: r.totalScore,
+        maxMC: r.maxScore,
+      })));
+      setName(supabaseHistory[0].studentName);
       setLookupLoading(false);
-      setLookupError('Kode ujian tidak ditemukan.');
       return;
     }
-    const subs = (await storage.getSubmissionsByExam(exam.id)).filter(s => s.nis === nis && s.isComplete);
-    setOnlineHistory(subs.map(s => ({
-      id: s.id,
-      examTitle: exam.title,
-      examSubject: exam.subject,
-      examCode: exam.code,
-      examType: exam.examType,
-      studentName: s.studentName,
-      nis: s.nis,
-      submittedAt: s.submittedAt,
-      mcScore: s.mcScore,
-      totalScore: s.totalScore,
-      maxMC: calcMaxMCScore(exam),
-    })));
-    setName(subs[0]?.studentName ?? name);
+
+    // Fallback: cari via kode ujian (cara lama)
+    const code = lookupCode.trim().toUpperCase();
+    if (code.length === 6) {
+      const exam = await storage.getExamByCode(code);
+      if (exam) {
+        const subs = (await storage.getSubmissionsByExam(exam.id)).filter(s => s.nis === nis && s.isComplete);
+        if (subs.length > 0) {
+          setOnlineHistory(subs.map(s => ({
+            id: s.id,
+            examTitle: exam.title,
+            examSubject: exam.subject,
+            examCode: exam.code,
+            examType: exam.examType,
+            studentName: s.studentName,
+            nis: s.nis,
+            submittedAt: s.submittedAt,
+            mcScore: s.mcScore,
+            totalScore: s.totalScore,
+            maxMC: calcMaxMCScore(exam),
+          })));
+          setName(subs[0].studentName);
+          setLookupLoading(false);
+          return;
+        }
+      }
+    }
+
     setLookupLoading(false);
-    if (subs.length === 0) setLookupError('Belum ada hasil online untuk NIS/ID ini.');
+    setLookupError('Belum ada riwayat untuk NIS/ID ini.');
   };
 
   const visibleHistory = onlineHistory.length > 0 ? onlineHistory : history;
@@ -146,9 +173,9 @@ export default function StudentHistoryPage() {
         <div className="card" style={{ marginBottom: 'var(--sp-5)' }}>
           <h3 style={{ fontSize: '1rem', marginBottom: 'var(--sp-3)' }}>Cari Riwayat Online</h3>
           <div style={{ display: 'flex', gap: 'var(--sp-3)', flexWrap: 'wrap' }}>
-            <input className="form-input" style={{ flex: '1 1 140px' }} placeholder="Kode ujian" maxLength={6}
+            <input className="form-input" style={{ flex: '1 1 180px' }} placeholder="NIS/NISN/ID Anda" value={lookupNis} onChange={e => setLookupNis(e.target.value)} />
+            <input className="form-input" style={{ flex: '1 1 140px' }} placeholder="Kode ujian (opsional)" maxLength={6}
               value={lookupCode} onChange={e => setLookupCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))} />
-            <input className="form-input" style={{ flex: '1 1 180px' }} placeholder="NIS/NISN/ID" value={lookupNis} onChange={e => setLookupNis(e.target.value)} />
             <button className="btn btn-primary" onClick={loadOnlineHistory} disabled={lookupLoading}>
               <Search size={14} /> {lookupLoading ? 'Mencari...' : 'Cari'}
             </button>

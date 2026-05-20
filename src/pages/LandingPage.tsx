@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { GraduationCap, BookOpen, ArrowRight } from 'lucide-react';
+import { APP_CONFIG } from '../lib/appConfig';
 
 export default function LandingPage() {
   return (
@@ -15,10 +16,10 @@ export default function LandingPage() {
         
         <div style={{ textAlign: 'center', marginBottom: 'var(--sp-12)' }}>
           <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: 'var(--sp-2)', background: 'linear-gradient(135deg, #F0F2FF, #9AA3C2)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            Ujianly
+            {APP_CONFIG.name}
           </h1>
           <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', maxWidth: 500, margin: '0 auto' }}>
-            Platform ujian dan kuis online paling responsif. Silakan pilih peran Anda untuk melanjutkan.
+            {APP_CONFIG.tagline}. Silakan pilih peran Anda untuk melanjutkan.
           </p>
         </div>
 

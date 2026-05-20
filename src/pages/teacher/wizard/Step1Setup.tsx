@@ -3,13 +3,6 @@ import { useState } from 'react';
 import { Toggle } from '../../../components/ui';
 import type { ExamSettings, ExamType, PreloadedStudent } from '../../../types';
 
-const SUBJECTS = [
-  'Aqidah Akhlaq', 'Fiqih', 'Qur\'an Hadits', 'Sejarah Kebudayaan Islam (SKI)', 'Bahasa Arab',
-  'Matematika', 'Bahasa Indonesia', 'Bahasa Inggris', 'IPA', 'IPS', 
-  'Fisika', 'Kimia', 'Biologi', 'Geografi', 'Sejarah', 'PKn', 
-  'Seni Budaya', 'PJOK', 'Prakarya', 'Ekonomi', 'Sosiologi', 'Lainnya'
-];
-
 interface Props {
   initial: {
     title: string; description: string; subject: string; className?: string;
@@ -106,12 +99,9 @@ export default function Step1Setup({ initial, onNext }: Props) {
         <div className="form-row form-row-2">
           <div className="form-group">
             <label className="form-label" htmlFor="s1-subject">Mata Pelajaran <span style={{ color: 'var(--danger)' }}>*</span></label>
-            <input list="subjects-list" id="s1-subject" className={`form-input ${errors.subject ? 'error' : ''}`}
-              placeholder="Contoh: Bahasa Arab, Fiqih..."
+            <input id="s1-subject" className={`form-input ${errors.subject ? 'error' : ''}`}
+              placeholder="Contoh: Matematika, Bahasa Indonesia..."
               value={subject} onChange={e => { setSubject(e.target.value); setErrors(er => ({ ...er, subject: '' })); }} />
-            <datalist id="subjects-list">
-              {SUBJECTS.map(s => <option key={s} value={s} />)}
-            </datalist>
             {errors.subject && <span className="form-error">{errors.subject}</span>}
           </div>
           <div className="form-group">

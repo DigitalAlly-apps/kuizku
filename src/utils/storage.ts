@@ -194,8 +194,16 @@ export const storage = {
   },
 
   async getExamByCode(code: string): Promise<Exam | null> {
-    const { data, error } = await supabase.from('exams').select('*, questions(*), preloaded_students(*)').eq('code', code.toUpperCase()).single();
-    if (error || !data) return null;
+    const { data, error } = await supabase
+      .from('exams')
+      .select('*, questions(*), preloaded_students(*)')
+      .eq('code', code.toUpperCase())
+      .maybeSingle();
+    if (error) {
+      console.error('getExamByCode error:', error);
+      return null;
+    }
+    if (!data) return null;
     return dbToExam(data);
   },
 
@@ -247,6 +255,7 @@ export const storage = {
 
     if (error) {
       console.error('❌ saveExam RPC error:', error);
+      alert(`Gagal simpan ujian:\n\n${error.message}\n\nDetails: ${error.details ?? '-'}\nHint: ${error.hint ?? '-'}`);
       return { error: error.message };
     }
     return {};
@@ -411,7 +420,65 @@ export const storage = {
 
   async deleteBankQuestion(id: string): Promise<void> {
     await supabase.from('bank_questions').delete().eq('id', id);
-  }
+  },
+
+  // ---- Student History ----
+  async saveStudentHistory(entry: {
+    examCode: string;
+    examTitle: string;
+    studentName: string;
+    nis: string;
+    mcScore: number;
+    totalScore?: number;
+    maxScore: number;
+    submittedAt: string;
+    showScore: boolean;
+  }): Promise<void> {
+    await supabase.from('student_history').insert({
+      exam_code: entry.examCode,
+      exam_title: entry.examTitle,
+      student_name: entry.studentName,
+      nis: entry.nis,
+      mc_score: entry.mcScore,
+      total_score: entry.totalScore ?? null,
+      max_score: entry.maxScore,
+      submitted_at: entry.submittedAt,
+      show_score: entry.showScore,
+    });
+  },
+
+  async getStudentHistory(nis: string): Promise<Array<{
+    id: string;
+    examCode: string;
+    examTitle: string;
+    studentName: string;
+    nis: string;
+    mcScore: number;
+    totalScore?: number;
+    maxScore: number;
+    submittedAt: string;
+    showScore: boolean;
+  }>> {
+    const { data, error } = await supabase
+      .from('student_history')
+      .select('*')
+      .eq('nis', nis)
+      .order('submitted_at', { ascending: false })
+      .limit(100);
+    if (error || !data) return [];
+    return data.map(r => ({
+      id: r.id,
+      examCode: r.exam_code,
+      examTitle: r.exam_title,
+      studentName: r.student_name,
+      nis: r.nis,
+      mcScore: r.mc_score,
+      totalScore: r.total_score ?? undefined,
+      maxScore: r.max_score,
+      submittedAt: r.submitted_at,
+      showScore: r.show_score,
+    }));
+  },
 };
 
 // --- Parsers ---

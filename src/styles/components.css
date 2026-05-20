@@ -299,6 +299,54 @@
 .bank-card-text { font-size: 0.875rem; color: var(--text-primary); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .bank-card-meta { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
 
+/* ---- Bank Modal Layout (responsive) ---- */
+.bank-modal-body {
+  display: flex;
+  gap: var(--sp-5);
+  height: 500px;
+}
+.bank-modal-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+.bank-modal-preview {
+  width: 280px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--border);
+  padding-left: var(--sp-5);
+  overflow-y: auto;
+}
+
+@media (max-width: 768px) {
+  .bank-modal-body {
+    flex-direction: column;
+    height: auto;
+    max-height: 70vh;
+  }
+  .bank-modal-list {
+    min-height: 360px;
+  }
+  .bank-modal-preview {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    padding-left: 0;
+    padding-top: var(--sp-4);
+    max-height: 240px;
+  }
+  /* Card di mobile: padding kanan lebih banyak supaya tidak ketabrak checkbox */
+  .bank-card {
+    padding-right: 44px;
+  }
+  .bank-card-text {
+    -webkit-line-clamp: 4;
+    word-break: break-word;
+  }
+}
+
 /* ---- Section Header ---- */
 .section-header {
   display: flex;
