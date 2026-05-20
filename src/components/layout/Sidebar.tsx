@@ -18,6 +18,7 @@ export default function Sidebar({ open, onClose, toggleTheme, theme }: { open?: 
     .split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase() ?? 'GR';
 
   const handleLogout = () => {
+    if (!window.confirm('Yakin ingin keluar?')) return;
     logout();
     navigate('/login');
   };

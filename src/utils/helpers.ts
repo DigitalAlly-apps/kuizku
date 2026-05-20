@@ -129,6 +129,18 @@ export function formatRelative(iso: string): string {
   const now = Date.now();
   const then = new Date(iso).getTime();
   const diff = now - then;
+
+  // Future date
+  if (diff < 0) {
+    const absDiff = Math.abs(diff);
+    const minutes = Math.floor(absDiff / 60000);
+    const hours = Math.floor(absDiff / 3600000);
+    const days = Math.floor(absDiff / 86400000);
+    if (minutes < 60) return `dalam ${minutes} menit`;
+    if (hours < 24) return `dalam ${hours} jam`;
+    return `dalam ${days} hari`;
+  }
+
   const minutes = Math.floor(diff / 60000);
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);

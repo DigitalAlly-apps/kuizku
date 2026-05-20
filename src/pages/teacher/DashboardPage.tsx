@@ -72,7 +72,7 @@ export default function DashboardPage() {
           color="var(--warning)" bg="var(--warning-light)" />
       </div>
 
-      <div className="dashboard-plan-grid" style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 'var(--sp-4)', marginBottom: 'var(--sp-8)' }}>
+      <div style={{ marginBottom: 'var(--sp-8)' }}>
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <MessageSquareWarning size={18} style={{ color: 'var(--warning)' }} />

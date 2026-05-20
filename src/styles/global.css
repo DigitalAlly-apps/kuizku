@@ -1080,15 +1080,27 @@ tbody td {
     width: 100%;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
   }
 
   table {
     min-width: 720px;
   }
 
+  /* Sticky first column (Nama) di mobile */
+  table thead th:nth-child(2),
+  table tbody td:nth-child(2) {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: var(--surface);
+  }
+
   thead th,
   tbody td {
     padding: 10px 12px;
+    font-size: 0.78rem;
   }
 
   .toast-container {
@@ -1212,6 +1224,11 @@ tbody td {
   /* Wizard steps squish heavily on mobile */
   .wizard-step-label {
     display: none;
+  }
+
+  .wizard-step.active .wizard-step-label {
+    display: inline;
+    font-size: 0.7rem;
   }
 
   .wizard-step-num {
