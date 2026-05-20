@@ -310,7 +310,7 @@ export default function ExamTakingPage() {
         </div>
       )}
 
-      <div className="exam-taking-body" style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      <div className="exam-taking-body" style={{ flex: 1, display: 'flex' }}>
         {/* Main question area */}
         <div className="exam-question-scroll" style={{ flex: 1, overflowY: 'auto', padding: 'var(--sp-6)' }}>
           <div style={{ maxWidth: 720, margin: '0 auto' }}>

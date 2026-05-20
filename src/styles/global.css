@@ -1144,6 +1144,15 @@ tbody td {
     padding-bottom: calc(205px + env(safe-area-inset-bottom)) !important;
   }
 
+  /* Fix opsi PG dan tombol navigasi di mobile */
+  .exam-question-scroll button {
+    min-height: 44px; /* touch target minimum */
+  }
+  .exam-question-scroll > div > div:last-child {
+    /* Navigation buttons row */
+    flex-wrap: wrap;
+  }
+
   .question-nav-panel {
     position: fixed;
     left: 0;

@@ -1,62 +1,90 @@
-# Kritik Aplikasi Ujianly — Pemakaian Pribadi
+# Kritik Aplikasi Ujianly — Audit Workflow & Fitur
 
-Fokus: hal-hal yang berdampak ke pengalaman lo sebagai user tunggal. Isu multi-tenant/SaaS diabaikan.
+Audit fitur dan workflow setelah Critical/Important/Nice-to-have sebelumnya sudah di-fix. Fokus: UX, mobile, dan fitur yang setengah jadi.
 
-## 🔴 Critical — Bisa bikin data hilang atau app crash
+## 🔴 Critical — Workflow & Data Integrity
 
-| # | Isu | Lokasi | Dampak | Status |
-|---|-----|--------|--------|--------|
-| 1 | saveExam non-atomik: DELETE soal lama → INSERT soal baru | storage.ts saveExam() | Network putus saat save = semua soal di ujian itu hilang permanen | ✅ FIXED — Diganti RPC save_exam_full yang transactional |
-| 2 | Tidak ada Error Boundary | App.tsx | Error di komponen mana pun → blank screen, harus refresh manual | ✅ FIXED — ErrorBoundary dipasang di root App |
-| 3 | updateExam field kecil → re-save semua soal | AppContext.tsx updateExam() | Edit judul saja → DELETE+INSERT semua soal. Risiko data hilang sama dengan #1 | ✅ FIXED — Meta-only update pakai updateExamMeta(), full save hanya kalau ada questions |
-| 4 | returnSubmission set isComplete: false | AppContext.tsx | Submission yang dikembalikan untuk revisi hilang dari tab Hasil karena filter isComplete: true | ✅ FIXED — Hanya set isReturned: true, isComplete tidak diubah |
-| 5 | Race condition di ExamTakingPage bootstrap | ExamTakingPage.tsx line ~40 | StrictMode dev kadang bikin 2x session, submission_id kedua overwrite session pertama | ✅ FIXED — bootstrapRef guard agar useEffect hanya jalan sekali |
+| # | Isu | Lokasi | Dampak |
+|---|-----|--------|--------|
+| 1 | Submit gagal silent saat offline | ExamTakingPage.tsx handleSubmit | Murid lihat "berhasil" padahal data hanya di pendingQueue localStorage. Kalau clear cache atau ganti device sebelum reconnect, data hilang. Tidak ada UI peringatan "tertunda, jangan tutup browser" |
+| 2 | Auto-submit anti-cheat tanpa peringatan jelas | ExamTakingPage.tsx visibilitychange handler | Sensitivity HIGH = 1x pindah tab langsung tutup ujian. Murid yang HP-nya ke-notif WA otomatis kehilangan ujian tanpa warning sebelumnya |
+| 3 | Per-question timer reset saat back-and-forth | ExamTakingPage.tsx perQTimer reset | Murid pindah soal lalu balik = timer reset penuh. Mode "per soal" defeat tujuan timer |
+| 4 | returnSubmission attempt counting bug | AppContext returnSubmission + JoinExamPage | Submission yang dikembalikan untuk revisi tetap dihitung sebagai attempt. Murid dengan attempt:1 dan 1x return = tidak bisa attempt lagi |
+| 5 | Resume session tidak validasi exam status | JoinExamPage step 'resume' | Sesi dari pagi, ujian sudah ENDED siang. Murid klik Lanjutkan, kerja sia-sia, lalu submit ditolak. Jawaban hilang |
+| 6 | ResultsPage tidak auto-refresh | ResultsPage.tsx | Saat ujian berlangsung, guru tidak tahu siapa sudah submit tanpa reload manual. Tidak ada polling, tidak ada tombol refresh |
+| 7 | Tidak ada draft autosave di wizard buat ujian | CreateExamPage.tsx | Refresh tab di Step 3 (sudah input 30 soal) = semua hilang. Tidak ada beforeunload warning, tidak ada localStorage draft |
 
-## 🟠 Important — Bikin frustrasi waktu pakai
+## 🟠 Important — UX Friction
 
-| # | Isu | Lokasi | Dampak | Status |
-|---|-----|--------|--------|--------|
-| 6 | Service Worker stale di dev mode | vite.config.ts devOptions.enabled | Cache lama bikin request rusak (kasus 400 kemarin) | ✅ FIXED — devOptions.enabled: false |
-| 7 | console.error di production | storage.ts, AppContext.tsx, ~10 tempat | Noise di DevTools, error log bocor info struktur DB | ✅ FIXED — Vite esbuild.drop console+debugger di production build |
-| 8 | Field password masih di tipe Teacher | src/types/index.ts | Sisa legacy — selalu kosong, bikin confused saat baca kode | ✅ FIXED — Field dihapus dari type dan semua referensinya |
-| 9 | hashPassword() tidak dipakai | src/utils/helpers.ts | Dead code, bingungkan saat audit | ✅ FIXED — Fungsi dihapus |
-| 10 | Table workspaces, subscriptions, plans di DB | Supabase | Sudah tidak dipakai code sama sekali | ✅ FIXED — SQL tersedia di supabase-history/20260510_drop_saas_tables.sql |
-| 11 | Kolom workspace_id di exams, questions, bank_questions, dll | Supabase | Selalu null, kolom mati | ✅ FIXED — Termasuk dalam SQL drop di atas |
-| 12 | Kolom promo_payments_used, manual_payment_note di subscriptions | Supabase | Tidak relevan | ✅ FIXED — Drop bareng tabel subscriptions |
-| 13 | Migration 20260510_cleanup_and_billing_setup.sql masih ada | supabase-history/ | Punya logic billing + admin email hardcoded | ✅ FIXED — File dihapus |
-| 14 | Wording "beta", "early adopter", "guru Indonesia" | LandingPage.tsx, manifest | Bahasa marketing untuk publik | ✅ SKIP — LandingPage sudah bersih |
-| 15 | Tagline "Ujianly - Platform Ujian Online" di share WhatsApp | ExamListPage.tsx shareWhatsApp() | Branding bisnis muncul di pesan WA | ✅ FIXED — Footer tagline dihapus |
+| # | Isu | Lokasi | Dampak |
+|---|-----|--------|--------|
+| 8 | Edit ujian existing tidak bisa edit soal/timer | ExamListPage Edit Modal | Modal cuma support meta (title, desc, subject, kelas, tipe, jadwal). Tidak ada akses ke soal, timer, anti-cheat. Typo di soal aktif = harus duplikat lalu publish ulang |
+| 9 | Tidak ada preview ujian dari sisi murid | Wizard Step 4 + ExamListPage | Guru tidak bisa lihat tampilan murid sebelum publish. Bug typo/format hanya ketahuan setelah murid komplain |
+| 10 | Edit di QuestionBank tidak propagasi ke exam | QuestionBankPage handleEditSave | Update soal di bank tidak update di ujian yang sudah pakai. Confusing — guru kira sudah perbaiki, padahal di ujian aktif tetap salah |
+| 11 | Daftar peserta tidak bisa diedit setelah create | Step1Setup + ExamListPage | preloadedStudents hanya bisa diisi di Step 1 saat create. Tidak ada UI tambah/hapus peserta di ujian existing. Murid baru/pindahan tidak bisa join |
+| 12 | Whitelist matching nama case + space sensitive | JoinExamPage handleIdentitySubmit | Cek nama exact match. "Ahmad Fauzi" vs "Ahmad  Fauzi" (double space) atau typo kecil = ditolak |
+| 13 | Lookup riwayat murid by NIS tidak forgiving | StudentHistoryPage | Murid masukkan "12" pertama kali dan "012" lain kali = riwayat terpisah. Tidak ada normalisasi |
+| 14 | Wizard ganti format auto-hapus soal incompatible | CreateExamPage handleStep2Next | Pindah Combination → PG_ONLY = semua soal essay dihapus tanpa konfirmasi. Cuma toast info, tidak ada undo |
 
-## 🟡 Nice-to-have — Cosmetic / pengembangan
+## 🧩 Missing Features
 
-| # | Isu | Lokasi | Dampak | Status |
-|---|-----|--------|--------|--------|
-| 16 | Anti-cheat cuma visibilitychange | ExamTakingPage.tsx | Bisa di-bypass dari DevTools, tapi untuk pribadi cukup | ✅ SKIP — User lo tidak akan ngelawan |
-| 17 | Riwayat murid pakai localStorage | src/utils/examSession.ts | Riwayat hilang kalau ganti device/clear cache | ✅ FIXED — Simpan ke tabel student_history di Supabase. localStorage tetap sebagai fallback offline |
-| 18 | PWA manifest masih nama "Ujianly" | vite.config.ts | Nama yang muncul saat install ke home screen | ✅ SKIP — Lo minta tetap "Ujianly" |
-| 19 | Dokumen Saas.md masih ada | Root | Dokumen positioning bisnis, bisa misleading | ✅ FIXED — File dihapus |
-| 20 | Logo "⚡ Ujianly" hardcoded di banyak tempat | Sidebar.tsx, login/register pages | Branding tidak konsisten kalau lo mau rebrand | ✅ FIXED — Centralize di src/lib/appConfig.ts, tinggal edit 1 file |
-| 21 | BillingPage.tsx masih ada sebagai placeholder redirect | BillingPage.tsx | File tidak berguna | ✅ FIXED — File dihapus total |
-| 22 | Subject list hardcoded (mata pelajaran agama dominan) | Step1Setup.tsx, SettingsPage.tsx | Cuma cocok kalau lo guru madrasah | ✅ FIXED — Diganti input bebas tanpa dropdown |
-| 23 | Build size: xlsx ~424KB + mammoth ~600KB | dist/ | First load besar untuk personal use | ✅ FIXED — manualChunks di vite, xlsx + mammoth jadi chunk terpisah. Initial bundle turun ~95KB |
-| 24 | Tidak ada dark mode toggle yang persistent | Sidebar | Sudah ada toggle tapi UI-nya tersembunyi | ✅ SKIP — Sudah OK |
-| 25 | Email Supabase Auth case-sensitive | loginTeacher() | Lo daftar Miqdad... lalu login pakai miqdad... bisa gagal | ✅ FIXED — Email di-lowercase sebelum dikirim ke Supabase Auth |
-| 26 | Tidak ada flow hapus akun | Settings | Untuk pribadi tidak relevan | ✅ SKIP — Tidak relevan untuk single user |
-| 27 | Mobile UX QuestionNav sidebar | ExamTakingPage.tsx | Sidebar nav soal di mobile makan space horizontal | ⏳ TODO — Test manual di device lo |
-| 28 | Error message generic "Gagal memuat ujian" | ExamTakingPage.tsx | Saat debug sendiri, susah tau error spesifik | ✅ FIXED — Tampilkan error.message aktual |
+| # | Isu | Lokasi | Dampak |
+|---|-----|--------|--------|
+| 15 | Soal tidak support gambar | QuestionEditor.tsx + QuestionView.tsx | Type Question.imageUrl ada di types tapi tidak ada UI upload/paste/render. Matematika geometri, IPA rangkaian, Geografi peta — tidak bisa pakai gambar |
+| 16 | Tidak ada bulk action | ExamListPage, QuestionBankPage | Tidak ada multi-select untuk arsip banyak ujian atau hapus banyak soal. Bersih-bersih semester = klik satu-satu di kebab menu 30 kali |
+| 17 | ImportModal Word parser fragile | importParser.ts parseWordText | Tergantung format ketat blank line + *A. atau Kunci:. Bullet Word tidak terdeteksi. Preview "invalid" tanpa cara edit inline. Guru bolak-balik Word ↔ app |
+| 18 | Import soal bersama via JSON paste reload page | QuestionBankPage handleImportShared | location.reload() kasar, hilang filter/scroll. Format JSON juga techie, bukan UX untuk guru |
+| 19 | ResultScreen murid tidak bisa cetak/PDF | ResultScreen.tsx | Murid hanya lihat skor, tidak ada export. Orangtua minta bukti formal = tidak ada solusi |
+| 20 | Tidak ada notifikasi murid saat dikembalikan revisi | AppContext returnSubmission | Guru klik Kembalikan, murid tidak tahu. Tidak ada email/push, murid harus check sendiri |
 
-## 📊 Ringkasan Final
+## 📱 Mobile Issues
 
-| Kategori | Total | Fixed | Skip | Todo |
-|---|---|---|---|---|
-| 🔴 Critical | 5 | 5 | 0 | 0 |
-| 🟠 Important | 10 | 9 | 1 | 0 |
-| 🟡 Nice-to-have | 13 | 9 | 3 | 1 |
-| **Total** | **28** | **23** | **4** | **1** |
+| # | Isu | Lokasi | Dampak |
+|---|-----|--------|--------|
+| 21 | QuestionNav fixed bottom menutupi keyboard | QuestionNav + global.css mobile rule | Soal essay panjang di HP — keyboard naik, QuestionNav tertutup atau menutupi area ketik. Tidak ada toggle hide |
+| 22 | Filter bar ExamListPage stack panjang di mobile | ExamListPage filter bar | 17+ tombol berurut di mobile (search, status 5, type 4, group-by 4). Scroll panjang sulit cari |
+| 23 | Tabel hasil di mobile horizontal scroll | ResultsPage participant table | 8-9 kolom, sticky header tidak ada, action button di kanan butuh scroll dulu. Lihat nilai cepat di HP frustrasi |
+| 24 | Wizard step header label hilang di mobile | global.css .wizard-step-label display: none | Cuma angka 1-2-3-4-5. Disorientasi step apa di HP 5 inch |
+| 25 | QR Code & WhatsApp share tidak optimal mobile | ExamListPage QR Modal | QR dari third-party API (api.qrserver.com) tanpa fallback. Tidak ada Save to Photos. WA share via wa.me/?text= tidak konsisten di mobile WA |
 
-**Yang masih perlu dilakukan (manual):**
+## 📌 Polish & Nice-to-have
 
-1. **#10-12** — Jalankan `supabase-history/20260510_drop_saas_tables.sql` di Supabase SQL Editor
-2. **#1** — Jalankan `supabase-history/20260510_save_exam_rpc.sql` di Supabase SQL Editor
-3. **#17** — Jalankan `supabase-history/20260510_student_history.sql` di Supabase SQL Editor
-4. **#27** — Test mobile di device lo (320px-414px)
+| # | Isu | Lokasi | Dampak |
+|---|-----|--------|--------|
+| 26 | Logout button tanpa konfirmasi | Sidebar.tsx | Klik tidak sengaja = logout, draft wizard hilang |
+| 27 | Toast tidak ada tombol close/action | ui/index.tsx ToastItem | Auto dismiss 5 detik, kalau user mau action atas toast (misal "Lihat") tidak bisa |
+| 28 | Settings ID akun tidak bisa di-copy | SettingsPage.tsx | Tampilkan slice 8 char tanpa tombol copy. Untuk debug/lapor bug, susah |
+| 29 | Tidak ada breadcrumb di mobile header | TeacherLayout.tsx | Saat di submenu (Buat Ujian), header cuma logo. Tidak jelas posisi |
+| 30 | Dashboard "Pemakaian Paket" sisa kosong | DashboardPage.tsx | Grid 2 kolom dengan satu child rendered. Layout tidak rapi (kolom kanan kosong) |
+| 31 | formatRelative tidak handle future dates | helpers.ts | Tanggal aktif yang belum tiba tampil "X menit lalu" kalau dates dibalik di display |
+
+## 📊 Ringkasan
+
+| Kategori | Total |
+|---|---|
+| 🔴 Critical workflow | 7 |
+| 🟠 Important UX | 7 |
+| 🧩 Missing features | 6 |
+| � Mobile | 5 |
+| 📌 Polish | 6 |
+| **Total** | **31** |
+
+## 🎯 Prioritas Fix
+
+**Wajib fix (bisa bikin user frustrasi atau data hilang):**
+1. #1, #4, #5 — data integrity (offline, return, resume)
+2. #2 — UX anti-cheat (kasih warning sebelum auto-submit)
+3. #7 — autosave wizard (selamat dari refresh accidental)
+4. #11 — edit peserta whitelist (kasus murid baru)
+5. #21 — keyboard menutupi konten di mobile
+
+**Sebaiknya fix (sering dipakai):**
+6. #8 — edit soal di ujian existing
+7. #6 — auto-refresh ResultsPage saat live monitoring
+8. #15 — gambar di soal (banyak mapel butuh)
+9. #12, #13 — name/NIS matching forgiving
+
+**Boleh nanti:**
+- Bulk action, import improvement, PDF export, notif revisi
+- Mobile polish (filter bar, table, breadcrumb)
+- Cosmetic (logout confirm, toast close, copy ID)

@@ -383,8 +383,12 @@ export default function ResultsPage() {
                               <div className="form-group" style={{ width: 120 }}>
                                 <label className="form-label">Nilai (maks. {q.weight})</label>
                                 <input type="number" className="form-input" min={0} max={q.weight}
-                                  value={gradingScores[q.id]?.score ?? 0}
-                                  onChange={e => setGradingScores(prev => ({ ...prev, [q.id]: { ...prev[q.id], score: parseFloat(e.target.value) || 0 } }))} />
+                                  value={gradingScores[q.id]?.score ?? ''}
+                                  onChange={e => {
+                                    const raw = e.target.value;
+                                    const score = raw === '' ? 0 : parseFloat(raw);
+                                    setGradingScores(prev => ({ ...prev, [q.id]: { ...prev[q.id], score: isNaN(score) ? 0 : score } }));
+                                  }} />
                               </div>
                               <div className="form-group" style={{ flex: 1 }}>
                                 <label className="form-label">Komentar (opsional)</label>
