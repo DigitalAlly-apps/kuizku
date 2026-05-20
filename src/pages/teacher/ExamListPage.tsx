@@ -245,6 +245,12 @@ export default function ExamListPage() {
                     <button style={menuItemStyle} onClick={() => navigate(`/guru/hasil?exam=${exam.id}`)}>
                       <BarChart2 size={14} /> Lihat Hasil
                     </button>
+                    <button style={menuItemStyle} onClick={() => { navigate(`/guru/ujian/${exam.id}/edit-soal`); setOpenMenuId(null); }}>
+                      <Edit2 size={14} style={{ color: 'var(--primary)' }} /> Edit Soal
+                    </button>
+                    <button style={menuItemStyle} onClick={() => { navigate(`/guru/ujian/${exam.id}/preview`); setOpenMenuId(null); }}>
+                      <FileText size={14} style={{ color: 'var(--secondary)' }} /> Preview
+                    </button>
                     <button style={menuItemStyle} onClick={() => copyLink(exam.code)}>
                       <Copy size={14} /> Salin Link
                     </button>

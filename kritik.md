@@ -16,9 +16,9 @@
 
 | # | Isu | Status |
 |---|-----|--------|
-| 8 | Edit ujian existing tidak bisa edit soal/timer | ⏳ butuh major refactor |
-| 9 | Tidak ada preview ujian dari sisi murid | ⏳ butuh halaman baru |
-| 10 | Edit di QuestionBank tidak propagasi ke exam | ⏳ design decision |
+| 8 | Edit ujian existing tidak bisa edit soal/timer | ✅ |
+| 9 | Tidak ada preview ujian dari sisi murid | ✅ |
+| 10 | Edit di QuestionBank tidak propagasi ke exam | ✅ |
 | 11 | Daftar peserta tidak bisa diedit setelah create | ✅ |
 | 12 | Whitelist matching case + space sensitive | ✅ |
 | 13 | Lookup riwayat murid NIS tidak forgiving | ✅ |
@@ -61,8 +61,8 @@
 | Kategori | Total | ✅ Fixed | ⏳ Pending |
 |---|---|---|---|
 | 🔴 Critical | 7 | 7 | 0 |
-| 🟠 Important | 7 | 4 | 3 |
+| 🟠 Important | 7 | 7 | 0 |
 | 🧩 Missing | 6 | 0 | 6 |
 | 📱 Mobile | 5 | 4 | 1 |
 | 📌 Polish | 6 | 3 | 3 |
-| **Total** | **31** | **18** | **13** |
+| **Total** | **31** | **21** | **10** |

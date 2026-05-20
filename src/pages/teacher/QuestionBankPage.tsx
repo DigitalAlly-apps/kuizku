@@ -9,7 +9,7 @@ import { storage } from '../../utils/storage';
 const optLetters = 'ABCDEF';
 
 export default function QuestionBankPage() {
-  const { currentTeacher, bankQuestions, deleteBankQuestion, updateBankQuestion } = useApp();
+  const { currentTeacher, bankQuestions, deleteBankQuestion, updateBankQuestion, exams, refreshExams } = useApp();
   const { addToast } = useToast();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'MULTIPLE_CHOICE' | 'ESSAY'>('ALL');
@@ -74,11 +74,34 @@ export default function QuestionBankPage() {
     addToast({ type: 'success', title: 'Soal dihapus dari bank soal.' });
   };
 
-  const handleEditSave = (q: import('../../types').Question) => {
+  const handleEditSave = async (q: import('../../types').Question) => {
     if (!editQ) return;
     updateBankQuestion(editQ.id, { ...q });
     setEditQ(null);
-    addToast({ type: 'success', title: 'Soal diperbarui.' });
+
+    // #10: Cek apakah soal ini dipakai di exam, tawarkan propagasi
+    const usedIn = editQ.usedInExamIds || [];
+    if (usedIn.length > 0) {
+      const shouldPropagate = window.confirm(
+        `Soal ini dipakai di ${usedIn.length} ujian. Perbarui juga di ujian tersebut?`
+      );
+      if (shouldPropagate) {
+        for (const examId of usedIn) {
+          const exam = exams.find(e => e.id === examId);
+          if (!exam) continue;
+          const updatedQuestions = exam.questions.map(eq =>
+            eq.text === editQ.text ? { ...eq, ...q, id: eq.id } : eq
+          );
+          if (updatedQuestions !== exam.questions) {
+            await storage.saveExam({ ...exam, questions: updatedQuestions });
+          }
+        }
+        await refreshExams();
+        addToast({ type: 'success', title: 'Soal diperbarui di bank + ujian terkait.' });
+        return;
+      }
+    }
+    addToast({ type: 'success', title: 'Soal diperbarui di bank soal.' });
   };
 
   const handleShare = async (q: BankQuestion) => {

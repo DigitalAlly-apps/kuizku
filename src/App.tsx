@@ -13,6 +13,8 @@ const RegisterPage     = lazy(() => import('./pages/auth/RegisterPage'));
 const DashboardPage    = lazy(() => import('./pages/teacher/DashboardPage'));
 const ExamListPage     = lazy(() => import('./pages/teacher/ExamListPage'));
 const CreateExamPage   = lazy(() => import('./pages/teacher/CreateExamPage'));
+const EditExamQuestionsPage = lazy(() => import('./pages/teacher/EditExamQuestionsPage'));
+const PreviewExamPage  = lazy(() => import('./pages/teacher/PreviewExamPage'));
 const QuestionBankPage = lazy(() => import('./pages/teacher/QuestionBankPage'));
 const ResultsPage      = lazy(() => import('./pages/teacher/ResultsPage'));
 const SettingsPage     = lazy(() => import('./pages/teacher/SettingsPage'));
@@ -49,6 +51,8 @@ function App() {
               <Route path="dashboard"  element={<DashboardPage />} />
               <Route path="ujian"      element={<ExamListPage />} />
               <Route path="ujian/baru" element={<CreateExamPage />} />
+              <Route path="ujian/:id/edit-soal" element={<EditExamQuestionsPage />} />
+              <Route path="ujian/:id/preview" element={<PreviewExamPage />} />
               <Route path="bank-soal"  element={<QuestionBankPage />} />
               <Route path="hasil"      element={<ResultsPage />} />
               <Route path="pengaturan" element={<SettingsPage />} />
