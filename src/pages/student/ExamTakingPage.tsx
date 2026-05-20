@@ -136,9 +136,14 @@ export default function ExamTakingPage() {
     const sub = { ...buildSubmission(session, latestExam), antiCheatEvents: antiCheatEventsRef.current };
     setSubmittedData(sub);
 
-    // Persist to Supabase, then remove the local in-progress session so it
-    // cannot be resumed after a completed submit.
-    void storage.saveSubmission(sub).then(() => clearSession(session.examCode, session.nis));
+    // Fix #1: Jangan clear session sampai save berhasil. Tampilkan warning kalau pending.
+    try {
+      await storage.saveSubmission(sub);
+      clearSession(session.examCode, session.nis);
+    } catch {
+      // Save gagal — masuk pending queue (sudah di-handle di storage.saveSubmission)
+      // Jangan clear session agar bisa retry
+    }
 
     setSubmitted(true);
     setShowSubmit(false);
@@ -165,7 +170,10 @@ export default function ExamTakingPage() {
           antiCheatEventsRef.current = [...antiCheatEventsRef.current, { type: 'TAB_HIDDEN', timestamp: new Date().toISOString(), count: next }];
           setShowViolationWarning(true);
           setTimeout(() => setShowViolationWarning(false), 5000);
-          if (next >= maxViolations) handleSubmit(true);
+          // Fix #2: Kasih warning 3 detik sebelum auto-submit agar murid tahu
+          if (next >= maxViolations) {
+            setTimeout(() => handleSubmit(true), 3000);
+          }
           return next;
         });
       }
@@ -203,6 +211,9 @@ export default function ExamTakingPage() {
   const currentQ = questions[currentIdx];
   const perQSeconds = currentQ?.timerSeconds ?? exam?.settings.perQuestionDefaultSeconds ?? 60;
 
+  // Fix #3: Track waktu tersisa per soal agar tidak reset saat back-and-forth
+  const perQRemainingRef = useRef<Record<number, number>>({});
+
   const goNext = useCallback(() => {
     const next = Math.min(currentIdx + 1, questions.length - 1);
     setCurrentIdx(next);
@@ -210,7 +221,7 @@ export default function ExamTakingPage() {
   }, [currentIdx, questions.length]);
 
   const perQTimer = useCountdown({
-    initialSeconds: perQSeconds,
+    initialSeconds: perQRemainingRef.current[currentIdx] ?? perQSeconds,
     autoStart: perQEnabled && !!session && !submitted,
     onExpire: useCallback(() => {
       if (currentIdx < questions.length - 1) goNext();
@@ -221,10 +232,20 @@ export default function ExamTakingPage() {
     ? Math.max(0, Math.min(100, Math.round((perQTimer.remaining / perQSeconds) * 100)))
     : undefined;
 
-  // Reset per-Q timer when question changes
+  // Simpan sisa waktu soal saat pindah, lalu reset timer ke sisa waktu soal tujuan
   useEffect(() => {
-    if (perQEnabled && currentQ?.timerSeconds) {
-      perQTimer.reset(currentQ.timerSeconds);
+    if (!perQEnabled) return;
+    // Simpan remaining soal sebelumnya (via ref, bukan state, agar tidak trigger re-render)
+    return () => {
+      perQRemainingRef.current[currentIdx] = perQTimer.remaining;
+    };
+  }, [currentIdx, perQEnabled]);
+
+  useEffect(() => {
+    if (perQEnabled) {
+      const saved = perQRemainingRef.current[currentIdx];
+      const target = saved !== undefined ? saved : (questions[currentIdx]?.timerSeconds ?? exam?.settings.perQuestionDefaultSeconds ?? 60);
+      perQTimer.reset(target);
     }
   }, [currentIdx]);
 

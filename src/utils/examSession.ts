@@ -163,8 +163,9 @@ export function validateExamAccess(
   }
 
   // Count previous complete attempts by this NIS
+  // Fix #4: Exclude submissions yang isReturned (dikembalikan untuk revisi)
   const prevAttempts = existingSubmissions.filter(
-    s => s.examId === exam.id && s.nis === nis && s.isComplete,
+    s => s.examId === exam.id && s.nis === nis && s.isComplete && !s.isReturned,
   );
 
   const maxAttempts = exam.settings.maxAttempts; // 0 = unlimited

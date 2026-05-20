@@ -93,9 +93,15 @@ export default function JoinExamPage() {
   };
 
   const handleResume = () => {
+    // Fix #5: Validasi exam masih aktif sebelum resume
+    if (!foundExam || foundExam.status !== 'ACTIVE') {
+      setError('Ujian sudah tidak aktif. Sesi tidak bisa dilanjutkan.');
+      setStep('identity');
+      return;
+    }
     const identifier = nis.trim() || name.trim();
-    navigate(`/ujian/${foundExam!.code}/kerjakan`, {
-      state: { examId: foundExam!.id, studentName: name.trim(), nis: identifier, resume: true }
+    navigate(`/ujian/${foundExam.code}/kerjakan`, {
+      state: { examId: foundExam.id, studentName: name.trim(), nis: identifier, resume: true }
     });
   };
 

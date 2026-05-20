@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Download, User, Edit2, BarChart2, RotateCcw, MessageSquare } from 'lucide-react';
+import { Download, User, Edit2, BarChart2, RotateCcw, MessageSquare, RefreshCcw } from 'lucide-react';
 import { useApp, useToast } from '../../context/AppContext';
 import { EmptyState, FormatBadge, StatusBadge, SectionHeader, Modal } from '../../components/ui';
 import { calcMaxMCScore, calcMaxEssayScore, formatDateTime } from '../../utils/helpers';
@@ -10,9 +10,15 @@ import type { Submission } from '../../types';
 
 
 export default function ResultsPage() {
-  const { currentTeacher, exams, submissions, gradeEssay, returnSubmission, setTeacherFeedback } = useApp();
+  const { currentTeacher, exams, submissions, gradeEssay, returnSubmission, setTeacherFeedback, refreshSubmissions } = useApp();
   const { addToast } = useToast();
   const [searchParams] = useSearchParams();
+
+  // Fix #6: Auto-refresh submissions setiap 30 detik
+  useEffect(() => {
+    const id = setInterval(() => { void refreshSubmissions(); }, 30000);
+    return () => clearInterval(id);
+  }, [refreshSubmissions]);
 
   const myExams = useMemo(() => exams.filter(e => e.teacherId === currentTeacher?.id && e.status !== 'DRAFT'), [exams, currentTeacher]);
   const [selectedExamId, setSelectedExamId] = useState<string>(searchParams.get('exam') ?? (myExams[0]?.id ?? ''));
@@ -142,6 +148,9 @@ export default function ResultsPage() {
       <div className="results-page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 'var(--sp-6)' }}>
         <h1>Hasil & Nilai</h1>
         <div className="results-page-actions" style={{ display: 'flex', gap: 'var(--sp-3)', alignItems: 'center' }}>
+          <button className="btn btn-ghost btn-sm" onClick={() => refreshSubmissions()} title="Refresh data">
+            <RefreshCcw size={14} />
+          </button>
           <select className="form-select results-exam-select" value={selectedExamId} onChange={e => setSelectedExamId(e.target.value)} id="result-exam-select">
             {myExams.map(e => <option key={e.id} value={e.id}>{e.title}</option>)}
           </select>

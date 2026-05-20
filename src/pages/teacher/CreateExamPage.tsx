@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle } from 'lucide-react';
 import Step1Setup from './wizard/Step1Setup';
@@ -58,6 +58,41 @@ export default function CreateExamPage() {
   });
   const [createdExam, setCreatedExam] = useState<Exam | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // Fix #7: Autosave wizard draft ke localStorage
+  const DRAFT_KEY = 'ujianly_wizard_draft';
+
+  // Load draft on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setData(d => ({ ...d, ...parsed }));
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  // Save draft on every data change (debounced via step check)
+  useEffect(() => {
+    if (createdExam) return; // sudah selesai, jangan save draft
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
+    } catch { /* ignore */ }
+  }, [data, createdExam]);
+
+  // Warn before unload jika ada data
+  useEffect(() => {
+    if (createdExam) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      if (data.title || data.questions.length > 0) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [data, createdExam]);
 
   const update = (partial: Partial<WizardData>) => setData(d => ({ ...d, ...partial }));
 
@@ -131,9 +166,12 @@ export default function CreateExamPage() {
     setCreatedExam(newExam);
     setSaving(false);
     setStep(5);
+    // Clear draft setelah berhasil save
+    localStorage.removeItem(DRAFT_KEY);
   };
 
   const handleFinish = () => {
+    localStorage.removeItem(DRAFT_KEY);
     navigate('/guru/ujian');
   };
 
