@@ -51,6 +51,7 @@ export default function ExamListPage() {
   const [editType, setEditType] = useState<ExamType>('UJIAN');
   const [editFrom, setEditFrom] = useState('');
   const [editTo, setEditTo] = useState('');
+  const [editStudents, setEditStudents] = useState('');
   const [editSaving, setEditSaving] = useState(false);
 
   const myExams = useMemo(() =>
@@ -103,6 +104,7 @@ export default function ExamListPage() {
     setEditType(exam.examType ?? 'UJIAN');
     setEditFrom(exam.activeFrom ? exam.activeFrom.slice(0, 16) : '');
     setEditTo(exam.activeTo ? exam.activeTo.slice(0, 16) : '');
+    setEditStudents((exam.preloadedStudents || []).map(s => `${s.name}, ${s.nis}`).join('\n'));
     setOpenMenuId(null);
   };
 
@@ -110,6 +112,12 @@ export default function ExamListPage() {
     if (!editExam) return;
     if (!editTitle.trim()) { addToast({ type: 'error', title: 'Judul tidak boleh kosong' }); return; }
     setEditSaving(true);
+    // Parse daftar peserta dari textarea
+    const parsedStudents = editStudents.split(/\r?\n/).map(line => line.trim()).filter(Boolean).map(line => {
+      const [nameRaw, nisRaw] = line.split(/[,;\t]/).map(p => p.trim());
+      return { name: nameRaw || '', nis: nisRaw || nameRaw || '' };
+    }).filter(s => s.name);
+
     await updateExam(editExam.id, {
       title: editTitle.trim(),
       description: editDesc,
@@ -118,6 +126,7 @@ export default function ExamListPage() {
       examType: editType,
       activeFrom: editFrom || undefined,
       activeTo: editTo || undefined,
+      preloadedStudents: parsedStudents,
     });
     setEditSaving(false);
     setEditExam(null);
@@ -454,6 +463,14 @@ export default function ExamListPage() {
                 <label className="form-label">Deadline / Aktif Hingga</label>
                 <input type="datetime-local" className="form-input" value={editTo} onChange={e => setEditTo(e.target.value)} />
               </div>
+            </div>
+            {/* Daftar Peserta */}
+            <div className="form-group">
+              <label className="form-label">Daftar Peserta (opsional)</label>
+              <textarea className="form-textarea" rows={4}
+                placeholder={'Satu peserta per baris. Format: Nama, NIS\nKosongkan jika semua boleh masuk.'}
+                value={editStudents} onChange={e => setEditStudents(e.target.value)} />
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Jika diisi, hanya peserta dalam daftar ini yang bisa masuk.</span>
             </div>
           </div>
         )}

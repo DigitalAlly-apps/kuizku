@@ -1141,7 +1141,7 @@ tbody td {
   .exam-question-scroll {
     overflow: visible !important;
     padding: var(--sp-4) !important;
-    padding-bottom: calc(205px + env(safe-area-inset-bottom)) !important;
+    padding-bottom: calc(220px + env(safe-area-inset-bottom)) !important;
   }
 
   /* Fix opsi PG dan tombol navigasi di mobile */
@@ -1158,14 +1158,16 @@ tbody td {
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 48;
+    z-index: 100;
     width: 100% !important;
-    max-height: 195px;
+    max-height: 200px;
     border-left: none !important;
     border-top: 1px solid var(--border-strong);
     border-radius: var(--r-xl) var(--r-xl) 0 0;
     box-shadow: 0 -10px 28px rgba(15, 23, 42, 0.14);
-    padding: var(--sp-4) var(--sp-4) calc(var(--sp-4) + env(safe-area-inset-bottom)) !important;
+    padding: var(--sp-3) var(--sp-4) calc(var(--sp-3) + env(safe-area-inset-bottom)) !important;
+    background: var(--surface) !important;
+    overflow-y: auto;
   }
 
   .question-nav-grid {

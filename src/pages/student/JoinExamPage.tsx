@@ -63,12 +63,13 @@ export default function JoinExamPage() {
 
     // ---- Whitelist validation: jika ada daftar murid, harus cocok ----
     if (foundExam.preloadedStudents && foundExam.preloadedStudents.length > 0) {
-      const trimName = name.trim().toLowerCase();
+      const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
+      const trimName = normalize(name);
       const trimNis  = nis.trim();
-      const byNis    = trimNis && foundExam.preloadedStudents.some(s => s.nis === trimNis);
-      const byName   = foundExam.preloadedStudents.some(s => s.name.toLowerCase() === trimName);
+      const byNis    = trimNis && foundExam.preloadedStudents.some(s => s.nis.trim() === trimNis);
+      const byName   = foundExam.preloadedStudents.some(s => normalize(s.name) === trimName);
       if (!byNis && !byName) {
-        setError('Nama atau nomor Anda tidak terdaftar di ujian ini. Pilih nama dari daftar atau hubungi guru Anda.');
+        setError('Nama atau nomor Anda tidak terdaftar di ujian ini. Pastikan penulisan sama persis atau hubungi guru Anda.');
         return;
       }
     }

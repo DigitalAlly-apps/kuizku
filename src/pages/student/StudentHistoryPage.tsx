@@ -81,20 +81,29 @@ export default function StudentHistoryPage() {
     setLookupLoading(true);
 
     // Cari dari tabel student_history di Supabase
+    // Coba exact match dulu, lalu tanpa leading zeros
     const supabaseHistory = await storage.getStudentHistory(nis);
+    if (supabaseHistory.length === 0 && nis.startsWith('0')) {
+      // Retry tanpa leading zeros
+      const stripped = nis.replace(/^0+/, '');
+      const retryHistory = await storage.getStudentHistory(stripped);
+      if (retryHistory.length > 0) {
+        setOnlineHistory(retryHistory.map(r => ({
+          id: r.id, examTitle: r.examTitle, examSubject: '', examCode: r.examCode,
+          examType: undefined, studentName: r.studentName, nis: r.nis,
+          submittedAt: r.submittedAt, mcScore: r.mcScore, totalScore: r.totalScore, maxMC: r.maxScore,
+        })));
+        setName(retryHistory[0].studentName);
+        setLookupLoading(false);
+        return;
+      }
+    }
+
     if (supabaseHistory.length > 0) {
       setOnlineHistory(supabaseHistory.map(r => ({
-        id: r.id,
-        examTitle: r.examTitle,
-        examSubject: '',
-        examCode: r.examCode,
-        examType: undefined,
-        studentName: r.studentName,
-        nis: r.nis,
-        submittedAt: r.submittedAt,
-        mcScore: r.mcScore,
-        totalScore: r.totalScore,
-        maxMC: r.maxScore,
+        id: r.id, examTitle: r.examTitle, examSubject: '', examCode: r.examCode,
+        examType: undefined, studentName: r.studentName, nis: r.nis,
+        submittedAt: r.submittedAt, mcScore: r.mcScore, totalScore: r.totalScore, maxMC: r.maxScore,
       })));
       setName(supabaseHistory[0].studentName);
       setLookupLoading(false);

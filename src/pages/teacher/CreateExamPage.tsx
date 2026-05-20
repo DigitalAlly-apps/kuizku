@@ -102,20 +102,28 @@ export default function CreateExamPage() {
   };
 
   const handleStep2Next = (format: ExamFormat) => {
-    // If format changed and we have incompatible questions, warn/clear
+    // If format changed and we have incompatible questions, confirm before deleting
     const hasIncompat = data.questions.some(q => {
       if (format === 'PG_ONLY' && q.type === 'ESSAY') return true;
       if (format === 'ESSAY_ONLY' && q.type === 'MULTIPLE_CHOICE') return true;
       return false;
     });
     if (hasIncompat) {
+      const incompatCount = data.questions.filter(q => {
+        if (format === 'PG_ONLY') return q.type === 'ESSAY';
+        if (format === 'ESSAY_ONLY') return q.type === 'MULTIPLE_CHOICE';
+        return false;
+      }).length;
+      if (!window.confirm(`${incompatCount} soal tidak kompatibel dengan format ini dan akan dihapus. Lanjutkan?`)) {
+        return; // user batal
+      }
       const filtered = data.questions.filter(q => {
         if (format === 'PG_ONLY') return q.type === 'MULTIPLE_CHOICE';
         if (format === 'ESSAY_ONLY') return q.type === 'ESSAY';
         return true;
       });
       update({ format, questions: filtered });
-      addToast({ type: 'warning', title: 'Beberapa soal dihapus', message: 'Soal yang tidak sesuai format baru telah dihapus.' });
+      addToast({ type: 'warning', title: `${incompatCount} soal dihapus`, message: 'Soal yang tidak sesuai format baru telah dihapus.' });
     } else {
       update({ format });
     }
