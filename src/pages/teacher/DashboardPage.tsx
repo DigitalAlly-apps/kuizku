@@ -11,24 +11,30 @@ export default function DashboardPage() {
 
   const myExams = useMemo(() => exams.filter(e => e.teacherId === currentTeacher?.id), [exams, currentTeacher]);
 
-  const stats = useMemo(() => ({
-    total: myExams.length,
-    active: myExams.filter(e => e.status === 'ACTIVE').length,
-    ended: myExams.filter(e => e.status === 'ENDED').length,
-    draft: myExams.filter(e => e.status === 'DRAFT').length,
-    todaySubmissions: submissions.filter(s => {
-      const today = new Date().toDateString();
-      return s.submittedAt && new Date(s.submittedAt).toDateString() === today &&
-        myExams.some(e => e.id === s.examId);
-    }).length,
-  }), [myExams, submissions]);
+  const stats = useMemo(() => {
+    const now = Date.now();
+    const activeCount = myExams.filter(e => e.status === 'ACTIVE' && (!e.activeTo || new Date(e.activeTo).getTime() >= now)).length;
+    const endedCount = myExams.filter(e => e.status === 'ENDED' || (e.status === 'ACTIVE' && e.activeTo && new Date(e.activeTo).getTime() < now)).length;
+    return {
+      total: myExams.length,
+      active: activeCount,
+      ended: endedCount,
+      draft: myExams.filter(e => e.status === 'DRAFT').length,
+      todaySubmissions: submissions.filter(s => {
+        const today = new Date().toDateString();
+        return s.submittedAt && new Date(s.submittedAt).toDateString() === today &&
+          myExams.some(e => e.id === s.examId);
+      }).length,
+    };
+  }, [myExams, submissions]);
 
   const recentExams = useMemo(() => [...myExams].sort((a, b) =>
     new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
   ).slice(0, 5), [myExams]);
 
   const actionStats = useMemo(() => {
-    const activeExamIds = new Set(myExams.filter(e => e.status === 'ACTIVE').map(e => e.id));
+    const now = Date.now();
+    const activeExamIds = new Set(myExams.filter(e => e.status === 'ACTIVE' && (!e.activeTo || new Date(e.activeTo).getTime() >= now)).map(e => e.id));
     const activeSubmissions = submissions.filter(s => activeExamIds.has(s.examId) && s.isComplete);
     const essayPending = submissions.filter(s => {
       const exam = myExams.find(e => e.id === s.examId);
@@ -38,7 +44,8 @@ export default function DashboardPage() {
     }).length;
     const notSubmitted = myExams.reduce((sum, exam) => {
       const preloaded = exam.preloadedStudents?.length ?? 0;
-      if (!preloaded || exam.status !== 'ACTIVE') return sum;
+      const isExpired = exam.activeTo && new Date(exam.activeTo).getTime() < now;
+      if (!preloaded || exam.status !== 'ACTIVE' || isExpired) return sum;
       const submitted = submissions.filter(s => s.examId === exam.id && s.isComplete).length;
       return sum + Math.max(0, preloaded - submitted);
     }, 0);
@@ -123,7 +130,7 @@ export default function DashboardPage() {
                   <div className="exam-card-badges">
                     <ExamTypeBadge examType={exam.examType} />
                     <FormatBadge format={exam.format} />
-                    <StatusBadge status={exam.status} />
+                    <StatusBadge status={exam.status} activeTo={exam.activeTo} />
                   </div>
                   <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                     {formatRelative(exam.updatedAt)}

@@ -37,12 +37,12 @@ interface AppContextShape {
   exams: Exam[];
   getExam: (id: string) => Exam | undefined;
   createExam: (data: Omit<Exam, 'id' | 'code' | 'status' | 'questions' | 'createdAt' | 'updatedAt' | 'preloadedStudents'>) => Promise<Exam>;
-  updateExam: (id: string, data: Partial<Exam>) => Promise<void>;
+  updateExam: (id: string, data: Partial<Exam>) => Promise<{ error?: string }>;
   deleteExam: (id: string) => Promise<void>;
   duplicateExam: (id: string) => Promise<Exam>;
-  publishExam: (id: string) => Promise<void>;
-  archiveExam: (id: string) => Promise<void>;
-  endExam: (id: string) => Promise<void>;
+  publishExam: (id: string) => Promise<{ error?: string }>;
+  archiveExam: (id: string) => Promise<{ error?: string }>;
+  endExam: (id: string) => Promise<{ error?: string }>;
   refreshExams: () => Promise<void>;
 
   // Question Bank
@@ -170,24 +170,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // updateExam: kalau data hanya berisi field meta (tidak ada questions/preloadedStudents),
   // pakai updateExamMeta — hanya UPDATE satu row, soal tidak disentuh sama sekali.
   // Kalau ada questions/preloadedStudents, pakai saveExam (RPC transactional).
-  const updateExam = async (id: string, data: Partial<Exam>) => {
+  const updateExam = async (id: string, data: Partial<Exam>): Promise<{ error?: string }> => {
     const updatedAt = new Date().toISOString();
+    let oldExam: Exam | undefined;
     let updated: Exam | undefined;
+
     setExamsState(prev => {
       const existing = prev.find(e => e.id === id);
       if (!existing) return prev;
+      oldExam = { ...existing };
       updated = { ...existing, ...data, updatedAt };
       return prev.map(e => e.id === id ? updated! : e);
     });
-    if (!updated) return;
+
+    if (!updated) return { error: 'Ujian tidak ditemukan.' };
 
     const hasQuestions = data.questions !== undefined;
     const hasStudents = data.preloadedStudents !== undefined;
 
+    let res: { error?: string } = {};
     if (hasQuestions || hasStudents) {
-      await storage.saveExam(updated);
+      res = await storage.saveExam(updated);
     } else {
-      await storage.updateExamMeta(id, {
+      res = await storage.updateExamMeta(id, {
         title: data.title,
         description: data.description,
         subject: data.subject,
@@ -200,6 +205,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         updatedAt,
       });
     }
+
+    if (res?.error) {
+      // Rollback local state
+      if (oldExam) {
+        setExamsState(prev => prev.map(e => e.id === id ? oldExam! : e));
+      }
+      return { error: res.error };
+    }
+
+    return {};
   };
 
   const deleteExam = async (id: string) => {

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Hash, User, CreditCard, ListOrdered, Search, AlertCircle, ArrowRight, Clock, FileText, Calendar } from 'lucide-react';
 import { storage } from '../../utils/storage';
 import { validateExamAccess } from '../../utils/examSession';
@@ -11,6 +11,7 @@ type Step = 'code' | 'identity' | 'resume';
 
 export default function JoinExamPage() {
   const navigate = useNavigate();
+  const { code: urlCode } = useParams<{ code?: string }>();
 
   const [step, setStep] = useState<Step>('code');
   const [code, setCode] = useState('');
@@ -30,21 +31,22 @@ export default function JoinExamPage() {
     setError('');
   };
 
-  const handleFindExam = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const findExamByCode = async (examCode: string) => {
     setError('');
-    if (code.length !== 6) { setError('Kode ujian harus 6 karakter'); return; }
-
     setLoading(true);
     // Query langsung ke Supabase — murid tidak perlu login
-    const exam = await storage.getExamByCode(code);
+    const exam = await storage.getExamByCode(examCode);
     setLoading(false);
 
-    if (!exam) { setError(`Kode "${code}" tidak ditemukan. Periksa kembali kode dari guru Anda.`); return; }
+    if (!exam) {
+      setError(`Kode "${examCode}" tidak ditemukan. Periksa kembali kode dari guru Anda.`);
+      return;
+    }
     if (exam.status !== 'ACTIVE') {
       const msg = exam.status === 'DRAFT' ? 'Ujian ini belum dipublikasikan.' :
                   exam.status === 'ENDED' ? 'Ujian ini sudah ditutup.' : 'Ujian ini sudah diarsipkan.';
-      setError(msg); return;
+      setError(msg);
+      return;
     }
 
     // Load submissions untuk exam ini (untuk validasi attempt)
@@ -54,6 +56,20 @@ export default function JoinExamPage() {
     setExamSubmissions(subs);
     setStep('identity');
   };
+
+  const handleFindExam = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (code.length !== 6) { setError('Kode ujian harus 6 karakter'); return; }
+    await findExamByCode(code);
+  };
+
+  useEffect(() => {
+    if (urlCode && urlCode.length === 6) {
+      const upperCode = urlCode.toUpperCase();
+      setCode(upperCode);
+      findExamByCode(upperCode);
+    }
+  }, [urlCode]);
 
   const handleIdentitySubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -35,15 +35,19 @@ export default function Step5Publish({ exam, onFinish }: Props) {
     return null;
   };
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
     const error = getPublishError();
     if (error) {
       addToast({ type: 'error', title: 'Ujian belum siap dipublish', message: error });
       return;
     }
-    publishExam(exam.id);
-    setPublished(true);
-    addToast({ type: 'success', title: '🎉 Ujian dipublikasikan!', message: 'Murid sekarang bisa mengerjakan dengan kode di atas.' });
+    const res = await publishExam(exam.id);
+    if (res?.error) {
+      addToast({ type: 'error', title: 'Gagal mempublikasikan ujian', message: res.error });
+    } else {
+      setPublished(true);
+      addToast({ type: 'success', title: '🎉 Ujian dipublikasikan!', message: 'Murid sekarang bisa mengerjakan dengan kode di atas.' });
+    }
   };
 
   return (

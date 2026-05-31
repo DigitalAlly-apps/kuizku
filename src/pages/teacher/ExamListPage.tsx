@@ -118,7 +118,7 @@ export default function ExamListPage() {
       return { name: nameRaw || '', nis: nisRaw || nameRaw || '' };
     }).filter(s => s.name);
 
-    await updateExam(editExam.id, {
+    const res = await updateExam(editExam.id, {
       title: editTitle.trim(),
       description: editDesc,
       subject: editSubject,
@@ -129,8 +129,12 @@ export default function ExamListPage() {
       preloadedStudents: parsedStudents,
     });
     setEditSaving(false);
-    setEditExam(null);
-    addToast({ type: 'success', title: 'Ujian berhasil diperbarui!' });
+    if (res?.error) {
+      addToast({ type: 'error', title: 'Gagal memperbarui ujian', message: res.error });
+    } else {
+      setEditExam(null);
+      addToast({ type: 'success', title: 'Ujian berhasil diperbarui!' });
+    }
   };
 
   const copyCode = (code: string) => {
@@ -166,7 +170,7 @@ export default function ExamListPage() {
     return null;
   };
 
-  const handlePublish = (id: string) => {
+  const handlePublish = async (id: string) => {
     const exam = exams.find(e => e.id === id);
     if (!exam) return;
     const error = getPublishError(exam);
@@ -175,20 +179,32 @@ export default function ExamListPage() {
       setOpenMenuId(null);
       return;
     }
-    publishExam(id);
-    addToast({ type: 'success', title: 'Ujian dipublikasikan!', message: 'Murid sekarang bisa mengerjakan ujian.' });
+    const res = await publishExam(id);
+    if (res?.error) {
+      addToast({ type: 'error', title: 'Gagal mempublikasikan ujian', message: res.error });
+    } else {
+      addToast({ type: 'success', title: 'Ujian dipublikasikan!', message: 'Murid sekarang bisa mengerjakan ujian.' });
+    }
     setOpenMenuId(null);
   };
 
-  const handleEnd = (id: string) => {
-    endExam(id);
-    addToast({ type: 'info', title: 'Ujian ditutup', message: 'Murid tidak bisa mengerjakan lagi.' });
+  const handleEnd = async (id: string) => {
+    const res = await endExam(id);
+    if (res?.error) {
+      addToast({ type: 'error', title: 'Gagal menutup ujian', message: res.error });
+    } else {
+      addToast({ type: 'info', title: 'Ujian ditutup', message: 'Murid tidak bisa mengerjakan lagi.' });
+    }
     setOpenMenuId(null);
   };
 
-  const handleArchive = (id: string) => {
-    archiveExam(id);
-    addToast({ type: 'info', title: 'Ujian diarsipkan.' });
+  const handleArchive = async (id: string) => {
+    const res = await archiveExam(id);
+    if (res?.error) {
+      addToast({ type: 'error', title: 'Gagal mengarsipkan ujian', message: res.error });
+    } else {
+      addToast({ type: 'info', title: 'Ujian diarsipkan.' });
+    }
     setOpenMenuId(null);
   };
 
@@ -211,7 +227,7 @@ export default function ExamListPage() {
           <div className="exam-card-badges">
             <ExamTypeBadge examType={exam.examType} />
             <FormatBadge format={exam.format} />
-            <StatusBadge status={exam.status} />
+            <StatusBadge status={exam.status} activeTo={exam.activeTo} />
             {exam.className && (
               <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: 'var(--r-sm)', background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 600 }}>
                 {exam.className}

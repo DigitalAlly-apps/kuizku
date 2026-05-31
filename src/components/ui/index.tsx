@@ -111,9 +111,12 @@ export function FormatBadge({ format }: { format: import('../../types').ExamForm
   return <Badge variant="combo">PG + Essay</Badge>;
 }
 
-export function StatusBadge({ status }: { status: import('../../types').ExamStatus }) {
+export function StatusBadge({ status, activeTo }: { status: import('../../types').ExamStatus; activeTo?: string | null }) {
   const labels = { DRAFT: 'Draft', ACTIVE: 'Aktif', ENDED: 'Selesai', ARCHIVED: 'Diarsipkan' };
   const variants: Record<string, BadgeVariant> = { DRAFT: 'draft', ACTIVE: 'active', ENDED: 'ended', ARCHIVED: 'archived' };
+  if (status === 'ACTIVE' && activeTo && new Date(activeTo).getTime() < Date.now()) {
+    return <Badge variant="ended">Selesai (Waktu Habis)</Badge>;
+  }
   return <Badge variant={variants[status]}>{labels[status]}</Badge>;
 }
 

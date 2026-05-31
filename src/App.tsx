@@ -41,6 +41,7 @@ function App() {
 
             {/* Student (public — no auth required) */}
             <Route path="/ujian"                    element={<JoinExamPage />} />
+            <Route path="/ujian/:code"              element={<JoinExamPage />} />
             <Route path="/ujian/:code/instruksi"    element={<InstructionsPage />} />
             <Route path="/ujian/:code/kerjakan"     element={<ExamTakingPage />} />
             <Route path="/riwayat"                  element={<StudentHistoryPage />} />
