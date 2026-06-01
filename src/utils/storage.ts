@@ -186,6 +186,12 @@ export const storage = {
     return {};
   },
 
+  async updatePassword(password: string): Promise<{ error?: string }> {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) return { error: error.message };
+    return {};
+  },
+
   // ---- Exams ----
   async getExamsByTeacher(teacherId: string): Promise<Exam[]> {
     const { data, error } = await supabase.from('exams').select('*, questions(*), preloaded_students(*)').eq('teacher_id', teacherId).order('created_at', { ascending: false });

@@ -1,20 +1,43 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, AlertCircle, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../../context/AppContext';
 import { Spinner } from '../../components/ui';
 import { APP_CONFIG } from '../../lib/appConfig';
+import { storage } from '../../utils/storage';
 
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [mode, setMode] = useState<'login' | 'forgot' | 'reset'>('login');
+  
+  // Login & Forgot states
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
+  
+  // Reset Password states
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
+
+  // Common UI states
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  useEffect(() => {
+    // Detect password recovery mode from URL hash
+    const hash = window.location.hash;
+    if (hash && (hash.includes('access_token=') || hash.includes('type=recovery'))) {
+      setMode('reset');
+      setError('');
+      setSuccessMsg('');
+    }
+  }, []);
+
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) { setError('Email dan password wajib diisi'); return; }
     setLoading(true);
@@ -23,6 +46,51 @@ export default function LoginPage() {
     setLoading(false);
     if (res.success) navigate('/guru/dashboard', { replace: true });
     else setError(res.error || 'Email atau password salah');
+  };
+
+  const handleForgotSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) { setError('Masukkan email Anda terlebih dahulu'); return; }
+    setLoading(true);
+    setError('');
+    setSuccessMsg('');
+    const res = await storage.requestPasswordReset(email);
+    setLoading(false);
+    if (res.error) {
+      setError(res.error);
+    } else {
+      setSuccessMsg('Link pemulihan password telah dikirim ke email Anda! Silakan cek kotak masuk atau spam.');
+    }
+  };
+
+  const handleResetSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPassword || !confirmPassword) {
+      setError('Semua field wajib diisi');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setError('Password baru minimal harus 6 karakter');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError('Konfirmasi password tidak cocok');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    setSuccessMsg('');
+    const res = await storage.updatePassword(newPassword);
+    setLoading(false);
+    if (res.error) {
+      setError(res.error);
+    } else {
+      setSuccessMsg('Password berhasil diperbarui! Anda akan dialihkan ke Dashboard Guru...');
+      setTimeout(() => {
+        // Redireksi dan refresh penuh agar AppContext memuat ulang sesi Guru yang baru diperbarui
+        window.location.href = '/guru/dashboard';
+      }, 1500);
+    }
   };
 
   return (
@@ -34,49 +102,171 @@ export default function LoginPage() {
           <span style={styles.logoText}>{APP_CONFIG.name}</span>
         </div>
 
-        <h1 style={styles.title}>Selamat Datang Kembali</h1>
-        <p style={styles.subtitle}>Masuk ke akun guru Anda</p>
+        {mode === 'login' && (
+          <>
+            <h1 style={styles.title}>Selamat Datang Kembali</h1>
+            <p style={styles.subtitle}>Masuk ke akun guru Anda</p>
 
-        {error && (
-          <div style={styles.errorBox}>
-            <AlertCircle size={15} />
-            {error}
-          </div>
+            {error && (
+              <div style={styles.errorBox}>
+                <AlertCircle size={15} />
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleLoginSubmit} style={styles.form}>
+              <div className="form-group">
+                <label className="form-label" htmlFor="login-email">Email</label>
+                <div style={{ position: 'relative' }}>
+                  <Mail size={16} style={styles.inputIcon} />
+                  <input id="login-email" type="email" className="form-input" placeholder="guru@sekolah.ac.id"
+                    style={{ paddingLeft: 40 }} value={email} onChange={e => setEmail(e.target.value)} autoFocus />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label className="form-label" htmlFor="login-password" style={{ margin: 0 }}>Password</label>
+                  <button type="button" onClick={() => { setMode('forgot'); setError(''); setSuccessMsg(''); }}
+                    style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}>
+                    Lupa password?
+                  </button>
+                </div>
+                <div style={{ position: 'relative', marginTop: 4 }}>
+                  <Lock size={16} style={styles.inputIcon} />
+                  <input id="login-password" type={showPass ? 'text' : 'password'} className="form-input"
+                    placeholder="••••••••" style={{ paddingLeft: 40, paddingRight: 40 }}
+                    value={password} onChange={e => setPassword(e.target.value)} />
+                  <button type="button" style={styles.eyeBtn} onClick={() => setShowPass(!showPass)} tabIndex={-1}>
+                    {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              <button type="submit" className="btn btn-primary w-full btn-lg" disabled={loading}
+                style={{ marginTop: 8, justifyContent: 'center' }}>
+                {loading ? <Spinner /> : 'Masuk'}
+              </button>
+            </form>
+
+            <p style={{ textAlign: 'center', marginTop: 'var(--sp-5)', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+              Belum punya akun?{' '}
+              <Link to="/daftar" style={{ color: 'var(--primary)', fontWeight: 600 }}>Daftar sekarang</Link>
+            </p>
+          </>
         )}
 
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <div className="form-group">
-            <label className="form-label" htmlFor="login-email">Email</label>
-            <div style={{ position: 'relative' }}>
-              <Mail size={16} style={styles.inputIcon} />
-              <input id="login-email" type="email" className="form-input" placeholder="guru@sekolah.ac.id"
-                style={{ paddingLeft: 40 }} value={email} onChange={e => setEmail(e.target.value)} autoFocus />
-            </div>
-          </div>
+        {mode === 'forgot' && (
+          <>
+            <h1 style={styles.title}>Lupa Password</h1>
+            <p style={styles.subtitle}>Masukkan email terdaftar untuk menerima link reset password</p>
 
-          <div className="form-group">
-            <label className="form-label" htmlFor="login-password">Password</label>
-            <div style={{ position: 'relative' }}>
-              <Lock size={16} style={styles.inputIcon} />
-              <input id="login-password" type={showPass ? 'text' : 'password'} className="form-input"
-                placeholder="••••••••" style={{ paddingLeft: 40, paddingRight: 40 }}
-                value={password} onChange={e => setPassword(e.target.value)} />
-              <button type="button" style={styles.eyeBtn} onClick={() => setShowPass(!showPass)} tabIndex={-1}>
-                {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-          </div>
+            {error && (
+              <div style={styles.errorBox}>
+                <AlertCircle size={15} />
+                {error}
+              </div>
+            )}
 
-          <button type="submit" className="btn btn-primary w-full btn-lg" disabled={loading}
-            style={{ marginTop: 8, justifyContent: 'center' }}>
-            {loading ? <Spinner /> : 'Masuk'}
-          </button>
-        </form>
+            {successMsg ? (
+              <div style={{ textAlign: 'center', padding: 'var(--sp-2) 0' }}>
+                <div style={{ color: 'var(--success)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, marginBottom: 'var(--sp-5)' }}>
+                  <CheckCircle2 size={48} style={{ color: 'var(--success)' }} />
+                  <p style={{ fontSize: '0.95rem', fontWeight: 500, lineHeight: '1.5', margin: 0 }}>
+                    {successMsg}
+                  </p>
+                </div>
+                <button type="button" className="btn btn-secondary w-full"
+                  onClick={() => { setMode('login'); setError(''); setSuccessMsg(''); }}>
+                  Kembali ke Login
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleForgotSubmit} style={styles.form}>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="forgot-email">Email Terdaftar</label>
+                  <div style={{ position: 'relative' }}>
+                    <Mail size={16} style={styles.inputIcon} />
+                    <input id="forgot-email" type="email" className="form-input" placeholder="guru@sekolah.ac.id"
+                      style={{ paddingLeft: 40 }} value={email} onChange={e => setEmail(e.target.value)} autoFocus required />
+                  </div>
+                </div>
 
-        <p style={{ textAlign: 'center', marginTop: 'var(--sp-5)', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-          Belum punya akun?{' '}
-          <Link to="/daftar" style={{ color: 'var(--primary)', fontWeight: 600 }}>Daftar sekarang</Link>
-        </p>
+                <button type="submit" className="btn btn-primary w-full btn-lg" disabled={loading}
+                  style={{ marginTop: 8, justifyContent: 'center' }}>
+                  {loading ? <Spinner /> : 'Kirim Link Reset'}
+                </button>
+
+                <button type="button" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.875rem', cursor: 'pointer', marginTop: 8, marginInline: 'auto' }}
+                  onClick={() => { setMode('login'); setError(''); setSuccessMsg(''); }}>
+                  <ArrowLeft size={16} />
+                  Kembali ke Login
+                </button>
+              </form>
+            )}
+          </>
+        )}
+
+        {mode === 'reset' && (
+          <>
+            <h1 style={styles.title}>Atur Password Baru</h1>
+            <p style={styles.subtitle}>Masukkan password baru untuk akun Guru Anda</p>
+
+            {error && (
+              <div style={styles.errorBox}>
+                <AlertCircle size={15} />
+                {error}
+              </div>
+            )}
+
+            {successMsg ? (
+              <div style={{ textAlign: 'center', padding: 'var(--sp-2) 0' }}>
+                <div style={{ color: 'var(--success)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                  <CheckCircle2 size={48} style={{ color: 'var(--success)' }} />
+                  <p style={{ fontSize: '0.95rem', fontWeight: 500, lineHeight: '1.5', margin: 0 }}>
+                    {successMsg}
+                  </p>
+                  <div style={{ marginTop: 8 }}>
+                    <Spinner />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleResetSubmit} style={styles.form}>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="new-password">Password Baru</label>
+                  <div style={{ position: 'relative' }}>
+                    <Lock size={16} style={styles.inputIcon} />
+                    <input id="new-password" type={showNewPass ? 'text' : 'password'} className="form-input"
+                      placeholder="•••••••• (min 6 karakter)" style={{ paddingLeft: 40, paddingRight: 40 }}
+                      value={newPassword} onChange={e => setNewPassword(e.target.value)} required />
+                    <button type="button" style={styles.eyeBtn} onClick={() => setShowNewPass(!showNewPass)} tabIndex={-1}>
+                      {showNewPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="confirm-password">Konfirmasi Password Baru</label>
+                  <div style={{ position: 'relative' }}>
+                    <Lock size={16} style={styles.inputIcon} />
+                    <input id="confirm-password" type={showConfirmPass ? 'text' : 'password'} className="form-input"
+                      placeholder="••••••••" style={{ paddingLeft: 40, paddingRight: 40 }}
+                      value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required />
+                    <button type="button" style={styles.eyeBtn} onClick={() => setShowConfirmPass(!showConfirmPass)} tabIndex={-1}>
+                      {showConfirmPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                <button type="submit" className="btn btn-primary w-full btn-lg" disabled={loading}
+                  style={{ marginTop: 8, justifyContent: 'center' }}>
+                  {loading ? <Spinner /> : 'Simpan Password Baru'}
+                </button>
+              </form>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
