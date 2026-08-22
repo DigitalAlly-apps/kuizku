@@ -10,17 +10,8 @@ import { generateId } from './helpers';
 // ---- Word (.docx) Parser ----
 // Format yang didukung dalam file Word:
 // Setiap soal dipisahkan oleh baris kosong atau nomor (1. 2. dst)
-// Kunci jawaban ditandai: *A atau (A)
+// Kunci jawaban ditandai: *A atau Kunci: A
 // Essay ditandai: [Essay] di depan soal
-// Contoh:
-//   1. Ibukota Indonesia?
-//   A. Jakarta
-//   *B. Jakarta (jika kunci)
-//   C. Bandung
-//   Bobot: 1
-//
-//   [Essay] Jelaskan fotosintesis!
-//   Bobot: 5
 
 export async function parseWordFile(file: File): Promise<ImportResult> {
   // @ts-ignore — mammoth is installed but might not have types
@@ -31,8 +22,7 @@ export async function parseWordFile(file: File): Promise<ImportResult> {
       try {
         const arrayBuffer = e.target?.result as ArrayBuffer;
         const result = await mammoth.extractRawText({ arrayBuffer });
-        const text = result.value as string;
-        resolve(parseWordText(text));
+        resolve(parseWordText(result.value as string));
       } catch (err) {
         reject(new Error('Gagal membaca file Word: ' + String(err)));
       }
@@ -45,120 +35,102 @@ export async function parseWordFile(file: File): Promise<ImportResult> {
 function parseWordText(text: string): ImportResult {
   const valid: ImportRow[] = [];
   const invalid: ImportRow[] = [];
-  
-  // Split by double newline or numbered patterns (1. 2. etc.)
   const rawBlocks = text
     .split(/\n{2,}|\r\n{2,}/)
     .map(b => b.trim())
-    .filter(b => b.length > 0);
+    .filter(Boolean);
 
   let rowIndex = 1;
-  const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
   for (const block of rawBlocks) {
-    const lines = block.split(/\n|\r\n/).map(l => l.trim()).filter(l => l.length > 0);
+    const lines = block.split(/\n|\r\n/).map(l => l.trim()).filter(Boolean);
     if (lines.length === 0) continue;
 
     rowIndex++;
     const errors: string[] = [];
-
-    // Detect essay
-    const isEssay = /^\[?essay\]?/i.test(lines[0]) || (lines.length <= 2 && !/^[A-F]\./i.test(lines[1] ?? ''));
-
-    // Clean question text (remove prefix like "1." "[Essay]")
+    const isEssay = /^\[?essay\]?/i.test(lines[0]) || (lines.length <= 2 && !/^\*?[A-F][\.\)]/i.test(lines[1] ?? ''));
     const rawQ = lines[0].replace(/^\[?essay\]?\s*/i, '').replace(/^\d+[\.\)]\s*/, '').trim();
-    if (!rawQ) { errors.push('Teks soal kosong'); }
+    if (!rawQ) errors.push('Teks soal kosong');
 
-    // Bobot
     const bobotLine = lines.find(l => /^bobot\s*:/i.test(l));
-    const bobotRaw = bobotLine ? bobotLine.replace(/^bobot\s*:/i, '').trim() : '1';
-    const weight = parseFloat(bobotRaw) || 1;
+    const bobotRaw = bobotLine ? bobotLine.replace(/^bobot\s*:/i, '').trim() : '';
+    const parsedWeight = bobotRaw === '' ? 1 : parseFloat(bobotRaw);
+    const weight = Number.isFinite(parsedWeight) && parsedWeight > 0 ? parsedWeight : 1;
+    if (bobotRaw !== '' && (!Number.isFinite(parsedWeight) || parsedWeight <= 0)) {
+      errors.push(`Bobot nilai tidak valid: "${bobotRaw}". Harus berupa angka positif`);
+    }
 
-    // Tag
     const tagLine = lines.find(l => /^tag\s*:/i.test(l));
     const tags = tagLine ? tagLine.replace(/^tag\s*:/i, '').split(/[,;]/).map(t => t.trim()).filter(Boolean) : [];
 
     if (isEssay) {
-      // Essay
       const guideLines = lines.filter(l => !/^bobot\s*:/i.test(l) && !/^tag\s*:/i.test(l) && l !== lines[0]);
-      const answerGuide = guideLines.join(' ').trim();
-
       const question: Partial<Question> = {
-        id: generateId(), type: 'ESSAY',
-        text: rawQ, weight, tags, order: rowIndex,
-        answerGuide: answerGuide || undefined,
-      };
-
-      const importRow: ImportRow = { rowIndex, question, errors, isValid: errors.length === 0 };
-      if (importRow.isValid) valid.push(importRow); else invalid.push(importRow);
-    } else {
-      // Multiple Choice — parse option lines
-      const optionLines = lines.slice(1).filter(l =>
-        /^[A-F][\.\)]/i.test(l) || /^\*[A-F][\.\)]/i.test(l)
-      );
-
-      const options = optionLines.map(l => ({
         id: generateId(),
-        text: l.replace(/^\*?[A-F][\.\)]\s*/i, '').trim(),
-        isCorrect: l.startsWith('*'),
-      }));
-
-      if (options.length < 2) errors.push('Minimal 2 opsi jawaban ditemukan');
-
-      // Detect kunci from * or explicit "Kunci: A" line
-      let correctOptionId: string | undefined;
-      const kunciLine = lines.find(l => /^kunci\s*:/i.test(l));
-      if (kunciLine) {
-        const kunciLetter = kunciLine.replace(/^kunci\s*:/i, '').trim().toUpperCase();
-        const kunciIdx = OPTION_LETTERS.indexOf(kunciLetter);
-        if (kunciIdx >= 0 && options[kunciIdx]) {
-          correctOptionId = options[kunciIdx].id;
-        } else {
-          errors.push(`Kunci jawaban "${kunciLetter}" tidak valid`);
-        }
-      } else {
-        const correctOpt = options.find(o => o.isCorrect);
-        if (correctOpt) {
-          correctOptionId = correctOpt.id;
-        } else {
-          errors.push('Kunci jawaban tidak ditemukan. Tandai dengan * di depan opsi. Contoh: *A. Jakarta');
-        }
-      }
-
-      const cleanOptions = options.map(({ id, text }) => ({ id, text }));
-
-      const question: Partial<Question> = {
-        id: generateId(), type: 'MULTIPLE_CHOICE',
-        text: rawQ, weight, tags, order: rowIndex,
-        options: cleanOptions, correctOptionId,
+        type: 'ESSAY',
+        text: rawQ,
+        weight,
+        tags,
+        order: rowIndex,
+        answerGuide: guideLines.join(' ').trim() || undefined,
       };
-
       const importRow: ImportRow = { rowIndex, question, errors, isValid: errors.length === 0 };
-      if (importRow.isValid) valid.push(importRow); else invalid.push(importRow);
+      (importRow.isValid ? valid : invalid).push(importRow);
+      continue;
     }
+
+    const optionLines = lines.slice(1).filter(l => /^\*?[A-F][\.\)]/i.test(l));
+    const optionsWithLetters = optionLines.map(l => ({
+      id: generateId(),
+      letter: l.replace(/^\*/, '').charAt(0).toUpperCase(),
+      text: l.replace(/^\*?[A-F][\.\)]\s*/i, '').trim(),
+      isCorrect: l.startsWith('*'),
+    })).filter(o => o.text !== '');
+
+    if (optionsWithLetters.length < 2) errors.push('Minimal 2 opsi jawaban ditemukan');
+
+    let correctOptionId: string | undefined;
+    const kunciLine = lines.find(l => /^kunci\s*:/i.test(l));
+    if (kunciLine) {
+      const kunciLetter = kunciLine.replace(/^kunci\s*:/i, '').trim().toUpperCase();
+      const correctOpt = optionsWithLetters.find(o => o.letter === kunciLetter);
+      if (correctOpt) correctOptionId = correctOpt.id;
+      else errors.push(`Kunci jawaban "${kunciLetter}" tidak valid atau opsi tidak ada`);
+    } else {
+      const correctOpt = optionsWithLetters.find(o => o.isCorrect);
+      if (correctOpt) correctOptionId = correctOpt.id;
+      else errors.push('Kunci jawaban tidak ditemukan. Tandai dengan * di depan opsi. Contoh: *A. Jakarta');
+    }
+
+    const question: Partial<Question> = {
+      id: generateId(),
+      type: 'MULTIPLE_CHOICE',
+      text: rawQ,
+      weight,
+      tags,
+      order: rowIndex,
+      options: optionsWithLetters.map(({ id, text }) => ({ id, text })),
+      correctOptionId,
+    };
+    const importRow: ImportRow = { rowIndex, question, errors, isValid: errors.length === 0 };
+    (importRow.isValid ? valid : invalid).push(importRow);
   }
 
   return { valid, invalid, totalRows: rowIndex - 1 };
 }
 
 // ---- Excel / CSV Parser ----
-// Expected columns (case-insensitive): Tipe, Pertanyaan, Opsi A, Opsi B, Opsi C, Opsi D, Opsi E, Opsi F, Kunci, Bobot, Tag
-// Tipe: "PG" | "Essay"
-// Kunci: "A" | "B" | "C" | ... (for PG)
+// Header resmi: Tipe, Pertanyaan, Opsi A-F, Kunci, Bobot, Tag, Panduan Jawaban
+// Bobot boleh kosong dan otomatis bernilai 1.
 
 export async function parseExcelFile(file: File): Promise<ImportResult> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const data = e.target?.result;
-        const workbook = XLSX.read(data, { type: 'binary' });
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
-        const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, {
-          defval: '',
-          raw: false,
-        });
+        const workbook = XLSX.read(e.target?.result, { type: 'binary' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { defval: '', raw: false });
         resolve(parseRows(rows));
       } catch (err) {
         reject(new Error('Gagal membaca file Excel: ' + String(err)));
@@ -174,14 +146,9 @@ export async function parseCSVFile(file: File): Promise<ImportResult> {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const text = e.target?.result as string;
-        const workbook = XLSX.read(text, { type: 'string' });
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
-        const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, {
-          defval: '',
-          raw: false,
-        });
+        const workbook = XLSX.read(e.target?.result as string, { type: 'string' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { defval: '', raw: false });
         resolve(parseRows(rows));
       } catch (err) {
         reject(new Error('Gagal membaca file CSV: ' + String(err)));
@@ -192,11 +159,8 @@ export async function parseCSVFile(file: File): Promise<ImportResult> {
   });
 }
 
-// Normalize column header keys
 function normalizeKey(key: string): string {
-  return key.toLowerCase().trim()
-    .replace(/\s+/g, '_')
-    .replace(/[^a-z0-9_]/g, '');
+  return key.toLowerCase().trim().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
 }
 
 function findValue(row: Record<string, string>, ...candidates: string[]): string {
@@ -204,12 +168,11 @@ function findValue(row: Record<string, string>, ...candidates: string[]): string
     const v = row[c] ?? row[c.toLowerCase()] ?? row[c.toUpperCase()] ?? '';
     if (v !== '') return String(v).trim();
   }
-  // Try normalized
   const norm: Record<string, string> = {};
   for (const [k, v] of Object.entries(row)) norm[normalizeKey(k)] = v;
   for (const c of candidates) {
     const v = norm[normalizeKey(c)];
-    if (v !== undefined && v !== '') return v.trim();
+    if (v !== undefined && v !== '') return String(v).trim();
   }
   return '';
 }
@@ -219,64 +182,46 @@ function parseRows(rows: Record<string, string>[]): ImportResult {
   const invalid: ImportRow[] = [];
 
   rows.forEach((row, idx) => {
-    const rowIndex = idx + 2; // 1-indexed, row 1 = header
+    const rowIndex = idx + 2;
     const errors: string[] = [];
-
-    const tipeRaw = findValue(row, 'Tipe', 'tipe', 'type', 'Type').toUpperCase();
-    const questionText = findValue(row, 'Pertanyaan', 'pertanyaan', 'Soal', 'soal', 'Question', 'question');
-    const bobotRaw = findValue(row, 'Bobot', 'bobot', 'Nilai', 'nilai', 'Weight', 'weight', 'Points', 'points');
-    const tagRaw = findValue(row, 'Tag', 'tag', 'Tags', 'tags', 'Kategori', 'kategori');
-    const kunciRaw = findValue(row, 'Kunci', 'kunci', 'Jawaban Benar', 'jawaban_benar', 'Kunci Jawaban', 'Answer', 'answer').toUpperCase();
+    const tipeRaw = findValue(row, 'Tipe', 'type').toUpperCase();
+    const questionText = findValue(row, 'Pertanyaan', 'Soal', 'Question');
+    const bobotRaw = findValue(row, 'Bobot', 'Nilai', 'Weight', 'Points');
+    const tagRaw = findValue(row, 'Tag', 'Tags', 'Kategori');
+    const kunciRaw = findValue(row, 'Kunci', 'Jawaban Benar', 'jawaban_benar', 'Kunci Jawaban', 'Answer').toUpperCase();
     const answerGuide = findValue(row, 'Panduan Jawaban', 'panduan_jawaban', 'Kunci Essay', 'Guide');
 
-    // Tipe
     let type: QuestionType = 'MULTIPLE_CHOICE';
-    if (tipeRaw === 'ESSAY' || tipeRaw === 'E' || tipeRaw === 'URAIAN') {
-      type = 'ESSAY';
-    } else if (tipeRaw === 'PG' || tipeRaw === 'MC' || tipeRaw === 'PILIHAN_GANDA' || tipeRaw === 'MULTIPLE_CHOICE') {
-      type = 'MULTIPLE_CHOICE';
-    } else if (tipeRaw === '') {
-      type = 'MULTIPLE_CHOICE'; // default
-    } else {
-      errors.push(`Tipe soal tidak valid: "${tipeRaw}". Gunakan "PG" atau "Essay"`);
-    }
+    if (tipeRaw === 'ESSAY' || tipeRaw === 'E' || tipeRaw === 'URAIAN') type = 'ESSAY';
+    else if (tipeRaw === 'PG' || tipeRaw === 'MC' || tipeRaw === 'PILIHAN_GANDA' || tipeRaw === 'MULTIPLE_CHOICE' || tipeRaw === '') type = 'MULTIPLE_CHOICE';
+    else errors.push(`Tipe soal tidak valid: "${tipeRaw}". Gunakan "PG" atau "Essay"`);
 
-    // Question text
     if (!questionText) errors.push('Teks pertanyaan kosong');
 
-    // Weight
-    const weight = parseFloat(bobotRaw);
-    if (isNaN(weight) || weight <= 0) {
+    // Kosong = default 1. Hanya nilai yang diisi tetapi tidak valid yang ditolak.
+    const parsedWeight = bobotRaw === '' ? 1 : parseFloat(bobotRaw);
+    const weight = Number.isFinite(parsedWeight) && parsedWeight > 0 ? parsedWeight : 1;
+    if (bobotRaw !== '' && (!Number.isFinite(parsedWeight) || parsedWeight <= 0)) {
       errors.push(`Bobot nilai tidak valid: "${bobotRaw}". Harus berupa angka positif`);
     }
 
-    // Tags
     const tags = tagRaw ? tagRaw.split(/[,;|]/).map(t => t.trim()).filter(Boolean) : [];
-
-    // MC-specific
     const optionLetters = ['A', 'B', 'C', 'D', 'E', 'F'];
-    const options = optionLetters
-      .map(l => ({
-        id: generateId(),
-        text: findValue(row, `Opsi ${l}`, `opsi_${l.toLowerCase()}`, `Option ${l}`, l),
-      }))
-      .filter(o => o.text !== '');
+    const optionsWithLetters = optionLetters.map(letter => ({
+      id: generateId(),
+      letter,
+      text: findValue(row, `Opsi ${letter}`, `opsi_${letter.toLowerCase()}`, `Option ${letter}`, letter),
+    })).filter(o => o.text !== '');
 
     let correctOptionId: string | undefined;
-
     if (type === 'MULTIPLE_CHOICE') {
-      if (options.length < 2) {
-        errors.push('Minimal 2 opsi jawaban untuk soal Pilihan Ganda');
-      }
+      if (optionsWithLetters.length < 2) errors.push('Minimal 2 opsi jawaban untuk soal Pilihan Ganda');
       if (!kunciRaw) {
         errors.push('Kunci jawaban tidak ditemukan');
       } else {
-        const kunciIndex = optionLetters.indexOf(kunciRaw);
-        if (kunciIndex === -1 || kunciIndex >= options.length) {
-          errors.push(`Kunci jawaban "${kunciRaw}" tidak valid atau opsi tidak ada`);
-        } else {
-          correctOptionId = options[kunciIndex].id;
-        }
+        const correctOpt = optionsWithLetters.find(o => o.letter === kunciRaw);
+        if (!correctOpt) errors.push(`Kunci jawaban "${kunciRaw}" tidak valid atau opsi tidak ada`);
+        else correctOptionId = correctOpt.id;
       }
     }
 
@@ -284,24 +229,16 @@ function parseRows(rows: Record<string, string>[]): ImportResult {
       id: generateId(),
       type,
       text: questionText,
-      weight: isNaN(weight) ? 1 : weight,
+      weight,
       tags,
       order: rowIndex - 1,
-      ...(type === 'MULTIPLE_CHOICE' ? { options, correctOptionId } : { answerGuide }),
+      ...(type === 'MULTIPLE_CHOICE'
+        ? { options: optionsWithLetters.map(({ id, text }) => ({ id, text })), correctOptionId }
+        : { answerGuide }),
     };
 
-    const importRow: ImportRow = {
-      rowIndex,
-      question,
-      errors,
-      isValid: errors.length === 0,
-    };
-
-    if (importRow.isValid) {
-      valid.push(importRow);
-    } else {
-      invalid.push(importRow);
-    }
+    const importRow: ImportRow = { rowIndex, question, errors, isValid: errors.length === 0 };
+    (importRow.isValid ? valid : invalid).push(importRow);
   });
 
   return { valid, invalid, totalRows: rows.length };
@@ -309,22 +246,36 @@ function parseRows(rows: Record<string, string>[]): ImportResult {
 
 // ---- Excel Template Generator ----
 export function downloadExcelTemplate(): void {
-  const ws = XLSX.utils.aoa_to_sheet([
+  const soalSheet = XLSX.utils.aoa_to_sheet([
     ['Tipe', 'Pertanyaan', 'Opsi A', 'Opsi B', 'Opsi C', 'Opsi D', 'Opsi E', 'Opsi F', 'Kunci', 'Bobot', 'Tag', 'Panduan Jawaban'],
-    ['PG', 'Manakah yang merupakan bilangan prima?', '2', '4', '6', '8', '', '', 'A', '1', 'Matematika', ''],
-    ['PG', 'Ibukota Indonesia adalah...', 'Surabaya', 'Bandung', 'Jakarta', 'Medan', '', '', 'C', '1', 'IPS,Geografi', ''],
-    ['Essay', 'Jelaskan pengertian fotosintesis!', '', '', '', '', '', '', '', '5', 'IPA,Biologi', 'Fotosintesis adalah proses pembuatan makanan oleh tumbuhan menggunakan cahaya matahari.'],
+    ['PG', 'Siapa khalifah pertama setelah Rasulullah?', 'Abu Bakar', 'Umar bin Khattab', 'Utsman bin Affan', 'Ali bin Abi Thalib', '', '', 'A', '1', 'PAI', ''],
+    ['PG', 'Jumlah rukun Islam adalah...', '4', '5', '6', '7', '', '', 'B', '', 'PAI', ''],
+    ['Essay', 'Sebutkan lima rukun Islam!', '', '', '', '', '', '', '', '5', 'PAI', 'Syahadat, shalat, zakat, puasa Ramadan, dan haji bagi yang mampu.'],
   ]);
-
-  // Set column widths
-  ws['!cols'] = [
-    { wch: 8 }, { wch: 50 }, { wch: 20 }, { wch: 20 }, { wch: 20 },
-    { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 8 }, { wch: 8 },
-    { wch: 20 }, { wch: 40 },
+  soalSheet['!cols'] = [
+    { wch: 10 }, { wch: 52 }, { wch: 22 }, { wch: 22 }, { wch: 22 }, { wch: 22 },
+    { wch: 22 }, { wch: 22 }, { wch: 10 }, { wch: 10 }, { wch: 20 }, { wch: 48 },
   ];
+  soalSheet['!autofilter'] = { ref: 'A1:L4' };
+
+  const petunjukSheet = XLSX.utils.aoa_to_sheet([
+    ['PETUNJUK IMPORT SOAL KUIZKU'],
+    ['Kolom', 'Aturan'],
+    ['Tipe', 'Isi PG atau Essay. Jika kosong, dianggap PG.'],
+    ['Pertanyaan', 'Wajib diisi. Bisa juga memakai header Soal/Question.'],
+    ['Opsi A-F', 'Untuk PG minimal 2 opsi. Isi berurutan A, B, C, D, dst.'],
+    ['Kunci', 'Untuk PG wajib huruf A-F dan harus menunjuk opsi yang tersedia.'],
+    ['Bobot', 'Boleh kosong; otomatis bernilai 1. Jika diisi harus angka positif.'],
+    ['Tag', 'Opsional. Pisahkan beberapa tag dengan koma, titik koma, atau |.'],
+    ['Panduan Jawaban', 'Opsional untuk Essay.'],
+    ['Tips', 'Jangan ubah nama sheet SOAL dan jangan taruh baris judul tambahan di atas header.'],
+    ['Sebelum import', 'Kuizku akan menampilkan preview: soal valid dan baris yang perlu diperbaiki.'],
+  ]);
+  petunjukSheet['!cols'] = [{ wch: 22 }, { wch: 90 }];
 
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Template Soal');
+  XLSX.utils.book_append_sheet(wb, soalSheet, 'SOAL');
+  XLSX.utils.book_append_sheet(wb, petunjukSheet, 'PETUNJUK');
   XLSX.writeFile(wb, 'template_soal_kuizku.xlsx');
 }
 
