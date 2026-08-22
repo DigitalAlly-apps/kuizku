@@ -6,10 +6,10 @@ interface Props {
   currentIdx: number;
   answeredIds: Set<string>;
   onGoTo: (idx: number) => void;
-  onSubmit: () => void;
+  onReview: () => void;
 }
 
-export default function QuestionNav({ questions, currentIdx, answeredIds, onGoTo, onSubmit }: Props) {
+export default function QuestionNav({ questions, currentIdx, answeredIds, onGoTo, onReview }: Props) {
   const answered = answeredIds.size;
   const unanswered = questions.length - answered;
 
@@ -100,10 +100,18 @@ export default function QuestionNav({ questions, currentIdx, answeredIds, onGoTo
         </div>
       </div>
 
-      {/* Submit button */}
-      <button className="btn btn-success btn-sm w-full question-nav-submit" style={{ justifyContent: 'center', marginTop: 'auto' }} onClick={onSubmit}>
-        ✓ Kumpulkan
-      </button>
+      {/* The final action only appears after the last question, so it cannot be
+          mistaken for the primary "Berikutnya" navigation action. */}
+      {currentIdx === questions.length - 1 && (
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm w-full question-nav-submit"
+          style={{ justifyContent: 'center', marginTop: 'auto' }}
+          onClick={onReview}
+        >
+          Selesai &amp; Periksa Jawaban
+        </button>
+      )}
     </aside>
   );
 }

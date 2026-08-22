@@ -377,8 +377,8 @@ export default function ExamTakingPage() {
                   Berikutnya →
                 </button>
               ) : (
-                <button className="btn btn-success" onClick={() => setShowSubmit(true)}>
-                  ✓ Kumpulkan Jawaban
+                <button className="btn btn-secondary" onClick={() => setShowSubmit(true)}>
+                  Selesai &amp; Periksa Jawaban →
                 </button>
               )}
             </div>
@@ -391,7 +391,7 @@ export default function ExamTakingPage() {
           currentIdx={currentIdx}
           answeredIds={answeredIds}
           onGoTo={goTo}
-          onSubmit={() => setShowSubmit(true)}
+          onReview={() => setShowSubmit(true)}
         />
       </div>
 
