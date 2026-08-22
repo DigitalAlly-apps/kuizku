@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Kuizku — buku kuis</title>
+  <defs>
+    <linearGradient id="background" x1="54" y1="34" x2="464" y2="486" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#647CFF"/>
+      <stop offset="1" stop-color="#3D4ED7"/>
+    </linearGradient>
+    <linearGradient id="page" x1="143" y1="128" x2="370" y2="394" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#DFE5FF"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="url(#background)"/>
+  <circle cx="397" cy="113" r="25" fill="#AAB8FF" opacity=".5"/>
+  <circle cx="116" cy="396" r="17" fill="#AAB8FF" opacity=".35"/>
+  <path d="M256 156c-36-27-78-35-124-25v218c46-10 88-2 124 25 36-27 78-35 124-25V131c-46-10-88-2-124 25Z" fill="url(#page)"/>
+  <path d="M256 156v218" stroke="#B8C4FA" stroke-width="11" stroke-linecap="round"/>
+  <path d="M159 180c24-4 47 0 70 13M159 219c24-4 47 0 70 13M159 258c24-4 47 0 70 13" stroke="#8190DC" stroke-width="10" stroke-linecap="round"/>
+  <path d="M304 180c20-11 43-16 66-12" stroke="#8190DC" stroke-width="10" stroke-linecap="round"/>
+  <path d="M323 212c0-18 13-29 31-29 17 0 29 11 29 27 0 23-21 26-25 43" fill="none" stroke="#4658CE" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="357" cy="285" r="9" fill="#4658CE"/>
+</svg>

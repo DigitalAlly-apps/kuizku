@@ -14,13 +14,14 @@ export default defineConfig(({ mode }) => ({
         name: 'Kuizku - Ujian & Kuis Online',
         short_name: 'Kuizku',
         description: 'Platform ujian dan kuis online untuk guru dan murid Indonesia',
+        lang: 'id',
         theme_color: '#4F6EF7',
         background_color: '#0C0E1A',
         display: 'standalone',
         icons: [
-          { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
-          { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+          { src: 'pwa-kuizku-v2-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'pwa-kuizku-v2-512.png', sizes: '512x512', type: 'image/png' },
+          { src: 'pwa-kuizku-v2-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
         ]
       }
     })
