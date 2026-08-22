@@ -80,7 +80,11 @@ export default function QuestionBankPage() {
 
   const handleEditSave = async (q: import('../../types').Question) => {
     if (!editQ) return;
-    updateBankQuestion(editQ.id, { ...q });
+    const updateResult = await updateBankQuestion(editQ.id, { ...q });
+    if (!updateResult.success) {
+      addToast({ type: 'error', title: 'Soal belum tersimpan', message: updateResult.error });
+      return;
+    }
     setEditQ(null);
 
     // #10: Cek apakah soal ini dipakai di exam, tawarkan propagasi

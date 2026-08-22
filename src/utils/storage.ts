@@ -21,6 +21,13 @@ export interface SaveSubmissionResult {
   saved: boolean;
   queued: boolean;
   error?: string;
+  mcScore?: number;
+  totalScore?: number;
+}
+
+export interface MutationResult {
+  success: boolean;
+  error?: string;
 }
 
 export interface StudentExamLookupResult extends ExamLookupResult {
@@ -65,6 +72,12 @@ function readPendingSubmissionQueue(): Submission[] {
 
 function writePendingSubmissionQueue(queue: Submission[]): void {
   localStorage.setItem(PENDING_SUBMISSION_QUEUE_KEY, JSON.stringify(queue));
+}
+
+function isRetryableNetworkError(error: { message?: string; status?: number }): boolean {
+  const message = error.message?.toLowerCase() ?? '';
+  return !navigator.onLine || error.status === 502 || error.status === 503 || error.status === 504
+    || message.includes('failed to fetch') || message.includes('network') || message.includes('networkerror');
 }
 
 export const storage = {
@@ -248,7 +261,8 @@ export const storage = {
   // ---- Exams ----
   async getExamsByTeacher(teacherId: string): Promise<Exam[]> {
     const { data, error } = await supabase.from('exams').select('*, questions(*), preloaded_students(*)').eq('teacher_id', teacherId).order('created_at', { ascending: false });
-    if (error || !data) return [];
+    if (error) throw new Error(`Gagal memuat ujian: ${error.message}`);
+    if (!data) return [];
     return data.map(dbToExam);
   },
 
@@ -354,8 +368,11 @@ export const storage = {
     return {};
   },
 
-  async deleteExam(id: string): Promise<void> {
-    await supabase.from('exams').delete().eq('id', id);
+  async deleteExam(id: string): Promise<MutationResult> {
+    const { data, error } = await supabase.from('exams').delete().eq('id', id).select('id').maybeSingle();
+    if (error) return { success: false, error: error.message };
+    if (!data) return { success: false, error: 'Ujian tidak ditemukan atau Anda tidak memiliki izin untuk menghapusnya.' };
+    return { success: true };
   },
 
   // ---- Submissions ----
@@ -368,7 +385,8 @@ export const storage = {
       .select('*, student_answers(*)')
       .in('exam_id', examIds);
 
-    if (error || !data) return [];
+    if (error) throw new Error(`Gagal memuat hasil ujian: ${error.message}`);
+    if (!data) return [];
     return data.map(dbToSubmission);
   },
 
@@ -376,7 +394,8 @@ export const storage = {
     const { data, error } = await supabase.from('submissions')
       .select('*, student_answers(*)')
       .eq('exam_id', examId);
-    if (error || !data) return [];
+    if (error) throw new Error(`Gagal memuat hasil ujian: ${error.message}`);
+    if (!data) return [];
     return data.map(dbToSubmission);
   },
 
@@ -386,78 +405,53 @@ export const storage = {
       .select('*, student_answers(*)')
       .eq('exam_id', examId)
       .eq('nis', nis);
-    if (error || !data) return [];
+    if (error) throw new Error(`Gagal memuat riwayat murid: ${error.message}`);
+    if (!data) return [];
     return data.map(dbToSubmission);
   },
 
   async saveSubmission(sub: Submission): Promise<SaveSubmissionResult> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      const { error } = await supabase.rpc('save_student_submission', {
-        p_submission: {
-          id: sub.id, exam_id: sub.examId, student_name: sub.studentName, nis: sub.nis,
-          attempt_number: sub.attemptNumber, started_at: sub.startedAt, is_complete: sub.isComplete,
-          answers: sub.answers.map(answer => ({ question_id: answer.questionId, question_type: answer.questionType, selected_option_id: answer.selectedOptionId ?? null, essay_text: answer.essayText ?? null, time_taken_seconds: answer.timeTakenSeconds ?? null })),
-          anti_cheat_events: sub.antiCheatEvents ?? [],
-        },
-      });
-      if (error) {
-        console.error('Error saving student submission:', error);
+    const { data, error } = await supabase.rpc('save_student_submission', {
+      p_submission: {
+        id: sub.id, exam_id: sub.examId, student_name: sub.studentName, nis: sub.nis,
+        attempt_number: sub.attemptNumber, started_at: sub.startedAt, is_complete: sub.isComplete,
+        answers: sub.answers.map(answer => ({ question_id: answer.questionId, question_type: answer.questionType, selected_option_id: answer.selectedOptionId ?? null, essay_text: answer.essayText ?? null, time_taken_seconds: answer.timeTakenSeconds ?? null })),
+        anti_cheat_events: sub.antiCheatEvents ?? [],
+      },
+    });
+    if (error) {
+      console.error('Error saving student submission:', error);
+      if (isRetryableNetworkError(error)) {
         const queue = readPendingSubmissionQueue().filter(item => item.id !== sub.id);
         writePendingSubmissionQueue([...queue, sub]);
         return { saved: false, queued: true, error: error.message };
       }
-      writePendingSubmissionQueue(readPendingSubmissionQueue().filter(item => item.id !== sub.id));
-      return { saved: true, queued: false };
+      return { saved: false, queued: false, error: error.message };
     }
-    const { error: subErr } = await supabase.from('submissions').upsert({
-      id: sub.id,
-      exam_id: sub.examId,
-      student_name: sub.studentName,
-      nis: sub.nis,
-      attempt_number: sub.attemptNumber,
-      mc_score: sub.mcScore,
-      total_score: sub.totalScore,
-      started_at: sub.startedAt,
-      submitted_at: sub.submittedAt,
-      is_complete: sub.isComplete,
-      teacher_feedback: sub.teacherFeedback || null,
-      is_returned: sub.isReturned || false,
-      anti_cheat_events: sub.antiCheatEvents || []
-    });
-    if (subErr) {
-      console.error('Error saving submission:', subErr);
-      const queue = readPendingSubmissionQueue().filter(item => item.id !== sub.id);
-      writePendingSubmissionQueue([...queue, sub]);
-      return { saved: false, queued: true, error: subErr.message };
-    }
-
-    if (sub.answers.length > 0) {
-      const aInserts = sub.answers.map(a => {
-        const grade = sub.essayScores?.find(g => g.questionId === a.questionId);
-        return {
-          submission_id: sub.id,
-          question_id: a.questionId,
-          question_type: a.questionType,
-          selected_option_id: a.selectedOptionId,
-          essay_text: a.essayText,
-          time_taken_seconds: a.timeTakenSeconds,
-          essay_score: grade?.score,
-          essay_comment: grade?.comment
-        };
-      });
-      await supabase.from('student_answers').delete().eq('submission_id', sub.id);
-      const { error: answersErr } = await supabase.from('student_answers').insert(aInserts);
-      if (answersErr) {
-        console.error('Error saving student answers:', answersErr);
-        const queue = readPendingSubmissionQueue().filter(item => item.id !== sub.id);
-        writePendingSubmissionQueue([...queue, sub]);
-        return { saved: false, queued: true, error: answersErr.message };
-      }
-    }
-
     writePendingSubmissionQueue(readPendingSubmissionQueue().filter(item => item.id !== sub.id));
-    return { saved: true, queued: false };
+    return { saved: true, queued: false, mcScore: Number(data?.mc_score ?? 0), totalScore: data?.total_score == null ? undefined : Number(data.total_score) };
+  },
+
+  async saveSubmissionGrading(submissionId: string, grades: Array<{ questionId: string; score: number; comment?: string }>, feedback: string): Promise<MutationResult> {
+    const { error } = await supabase.rpc('save_submission_grading', {
+      p_submission_id: submissionId,
+      p_grades: grades.map(grade => ({ question_id: grade.questionId, score: grade.score, comment: grade.comment ?? '' })),
+      p_feedback: feedback,
+      p_update_feedback: true,
+    });
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  },
+
+  async returnSubmission(submissionId: string): Promise<MutationResult> {
+    const { data, error } = await supabase.from('submissions')
+      .update({ is_returned: true })
+      .eq('id', submissionId)
+      .select('id')
+      .maybeSingle();
+    if (error) return { success: false, error: error.message };
+    if (!data) return { success: false, error: 'Jawaban tidak ditemukan atau Anda tidak memiliki izin.' };
+    return { success: true };
   },
 
   getPendingSubmissionQueueCount(): number {
@@ -478,7 +472,8 @@ export const storage = {
   // ---- Question Bank ----
   async getBankQuestions(teacherId: string): Promise<BankQuestion[]> {
     const { data, error } = await supabase.from('bank_questions').select('*').eq('teacher_id', teacherId).order('created_at', { ascending: false });
-    if (error || !data) return [];
+    if (error) throw new Error(`Gagal memuat bank soal: ${error.message}`);
+    if (!data) return [];
     return data.map(q => ({
       id: q.id,
       teacherId: q.teacher_id,
@@ -499,8 +494,8 @@ export const storage = {
     }));
   },
 
-  async saveBankQuestion(bq: BankQuestion): Promise<void> {
-    await supabase.from('bank_questions').upsert({
+  async saveBankQuestion(bq: BankQuestion): Promise<MutationResult> {
+    const { data, error } = await supabase.from('bank_questions').upsert({
       id: bq.id,
       teacher_id: bq.teacherId,
       subject: bq.subject,
@@ -515,7 +510,10 @@ export const storage = {
       weight: bq.weight,
       tags: bq.tags,
       updated_at: new Date().toISOString()
-    });
+    }).select('id').maybeSingle();
+    if (error) return { success: false, error: error.message };
+    if (!data) return { success: false, error: 'Soal tidak dikonfirmasi oleh server.' };
+    return { success: true };
   },
 
   async deleteBankQuestion(id: string): Promise<{ error?: string }> {

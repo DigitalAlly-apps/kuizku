@@ -10,7 +10,7 @@ import type { Submission } from '../../types';
 
 
 export default function ResultsPage() {
-  const { currentTeacher, exams, submissions, gradeEssay, returnSubmission, setTeacherFeedback, refreshSubmissions } = useApp();
+  const { currentTeacher, exams, submissions, saveSubmissionGrading, returnSubmission, refreshSubmissions } = useApp();
   const { addToast } = useToast();
   const [searchParams] = useSearchParams();
 
@@ -29,22 +29,31 @@ export default function ResultsPage() {
 
   const selectedExam = useMemo(() => myExams.find(e => e.id === selectedExamId), [myExams, selectedExamId]);
   const examSubs = useMemo(() => submissions.filter(s => s.examId === selectedExamId && s.isComplete), [submissions, selectedExamId]);
+  const essayQuestionIds = useMemo(() => selectedExam?.questions.filter(q => q.type === 'ESSAY').map(q => q.id) ?? [], [selectedExam]);
+  const essayStatus = (sub: Submission): 'NONE' | 'PENDING' | 'PARTIAL' | 'FINAL' => {
+    if (essayQuestionIds.length === 0) return 'NONE';
+    const gradedIds = new Set(sub.essayScores.map(grade => grade.questionId));
+    const gradedCount = essayQuestionIds.filter(id => gradedIds.has(id)).length;
+    if (gradedCount === 0) return 'PENDING';
+    return gradedCount === essayQuestionIds.length ? 'FINAL' : 'PARTIAL';
+  };
+  const finalScoreSubs = useMemo(() => examSubs.filter(sub => essayStatus(sub) === 'NONE' || essayStatus(sub) === 'FINAL'), [examSubs, essayQuestionIds]);
 
   const maxMC = selectedExam ? calcMaxMCScore(selectedExam) : 0;
   const maxEssay = selectedExam ? calcMaxEssayScore(selectedExam) : 0;
   const maxTotal = maxMC + maxEssay;
 
   const avgTotal = useMemo(() => {
-    if (!examSubs.length) return 0;
-    const total = examSubs.reduce((s, sub) => {
+    if (!finalScoreSubs.length) return 0;
+    const total = finalScoreSubs.reduce((s, sub) => {
       const essayTotal = sub.essayScores.reduce((a, g) => a + g.score, 0);
       return s + sub.mcScore + essayTotal;
     }, 0);
-    return Math.round(total / examSubs.length);
-  }, [examSubs]);
+    return Math.round(total / finalScoreSubs.length);
+  }, [finalScoreSubs]);
 
   const scoreStats = useMemo(() => {
-    const totals = examSubs.map(sub => sub.mcScore + sub.essayScores.reduce((a, g) => a + g.score, 0)).sort((a, b) => a - b);
+    const totals = finalScoreSubs.map(sub => sub.mcScore + sub.essayScores.reduce((a, g) => a + g.score, 0)).sort((a, b) => a - b);
     if (!totals.length) return { median: 0, highest: 0, mastery: 0, distribution: [0, 0, 0, 0] };
     const mid = Math.floor(totals.length / 2);
     const median = totals.length % 2 ? totals[mid] : Math.round((totals[mid - 1] + totals[mid]) / 2);
@@ -57,11 +66,11 @@ export default function ResultsPage() {
       totals.filter(v => maxTotal > 0 && (v / maxTotal) * 100 >= 85).length,
     ];
     return { median, highest, mastery, distribution };
-  }, [examSubs, maxTotal]);
+  }, [finalScoreSubs, maxTotal]);
 
-  const ranking = useMemo(() => [...examSubs]
+  const ranking = useMemo(() => [...finalScoreSubs]
     .sort((a, b) => (b.mcScore + b.essayScores.reduce((s, g) => s + g.score, 0)) - (a.mcScore + a.essayScores.reduce((s, g) => s + g.score, 0)))
-    .slice(0, 5), [examSubs]);
+    .slice(0, 5), [finalScoreSubs]);
 
   const startGrading = (sub: Submission) => {
     setDetailSub(sub);
@@ -72,19 +81,28 @@ export default function ResultsPage() {
     setGradingMode(true);
   };
 
-  const saveGrading = () => {
+  const saveGrading = async () => {
     if (!detailSub) return;
-    Object.entries(gradingScores).forEach(([qId, { score, comment }]) => {
-      gradeEssay(detailSub.id, qId, score, comment);
-    });
-    if (feedbackText.trim()) setTeacherFeedback(detailSub.id, feedbackText.trim());
+    const result = await saveSubmissionGrading(
+      detailSub.id,
+      Object.entries(gradingScores).map(([questionId, grade]) => ({ questionId, score: grade.score, comment: grade.comment })),
+      feedbackText.trim(),
+    );
+    if (!result.success) {
+      addToast({ type: 'error', title: 'Nilai belum tersimpan', message: result.error });
+      return;
+    }
     addToast({ type: 'success', title: 'Nilai & feedback disimpan!' });
     setGradingMode(false);
     setDetailSub(null);
   };
 
-  const handleReturn = (sub: Submission) => {
-    returnSubmission(sub.id);
+  const handleReturn = async (sub: Submission) => {
+    const result = await returnSubmission(sub.id);
+    if (!result.success) {
+      addToast({ type: 'error', title: 'Gagal mengembalikan jawaban', message: result.error });
+      return;
+    }
     addToast({ type: 'info', title: 'Dikembalikan untuk revisi', message: `Jawaban ${sub.studentName} dibuka kembali.` });
     setDetailSub(null);
     setGradingMode(false);
@@ -221,7 +239,7 @@ export default function ResultsPage() {
           )}
 
           {/* Participant Table */}
-          <SectionHeader title="Daftar Peserta" subtitle={`${examSubs.length} jawaban masuk`} />
+          <SectionHeader title="Daftar Peserta" subtitle={`${examSubs.length} jawaban masuk${finalScoreSubs.length < examSubs.length ? ` • statistik final dari ${finalScoreSubs.length} peserta yang selesai dinilai` : ''}`} />
           {examSubs.length === 0 ? (
             <div className="card">
               <EmptyState icon={<User size={48} />} title="Belum ada peserta" description="Bagikan kode ujian ke murid agar mereka bisa mengerjakan." />
@@ -240,9 +258,9 @@ export default function ResultsPage() {
                 <tbody>
                   {examSubs.map((sub, i) => {
                     const essayTotal = sub.essayScores.reduce((a, g) => a + g.score, 0);
+                    const gradingStatus = essayStatus(sub);
+                    const needsGrading = gradingStatus === 'PENDING' || gradingStatus === 'PARTIAL';
                     const total = sub.mcScore + essayTotal;
-                    const needsGrading = selectedExam.format !== 'PG_ONLY' &&
-                      sub.essayScores.length < selectedExam.questions.filter(q => q.type === 'ESSAY').length;
                     return (
                       <tr key={sub.id}>
                         <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{i + 1}</td>
@@ -256,14 +274,16 @@ export default function ResultsPage() {
                         )}
                         {selectedExam.format !== 'PG_ONLY' && (
                           <td style={{ textAlign: 'center' }}>
-                            {needsGrading
+                            {gradingStatus === 'PENDING'
                               ? <span style={{ color: 'var(--warning)', fontSize: '0.78rem' }}>Belum dinilai</span>
+                              : gradingStatus === 'PARTIAL'
+                              ? <span style={{ color: 'var(--warning)', fontSize: '0.78rem' }}>Dinilai sebagian</span>
                               : <span style={{ fontWeight: 600, color: 'var(--secondary)' }}>{essayTotal}<span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>/{maxEssay}</span></span>
                             }
                           </td>
                         )}
                         <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--success)', fontSize: '1rem' }}>
-                          {total}<span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '0.8rem' }}>/{maxTotal}</span>
+                          {needsGrading ? <><span style={{ fontSize: '0.78rem', color: 'var(--warning)' }}>Sementara </span>{sub.mcScore}<span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '0.8rem' }}>/{maxMC}</span></> : <>{total}<span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '0.8rem' }}>/{maxTotal}</span></>}
                         </td>
                         <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                           {sub.submittedAt ? formatDateTime(sub.submittedAt) : '—'}

@@ -177,8 +177,12 @@ export default function ExamListPage() {
   };
 
   const handleDuplicate = async (id: string) => {
-    const copy = await duplicateExam(id);
-    addToast({ type: 'success', title: 'Ujian diduplikasi', message: `"${copy.title}" berhasil dibuat.` });
+    const result = await duplicateExam(id);
+    if (!result.success || !result.exam) {
+      addToast({ type: 'error', title: 'Gagal menduplikasi ujian', message: result.error });
+      return;
+    }
+    addToast({ type: 'success', title: 'Ujian diduplikasi', message: `"${result.exam.title}" berhasil dibuat.` });
     setOpenMenuId(null);
   };
 
@@ -229,8 +233,15 @@ export default function ExamListPage() {
     setOpenMenuId(null);
   };
 
-  const handleDelete = () => {
-    if (deleteId) { deleteExam(deleteId); addToast({ type: 'success', title: 'Ujian dihapus.' }); setDeleteId(null); }
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    const result = await deleteExam(deleteId);
+    if (!result.success) {
+      addToast({ type: 'error', title: 'Gagal menghapus ujian', message: result.error });
+      return;
+    }
+    addToast({ type: 'success', title: 'Ujian dihapus.' });
+    setDeleteId(null);
   };
 
   const ExamCard = ({ exam }: { exam: Exam }) => {

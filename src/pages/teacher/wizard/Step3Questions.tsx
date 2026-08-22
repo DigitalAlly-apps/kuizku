@@ -34,19 +34,24 @@ export default function Step3Questions({ format, subject, initial, onNext, onBac
     addToast({ type: 'success', title: `${qs.length} soal ditambahkan!` });
   };
 
-  const handleManualSave = (q: Question) => {
+  const handleManualSave = async (q: Question) => {
     let updated: Question[];
+    let bankSaved = true;
     if (editTarget) {
       updated = reorderQuestions(questions.map(x => x.id === editTarget.id ? { ...q, id: editTarget.id } : x));
     } else {
       updated = reorderQuestions([...questions, q]);
       // Auto-save to bank
-      addToBankFromQuestion(q, subject);
+      const bankResult = await addToBankFromQuestion(q, subject);
+      bankSaved = bankResult.success;
+      if (!bankResult.success) {
+        addToast({ type: 'warning', title: 'Soal ditambahkan ke ujian, tetapi belum tersimpan di bank', message: bankResult.error });
+      }
     }
     setQuestions(updated);
     setActiveModal(null);
     setEditTarget(null);
-    addToast({ type: 'success', title: editTarget ? 'Soal diperbarui' : 'Soal ditambahkan & disimpan ke bank soal' });
+    if (editTarget || bankSaved) addToast({ type: 'success', title: editTarget ? 'Soal diperbarui' : 'Soal ditambahkan & disimpan ke bank soal' });
   };
 
   const handleEdit = (q: Question) => {

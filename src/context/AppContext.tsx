@@ -4,7 +4,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { Teacher, Exam, Submission, BankQuestion, ToastMessage } from '../types';
-import { storage } from '../utils/storage';
+import { storage, type MutationResult } from '../utils/storage';
 import { generateId, generateExamCode } from '../utils/helpers';
 import { v4 as uuidv4 } from 'uuid';
 import { clearSessionBySubmissionId } from '../utils/examSession';
@@ -38,10 +38,10 @@ interface AppContextShape {
   // Exams
   exams: Exam[];
   getExam: (id: string) => Exam | undefined;
-  createExam: (data: Omit<Exam, 'id' | 'code' | 'status' | 'questions' | 'createdAt' | 'updatedAt' | 'preloadedStudents'>) => Promise<Exam>;
+  createExam: (data: Omit<Exam, 'id' | 'code' | 'status' | 'questions' | 'createdAt' | 'updatedAt' | 'preloadedStudents'>) => Promise<MutationResult & { exam?: Exam }>;
   updateExam: (id: string, data: Partial<Exam>) => Promise<{ error?: string }>;
-  deleteExam: (id: string) => Promise<void>;
-  duplicateExam: (id: string) => Promise<Exam>;
+  deleteExam: (id: string) => Promise<MutationResult>;
+  duplicateExam: (id: string) => Promise<MutationResult & { exam?: Exam }>;
   publishExam: (id: string) => Promise<{ error?: string }>;
   archiveExam: (id: string) => Promise<{ error?: string }>;
   endExam: (id: string) => Promise<{ error?: string }>;
@@ -49,17 +49,18 @@ interface AppContextShape {
 
   // Question Bank
   bankQuestions: BankQuestion[];
-  addToBankFromQuestion: (q: import('../types').Question, subject: string) => Promise<void>;
+  addToBankFromQuestion: (q: import('../types').Question, subject: string) => Promise<MutationResult>;
   deleteBankQuestion: (id: string) => Promise<{ error?: string }>;
-  updateBankQuestion: (id: string, data: Partial<BankQuestion>) => Promise<void>;
+  updateBankQuestion: (id: string, data: Partial<BankQuestion>) => Promise<MutationResult>;
   refreshBank: () => Promise<void>;
 
   // Submissions
   submissions: Submission[];
   getExamSubmissions: (examId: string) => Submission[];
-  gradeEssay: (submissionId: string, questionId: string, score: number, comment?: string) => Promise<void>;
-  returnSubmission: (submissionId: string) => Promise<void>;
-  setTeacherFeedback: (submissionId: string, feedback: string) => Promise<void>;
+  gradeEssay: (submissionId: string, questionId: string, score: number, comment?: string) => Promise<MutationResult>;
+  saveSubmissionGrading: (submissionId: string, grades: Submission['essayScores'], feedback: string) => Promise<MutationResult>;
+  returnSubmission: (submissionId: string) => Promise<MutationResult>;
+  setTeacherFeedback: (submissionId: string, feedback: string) => Promise<MutationResult>;
   refreshSubmissions: () => Promise<void>;
 
   // Toast notifications
@@ -160,14 +161,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ---- Exam CRUD ----
   const getExam = useCallback((id: string) => exams.find(e => e.id === id), [exams]);
 
-  const createExam = async (data: Omit<Exam, 'id' | 'code' | 'status' | 'questions' | 'createdAt' | 'updatedAt' | 'preloadedStudents'>): Promise<Exam> => {
+  const createExam = async (data: Omit<Exam, 'id' | 'code' | 'status' | 'questions' | 'createdAt' | 'updatedAt' | 'preloadedStudents'>): Promise<MutationResult & { exam?: Exam }> => {
     let code = generateExamCode();
     while (exams.some(e => e.code === code)) code = generateExamCode();
     const now = new Date().toISOString();
     const newExam: Exam = { ...data, id: generateId(), teacherId: currentTeacher?.id ?? '', code, status: 'DRAFT', questions: [], preloadedStudents: [], createdAt: now, updatedAt: now };
+    const result = await storage.saveExam(newExam);
+    if (result.error) return { success: false, error: result.error };
     setExamsState(prev => [newExam, ...prev]);
-    await storage.saveExam(newExam);
-    return newExam;
+    return { success: true, exam: newExam };
   };
 
   // updateExam: kalau data hanya berisi field meta (tidak ada questions/preloadedStudents),
@@ -209,21 +211,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return {};
   };
 
-  const deleteExam = async (id: string) => {
+  const deleteExam = async (id: string): Promise<MutationResult> => {
+    const result = await storage.deleteExam(id);
+    if (!result.success) return result;
     setExamsState(prev => prev.filter(e => e.id !== id));
-    await storage.deleteExam(id);
+    return result;
   };
 
-  const duplicateExam = async (id: string): Promise<Exam> => {
+  const duplicateExam = async (id: string): Promise<MutationResult & { exam?: Exam }> => {
     const original = exams.find(e => e.id === id);
-    if (!original) throw new Error('Exam not found');
+    if (!original) return { success: false, error: 'Ujian tidak ditemukan.' };
     let code = generateExamCode();
     while (exams.some(e => e.code === code)) code = generateExamCode();
     const now = new Date().toISOString();
     const copy: Exam = { ...original, id: generateId(), code, title: `${original.title} (Salinan)`, status: 'DRAFT', questions: original.questions.map(q => ({ ...q, id: generateId() })), createdAt: now, updatedAt: now };
+    const result = await storage.saveExam(copy);
+    if (result.error) return { success: false, error: result.error };
     setExamsState(prev => [copy, ...prev]);
-    await storage.saveExam(copy);
-    return copy;
+    return { success: true, exam: copy };
   };
 
   const publishExam = async (id: string) => updateExam(id, { status: 'ACTIVE' });
@@ -231,18 +236,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const endExam = async (id: string) => updateExam(id, { status: 'ENDED' });
 
   // ---- Question Bank ----
-  const addToBankFromQuestion = async (q: import('../types').Question, subject: string) => {
+  const addToBankFromQuestion = async (q: import('../types').Question, subject: string): Promise<MutationResult> => {
     const existing = bankQuestions.find(b => b.id === q.id);
     if (existing) {
       const updated = { ...existing, ...q, updatedAt: new Date().toISOString() };
-      setBankState(prev => prev.map(b => b.id === q.id ? updated : b));
-      await storage.saveBankQuestion(updated);
-      return;
+      const result = await storage.saveBankQuestion(updated);
+      if (result.success) setBankState(prev => prev.map(b => b.id === q.id ? updated : b));
+      return result;
     }
     const now = new Date().toISOString();
     const bq: BankQuestion = { ...q, id: generateId(), teacherId: currentTeacher?.id ?? '', subject, usedInExamIds: [], createdAt: now, updatedAt: now };
-    setBankState(prev => [bq, ...prev]);
-    await storage.saveBankQuestion(bq);
+    const result = await storage.saveBankQuestion(bq);
+    if (result.success) setBankState(prev => [bq, ...prev]);
+    return result;
   };
 
   const deleteBankQuestion = async (id: string): Promise<{ error?: string }> => {
@@ -252,47 +258,56 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return {};
   };
 
-  const updateBankQuestion = async (id: string, data: Partial<BankQuestion>) => {
+  const updateBankQuestion = async (id: string, data: Partial<BankQuestion>): Promise<MutationResult> => {
     const existing = bankQuestions.find(b => b.id === id);
-    if (!existing) return;
+    if (!existing) return { success: false, error: 'Soal tidak ditemukan.' };
     const updated = { ...existing, ...data, updatedAt: new Date().toISOString() };
-    setBankState(prev => prev.map(b => b.id === id ? updated : b));
-    await storage.saveBankQuestion(updated);
+    const result = await storage.saveBankQuestion(updated);
+    if (result.success) setBankState(prev => prev.map(b => b.id === id ? updated : b));
+    return result;
   };
 
   // ---- Submissions ----
   const getExamSubmissions = useCallback((examId: string) =>
     submissions.filter(s => s.examId === examId), [submissions]);
 
-  const gradeEssay = async (submissionId: string, questionId: string, score: number, comment?: string) => {
+  const gradeEssay = async (submissionId: string, questionId: string, score: number, comment?: string): Promise<MutationResult> => {
     const sub = submissions.find(s => s.id === submissionId);
-    if (!sub) return;
+    if (!sub) return { success: false, error: 'Jawaban tidak ditemukan.' };
     const existingGrade = sub.essayScores.find(g => g.questionId === questionId);
     const newEssayScores = existingGrade
       ? sub.essayScores.map(g => g.questionId === questionId ? { ...g, score, comment } : g)
       : [...sub.essayScores, { questionId, score, comment }];
-    const essayTotal = newEssayScores.reduce((sum, g) => sum + g.score, 0);
-    const updated = { ...sub, essayScores: newEssayScores, totalScore: sub.mcScore + essayTotal };
-    setSubmissionsState(prev => prev.map(s => s.id === submissionId ? updated : s));
-    await storage.saveSubmission(updated);
+    return saveSubmissionGrading(submissionId, newEssayScores, sub.teacherFeedback ?? '');
   };
 
-  const returnSubmission = async (submissionId: string) => {
+  const saveSubmissionGrading = async (submissionId: string, grades: Submission['essayScores'], feedback: string): Promise<MutationResult> => {
     const sub = submissions.find(s => s.id === submissionId);
-    if (!sub) return;
-    // Jangan flip isComplete — cukup set isReturned: true
-    // isComplete tetap true agar submission masih muncul di tab Hasil
+    if (!sub) return { success: false, error: 'Jawaban tidak ditemukan.' };
+    const result = await storage.saveSubmissionGrading(submissionId, grades, feedback);
+    if (!result.success) return result;
+    const essayQuestionCount = exams.find(exam => exam.id === sub.examId)?.questions.filter(question => question.type === 'ESSAY').length ?? 0;
+    const isFinal = grades.length === essayQuestionCount;
+    const essayTotal = grades.reduce((sum, grade) => sum + grade.score, 0);
+    const updated = { ...sub, essayScores: grades, teacherFeedback: feedback || undefined, totalScore: isFinal ? sub.mcScore + essayTotal : undefined };
+    setSubmissionsState(prev => prev.map(s => s.id === submissionId ? updated : s));
+    return result;
+  };
+
+  const returnSubmission = async (submissionId: string): Promise<MutationResult> => {
+    const sub = submissions.find(s => s.id === submissionId);
+    if (!sub) return { success: false, error: 'Jawaban tidak ditemukan.' };
+    const result = await storage.returnSubmission(submissionId);
+    if (!result.success) return result;
     const updated = { ...sub, isReturned: true };
     setSubmissionsState(prev => prev.map(s => s.id === submissionId ? updated : s));
-    await storage.saveSubmission(updated);
+    return result;
   };
 
-  const setTeacherFeedback = async (submissionId: string, feedback: string) => {
+  const setTeacherFeedback = async (submissionId: string, feedback: string): Promise<MutationResult> => {
     const sub = submissions.find(s => s.id === submissionId);
-    if (!sub) return;
-    const updated = { ...sub, teacherFeedback: feedback };
-    setSubmissionsState(prev => prev.map(s => s.id === submissionId ? updated : s));
-    await storage.saveSubmission(updated);
+    if (!sub) return { success: false, error: 'Jawaban tidak ditemukan.' };
+    return saveSubmissionGrading(submissionId, sub.essayScores, feedback);
   };
 
   // ---- Toasts ----
@@ -328,7 +343,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     exams, getExam, createExam, updateExam, deleteExam, duplicateExam,
     publishExam, archiveExam, endExam, refreshExams,
     bankQuestions, addToBankFromQuestion, deleteBankQuestion, updateBankQuestion, refreshBank,
-    submissions, getExamSubmissions, gradeEssay, returnSubmission, setTeacherFeedback, refreshSubmissions,
+    submissions, getExamSubmissions, gradeEssay, saveSubmissionGrading, returnSubmission, setTeacherFeedback, refreshSubmissions,
     toasts, addToast, removeToast,
   };
 

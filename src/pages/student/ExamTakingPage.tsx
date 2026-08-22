@@ -114,12 +114,13 @@ export default function ExamTakingPage() {
     const isUnavailable = latestLookup.error?.type === 'NETWORK_ERROR' || latestLookup.error?.type === 'BACKEND_UNAVAILABLE';
     if (!latestExam && isUnavailable) {
       const sub = { ...buildSubmission(session, exam), antiCheatEvents: antiCheatEventsRef.current };
-      setSubmittedData(sub);
       const saveResult = await storage.saveSubmission(sub);
       submitRef.current = false;
       setShowSubmit(false);
-      if (saveResult.queued) setSubmitPending(true);
-      else setLoadError('Jawaban belum dapat disimpan. Silakan coba lagi.');
+      if (saveResult.queued) {
+        setSubmittedData(sub);
+        setSubmitPending(true);
+      } else setLoadError(saveResult.error ?? 'Jawaban belum dapat disimpan. Silakan coba lagi.');
       return;
     }
     if (!latestExam || latestExam.id !== exam.id || latestExam.status !== 'ACTIVE') {
@@ -141,16 +142,16 @@ export default function ExamTakingPage() {
     }
 
     const sub = { ...buildSubmission(session, latestExam), antiCheatEvents: antiCheatEventsRef.current };
-    setSubmittedData(sub);
-
     // Jangan clear session sampai server mengonfirmasi submission final tersimpan.
     const saveResult = await storage.saveSubmission(sub);
     if (saveResult.saved) {
       clearSession(session.examCode, session.nis);
+      setSubmittedData({ ...sub, mcScore: saveResult.mcScore ?? sub.mcScore, totalScore: saveResult.totalScore });
     } else {
       submitRef.current = false;
       setShowSubmit(false);
-      setSubmitPending(true);
+      if (saveResult.queued) setSubmitPending(true);
+      else setLoadError(saveResult.error ?? 'Jawaban belum dapat disimpan. Silakan coba lagi.');
       return;
     }
 

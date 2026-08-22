@@ -1,954 +1,869 @@
-# PLAN PERBAIKAN KUIZKU
+# MASTER PLAN KUIZKU — STABILISASI, SCORING, IMPORT EXCEL, DAN PENILAIAN ESSAY
 
-Repository: `DigitalAlly-apps/kuizku`  
-Fokus: stabilisasi alur guru → publish ujian → murid buka → kerjakan → submit, sekaligus persiapan perpindahan ke Supabase baru.
+Repository:
+DigitalAlly-apps/kuizku
 
-## 1. Ringkasan Temuan Utama
+Tujuan:
+Menjadikan Kuizku stabil untuk dipakai latihan/kuis/LCC secara nyata, terutama memastikan:
+- data tidak false-success
+- nilai benar
+- ujian guru benar-benar tersimpan/publish
+- murid bisa masuk dan submit
+- offline aman
+- auth Google benar
+- import Excel aman
+- scoring PG + Essay konsisten
+- essay bisa dinilai dengan beberapa mode tanpa AI
 
-Setelah membaca struktur dan alur kode Kuizku, masalah utama bukan hanya project Supabase lama yang mati atau terkena limit. Ada beberapa kelemahan arsitektur yang bisa membuat guru merasa ujian sudah berhasil dipublikasikan, sementara murid tetap gagal membuka ujian.
+JANGAN melakukan redesign besar.
+JANGAN menambah fitur di luar scope.
+Prioritaskan integritas data, scoring, dan reliability.
 
-Temuan terpenting:
+==================================================
+BAGIAN A — FIX FALSE-SUCCESS CRUD
+==================================================
 
-1. Publish ujian bisa terlihat berhasil walaupun database belum tentu benar-benar berubah.
-2. Error Supabase di portal murid disamarkan menjadi “kode tidak ditemukan”.
-3. Query murid anonymous mengambil banyak tabel sekaligus dan sangat bergantung pada RLS.
-4. Murid membaca seluruh submission suatu ujian untuk mengecek attempt/resume.
-5. Penyimpanan submission bisa gagal tetapi UI tetap melanjutkan seolah save berhasil.
-6. Kuizku bergantung pada RPC `save_exam_full`.
-7. History GitHub menunjukkan portal murid sebelumnya memang pernah bermasalah karena ketergantungan ke auth guru.
-8. Integrasi Supabase hanya memakai satu client frontend dengan `VITE_SUPABASE_URL` dan `VITE_SUPABASE_ANON_KEY`.
-9. File `.env` terlihat ter-track di repository dan harus ditinjau dari sisi keamanan.
+Masalah sistemik yang sudah ditemukan:
+UI sering berubah dulu, lalu database dipanggil, dan error server diabaikan.
 
-## 2. Flow Aplikasi Saat Ini
+Akibat:
+- delete terlihat sukses lalu balik setelah refresh
+- create/duplicate bisa jadi ghost data
+- grading/feedback bisa terlihat tersimpan padahal belum
 
-### Guru
+PRINSIP BARU:
 
-`CreateExamPage`
-→ membuat object exam status `DRAFT`
-→ `storage.saveExam()`
-→ RPC `save_exam_full`
-→ Step 5
-→ `publishExam(exam.id)`
-→ `updateExam(id, { status: 'ACTIVE' })`
-→ `storage.updateExamMeta()`
+SERVER WRITE
+→ SERVER CONFIRM
+→ UPDATE LOCAL STATE
 
-### Murid
+Jangan:
+UPDATE LOCAL STATE
+→ FIRE REQUEST
+→ IGNORE ERROR
 
-`JoinExamPage`
-→ input kode
-→ `storage.getExamByCode(code)`
-→ query:
+Audit dan fix:
 
-`exams + questions + preloaded_students`
+1. deleteExam
+2. createExam
+3. duplicateExam
+4. gradeEssay
+5. returnSubmission
+6. setTeacherFeedback
+7. saveBankQuestion/update/delete jika pola sama
+8. mutation penting lain
 
-→ cek status `ACTIVE`
-→ `getSubmissionsByExam(exam.id)`
-→ validasi attempt
-→ `InstructionsPage`
-→ query exam ulang
-→ `ExamTakingPage`
-→ query exam ulang
-→ query submissions ulang
-→ autosave / submit
+Semua mutation harus return structured result:
 
-Arsitektur ini terlalu banyak mengandalkan direct table access dari client anonymous.
+{
+  success: boolean;
+  error?: string;
+}
 
----
+Kalau gagal:
+- jangan update state permanen
+- tampilkan toast error
+- jangan tampilkan sukses palsu
 
-# PRIORITAS P0 — HIDUPKAN BACKEND DULU
+==================================================
+BAGIAN B — FIX DELETE UJIAN BALIK SETELAH REFRESH
+==================================================
 
-## 3. Migrasi / Transfer Supabase
+Masalah nyata:
+Guru hapus ujian dari Dashboard/Ujian Saya.
+Card hilang.
+Setelah refresh, ujian muncul lagi.
 
-Prioritas pertama adalah memindahkan backend Kuizku ke Supabase baru.
+Audit:
+src/context/AppContext.tsx
+src/utils/storage.ts
 
-Metode utama:
+Fix storage.deleteExam:
 
-**Transfer project Supabase lama ke organization akun baru jika masih memungkinkan.**
-
-Jangan langsung membuat ulang database secara manual jika transfer project masih bisa dilakukan.
-
-Alasan:
-- UUID Auth user tetap sama.
-- Database tetap sama.
-- RLS tetap sama.
-- RPC tetap sama.
-- Trigger tetap sama.
-- Storage tetap sama.
-- Relasi teacher/exam/submission tidak rusak.
-
-Jika project lama tidak bisa ditransfer dan harus memakai project baru, lakukan migrasi manual secara lengkap.
-
-Yang wajib dipindahkan:
-
-- `teachers`
-- `exams`
-- `questions`
-- `preloaded_students`
-- `submissions`
-- `student_answers`
-- `bank_questions`
-- `workspaces`
-- `subscriptions`
-- tabel tambahan lain yang ditemukan
-
-Juga wajib:
-
-- Supabase Auth users
-- RLS policies
-- PostgreSQL functions
-- RPC
-- triggers
-- indexes
-- constraints
-- storage buckets
-- Edge Functions jika ada
-- Auth configuration
-
-RPC penting yang harus diverifikasi:
-
-`save_exam_full`
-
-Tanpa RPC ini, wizard guru tidak dapat menyimpan exam lengkap seperti implementasi sekarang.
-
----
-
-# PRIORITAS P1 — FIX FALSE SUCCESS PUBLISH
-
-## 4. Masalah Publish Guru
-
-Saat ini:
-
-`publishExam(id)`
-
-hanya memanggil:
-
-`updateExam(id, { status: 'ACTIVE' })`
-
-dan akhirnya:
-
-`supabase.from('exams').update(payload).eq('id', id)`
-
-Masalah:
-
-Frontend hanya memeriksa `error`.
-
-Tidak ada verifikasi apakah row benar-benar ter-update.
-
-Dalam kondisi RLS tertentu, update bisa gagal secara efektif / tidak mengenai row tetapi UI tetap berpotensi menganggap proses berhasil.
-
-## Solusi
-
-Refactor `storage.updateExamMeta()` agar:
-
-1. update row,
-2. return row hasil update,
-3. cek jumlah row,
-4. cek status final.
-
-Target:
-
-```ts
 const { data, error } = await supabase
   .from('exams')
-  .update(payload)
+  .delete()
   .eq('id', id)
-  .select('id,status')
-  .single();
-```
-
-Jika:
-- `error`
-- data kosong
-- status bukan `ACTIVE`
-
-maka publish dianggap gagal.
-
-Setelah publish berhasil:
-
-query ulang exam dari server.
-
-Jangan gunakan optimistic local state sebagai bukti publish berhasil.
-
-UI baru boleh menampilkan:
-
-“Ujian berhasil dipublikasikan”
-
-setelah server mengonfirmasi status `ACTIVE`.
-
----
-
-# PRIORITAS P2 — ERROR HANDLING PORTAL MURID
-
-## 5. Masalah getExamByCode
-
-Saat ini `getExamByCode()` mengembalikan `null` pada hampir semua error.
-
-Akibatnya:
-
-- kode memang tidak ada
-- RLS menolak
-- Supabase down
-- project pause
-- network error
-- relational query gagal
-
-semuanya terlihat oleh murid sebagai:
-
-“Kode tidak ditemukan.”
-
-Ini menyulitkan debugging dan menyesatkan guru maupun murid.
-
-## Solusi
-
-Ubah return value menjadi structured result.
-
-Contoh:
-
-```ts
-type ExamLookupResult = {
-  exam: Exam | null;
-  error?: {
-    type:
-      | 'NOT_FOUND'
-      | 'NETWORK_ERROR'
-      | 'PERMISSION_ERROR'
-      | 'DATABASE_ERROR'
-      | 'BACKEND_UNAVAILABLE';
-    message: string;
-  };
-};
-```
-
-UI harus membedakan:
-
-### Kode salah
-
-“Kode ujian tidak ditemukan.”
-
-### Backend bermasalah
-
-“Server ujian sedang bermasalah. Silakan coba lagi.”
-
-### Permission/RLS
-
-“Ujian tidak dapat diakses saat ini.”
-
-Log development harus menyimpan error Supabase asli.
-
----
-
-# PRIORITAS P3 — AUDIT DAN REFACTOR RLS
-
-## 6. Role yang Harus Dipisahkan
-
-Kuizku punya dua kelompok utama:
-
-### Guru
-
-Supabase role:
-
-`authenticated`
-
-Guru harus hanya boleh:
-- melihat exam miliknya
-- membuat exam miliknya
-- mengedit exam miliknya
-- melihat submission exam miliknya
-- memberi nilai
-
-### Murid
-
-Murid sekarang tidak login Supabase.
-
-Role:
-
-`anon`
-
-Murid hanya boleh:
-- menemukan exam ACTIVE berdasarkan kode
-- membaca soal exam tersebut
-- melakukan validasi identitas
-- membuat / memperbarui submission miliknya
-- submit jawaban
-
-Murid TIDAK boleh membaca:
-- exam draft
-- exam guru lain secara bebas
-- submission semua siswa
-- student_answers siswa lain
-- profil guru private
-
----
-
-# PRIORITAS P4 — JANGAN BIARKAN MURID QUERY SELURUH SUBMISSION
-
-## 7. Masalah getSubmissionsByExam
-
-Portal murid memanggil:
-
-`getSubmissionsByExam(exam.id)`
-
-Fungsi ini membaca:
-
-`submissions + student_answers`
-
-untuk seluruh ujian.
-
-Ini berbahaya dari dua sisi.
-
-### Jika RLS ketat
-
-Portal murid bisa gagal.
-
-### Jika RLS longgar
-
-Murid bisa melihat data submission peserta lain.
-
-## Solusi
-
-Buat RPC:
-
-`check_exam_access`
-
-Input:
-
-- exam code
-- identifier murid
-
-Output:
-
-```text
-allowed
-reason
-attempt_count
-next_attempt_number
-has_draft
-resume_submission_id
-```
-
-Jangan return seluruh submission.
-
-Frontend tidak perlu tahu submission siswa lain.
-
----
-
-# PRIORITAS P5 — REFACTOR PRELOADED STUDENTS
-
-## 8. Masalah Whitelist Murid
-
-Saat ini `getExamByCode()` juga mengambil:
-
-`preloaded_students(*)`
-
-Artinya anonymous client berpotensi menerima seluruh daftar nama/NIS siswa untuk exam tersebut.
-
-Ini tidak ideal.
-
-## Solusi
-
-Jangan expose seluruh daftar murid.
-
-Buat RPC:
-
-`validate_exam_student`
-
-Input:
-
-- exam code
-- nama
-- NIS / nomor absen
-
-Output:
-
-```text
-valid
-student_identifier
-reason
-```
-
-Database yang melakukan pengecekan.
-
-Frontend hanya menerima hasil valid/tidak valid.
-
----
-
-# PRIORITAS P6 — FIX BUG SUBMISSION / SESSION HILANG
-
-## 9. Masalah saveSubmission
-
-Saat ini `storage.saveSubmission()`:
-
-- jika Supabase gagal,
-- submission dimasukkan ke localStorage pending queue,
-- fungsi melakukan `return`,
-- tidak melempar error.
-
-Di `ExamTakingPage`:
-
-```ts
-await storage.saveSubmission(sub);
-clearSession(...)
-```
-
-Artinya save bisa gagal di server, tetapi `await` tetap dianggap selesai.
-
-Session lokal kemudian bisa dihapus.
-
-Ini bertentangan dengan komentar kode yang ingin mempertahankan session jika save gagal.
-
-## Solusi
-
-Ubah `saveSubmission()` menjadi:
-
-```ts
-Promise<{
-  saved: boolean;
-  queued: boolean;
-  error?: string;
-}>
-```
-
-Behavior:
-
-### Jika server berhasil
-
-```text
-saved = true
-queued = false
-→ clearSession()
-```
-
-### Jika offline / backend gagal
-
-```text
-saved = false
-queued = true
-→ jangan clear session
-→ tampilkan warning
-```
-
-UI:
-
-“Jawaban belum terkirim ke server. Salinan lokal masih tersimpan dan akan disinkronkan.”
-
-Submission final jangan dianggap benar-benar selesai sampai server memberi konfirmasi.
-
----
-
-# PRIORITAS P7 — PUBLISH HARUS ATOMIK
-
-## 10. Buat RPC publish_exam
-
-Publish sebaiknya jangan hanya update status dari frontend.
-
-Buat RPC database:
-
-`publish_exam(p_exam_id uuid)`
-
-RPC melakukan:
-
-1. cek user login
-2. cek exam milik `auth.uid()`
-3. cek exam ada
-4. cek minimal 1 question
-5. validasi jadwal
-6. cek status valid
-7. update status menjadi `ACTIVE`
-8. return row final
-
-Jika salah satu gagal:
-
-rollback.
-
-Frontend hanya menerima hasil final.
-
----
-
-# PRIORITAS P8 — BUAT STUDENT API/RPC KHUSUS
-
-## 11. Arsitektur Student yang Disarankan
-
-Hindari anonymous client membaca banyak tabel mentah.
-
-Buat RPC seperti:
-
-### `get_public_exam(code)`
-
-Return hanya data yang dibutuhkan murid:
-- id
-- title
-- subject
-- type
-- format
-- settings aman
-- active_from
-- active_to
-- jumlah soal
-
-Jangan return answer key sebelum waktunya.
-
-### `get_exam_questions(code, identifier)`
-
-Return soal jika peserta valid dan exam ACTIVE.
-
-Untuk pilihan ganda jangan expose `correct_option_id`.
-
-### `check_exam_access(code, identifier)`
-
-Return:
-- allowed
-- attempt
-- resume info
-
-### `save_exam_progress(...)`
-
-Autosave draft.
-
-### `submit_exam(...)`
-
-Submit final secara atomik.
-
----
-
-# PRIORITAS P9 — JANGAN EXPOSE KUNCI JAWABAN
-
-## 12. Audit Keamanan Question Data
-
-Periksa apakah anonymous query saat ini mengirim:
-
-`correct_option_id`
-
-ke browser murid.
-
-Jika iya, ini critical.
-
-Walaupun UI tidak menampilkannya, murid bisa melihat network response / DevTools.
-
-Solusi:
-
-Untuk portal murid, jangan pernah mengambil row `questions(*)` mentah.
-
-Buat view/RPC public yang mengecualikan:
-- `correct_option_id`
-- `answer_guide`
-
-Kunci jawaban hanya boleh diberikan jika memang fitur hasil mengizinkan setelah submit.
-
----
-
-# PRIORITAS P10 — MIGRASI ENV
-
-## 13. Supabase Client
-
-File:
-
-`src/lib/supabase.ts`
-
-menggunakan:
-
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
-
-Setelah Supabase baru siap:
-
-update:
-
-`.env.local`
-
-dan production environment di Vercel.
-
-Jangan hardcode credential.
-
-Jangan gunakan `service_role` di browser.
-
-Jika project baru memakai publishable key modern Supabase, sesuaikan variable secara konsisten.
-
----
-
-# PRIORITAS P11 — SECURITY REPO
-
-## 14. File .env
-
-Repository terlihat memiliki file:
-
-`.env`
-
-Lakukan audit.
-
-Jika hanya berisi anon/public key:
-tetap pindahkan ke `.env.example` dan `.env.local`.
-
-Jika pernah ada:
-- service role
-- AI API key
-- database password
-- secret
-
-maka lakukan rotasi.
-
-Tambahkan `.env` dan `.env.local` ke `.gitignore`.
-
-Sediakan:
-
-`.env.example`
-
-contoh:
-
-```env
-VITE_SUPABASE_URL=
-VITE_SUPABASE_ANON_KEY=
-```
-
----
-
-# PRIORITAS P12 — END-TO-END TEST
-
-## 15. Test Wajib Guru → Murid
-
-Buat scenario fixture.
-
-### Guru
-
-1. login
-2. buat ujian
-3. isi judul/mapel
-4. buat 3 soal
-5. simpan
-6. pastikan exam ada di DB
-7. publish
-8. pastikan server return `ACTIVE`
-
-### Murid
-
-Gunakan incognito / clean browser.
-
-1. buka `/ujian`
-2. input kode
-3. exam ditemukan
-4. isi nama
-5. validasi peserta
-6. masuk instruksi
-7. mulai
-8. 3 soal tampil
-9. jawab soal
-10. refresh halaman
-11. resume bekerja
-12. submit
-13. submission benar-benar ada di database
-
-### Guru
-
-1. buka hasil
-2. submission murid muncul
-3. jawaban sesuai
-4. nilai tampil
-
----
-
-# NEGATIVE TEST
-
-## 16. Kondisi yang Harus Diuji
-
-### Exam DRAFT
-
-Murid tidak bisa masuk.
-
-### Exam ENDED
-
-Murid tidak bisa masuk.
-
-### Exam ARCHIVED
-
-Murid tidak bisa masuk.
-
-### Kode salah
-
-Return:
-
-`NOT_FOUND`
-
-bukan server error.
-
-### Supabase mati
-
-UI:
-
-“Server sedang bermasalah.”
-
-Bukan:
-
-“Kode tidak ditemukan.”
-
-### RLS salah
-
-Development log harus menunjukkan permission error.
-
-### Internet mati saat submit
-
-- session tidak hilang
-- submission masuk pending queue
-- user diberi warning
-- setelah internet kembali submission tersinkron
-
-### Attempt maksimum
-
-Murid tidak bisa membuat attempt tambahan.
-
-### Murid tidak terdaftar
-
-Akses ditolak tanpa expose daftar murid.
-
----
-
-# PRIORITAS P13 — OBSERVABILITY
-
-## 17. Tambahkan Logging Terstruktur
-
-Untuk operasi penting:
-
-- save exam
-- publish exam
-- lookup exam
-- student validation
-- start exam
-- autosave
-- submit
-
-Log minimal:
-
-```text
-operation
-exam_id
-exam_code
-status
-error_code
-error_message
-```
-
-Jangan log:
-- password
-- service role
-- jawaban rahasia
-- data sensitif siswa secara berlebihan
-
----
-
-# PRIORITAS P14 — UPDATE UX
-
-## 18. Guru
-
-Setelah publish:
-
-Jangan langsung tampil:
-
-“Ujian Aktif”
-
-sebelum verifikasi server.
-
-Gunakan:
-
-“Memublikasikan…”
-
-kemudian:
-
-“Ujian berhasil dipublikasikan dan sudah tersedia untuk murid.”
-
-Jika gagal:
-
-“Publish gagal. Perubahan belum diterapkan.”
-
-## Murid
+  .select('id')
+  .maybeSingle();
+
+Jika error:
+→ gagal
+
+Jika tidak ada row:
+→ gagal
+
+Baru setelah server confirm:
+setExamsState(prev => prev.filter(...))
+
+Optional:
+refreshExams() setelah delete untuk verifikasi.
+
+==================================================
+BAGIAN C — FIX CREATE DAN DUPLICATE GHOST EXAM
+==================================================
+
+createExam saat ini berpotensi:
+- state lokal bertambah
+- save server gagal
+- UI tetap menampilkan exam
+- refresh → exam hilang
+
+Fix:
+1. buat object
+2. save ke server
+3. jika sukses → update state
+4. jika gagal → throw/return error
+5. UI tampil error
+
+duplicateExam:
+sama.
+
+Jangan update state sebelum saveExam sukses.
+
+==================================================
+BAGIAN D — FIX SILENT READ ERRORS
+==================================================
+
+Saat ini beberapa query server error berubah menjadi [].
+
+Audit:
+- getExamsByTeacher
+- getSubmissionsByTeacher
+- getSubmissionsByExam
+- getBankQuestions
+- query data guru lain
 
 Bedakan:
+1. success + data kosong
+2. backend error
 
-- kode tidak ditemukan
-- ujian belum aktif
-- ujian sudah berakhir
-- server error
-- koneksi internet
-- akses peserta ditolak
+Jangan membuat dashboard tampil “belum ada data” kalau sebenarnya Supabase gagal.
 
----
+Target return:
 
-# URUTAN EKSEKUSI CODEX
+{
+  data: T[];
+  error?: string;
+}
 
-## 19. Eksekusi Bertahap
+==================================================
+BAGIAN E — FIX SCORING PG 0 PADAHAL ADA BENAR
+==================================================
 
-### Fase 1
+Masalah nyata:
+- 30 soal PG
+- Andi menjawab beberapa benar
+- Analytics menunjukkan beberapa soal 100% benar
+- tabel peserta menunjukkan PG = 0/30
 
-Audit Supabase baru.
+Jangan expose answer key ke frontend murid.
 
-- schema
-- functions
-- RLS
-- auth
-- keys
-- storage
+Server tetap source of truth.
 
-### Fase 2
+Audit chain:
 
-Pastikan migrasi backend lengkap.
+1. payload answers ke save_student_submission
+2. v_mc_score di RPC
+3. return RPC
+4. submissions.mc_score di DB
+5. storage.getSubmissionsByTeacher
+6. dbToSubmission
+7. ResultsPage
+8. export Excel
 
-Khusus verifikasi:
+Cari titik pertama di mana nilai benar menjadi 0.
 
-`save_exam_full`
+Expected test:
+30 soal bobot 1
+2 benar
+→ mc_score = 2
+→ UI = 2/30
 
-### Fase 3
+Test:
+0 benar → 0
+2 benar → 2
+30 benar → 30
+bobot berbeda → sesuai weight
 
-Fix false-success publish.
+Analytics dan table score harus konsisten.
 
-Files utama:
+==================================================
+BAGIAN F — SERVER-SIDE PG GRADING
+==================================================
 
-- `src/context/AppContext.tsx`
-- `src/utils/storage.ts`
-- `src/pages/teacher/wizard/Step5Publish.tsx`
+PG harus selalu dinilai server.
 
-### Fase 4
+Jangan gunakan calcMCScore frontend sebagai nilai final.
 
-Fix error handling lookup exam.
+Frontend calc hanya boleh:
+- preview lokal
+- tampilan sementara
+- helper non-authoritative
 
-Files:
+Nilai final harus dari:
+submissions.mc_score
 
-- `src/utils/storage.ts`
-- `src/pages/student/JoinExamPage.tsx`
-- `src/pages/student/InstructionsPage.tsx`
-- `src/pages/student/ExamTakingPage.tsx`
+save_student_submission harus:
+- validasi question belongs to exam
+- validasi selected_option_id
+- hitung berdasarkan correct_option_id di database
+- simpan mc_score
+- return mc_score
 
-### Fase 5
+==================================================
+BAGIAN G — ESSAY GRADING FALSE SUCCESS
+==================================================
 
-Refactor RLS dan RPC student.
+Masalah:
+ResultsPage saveGrading memanggil gradeEssay berkali-kali tanpa await lalu langsung toast sukses.
 
-Database:
+Fix:
+saveGrading harus async.
 
-- `get_public_exam`
-- `check_exam_access`
-- `validate_exam_student`
+Gunakan Promise.all atau RPC batch.
 
-### Fase 6
+Contoh:
+await Promise.all(
+  Object.entries(gradingScores).map(...)
+)
 
-Fix submission result contract.
+Baru setelah semua sukses:
+toast sukses
+close modal
 
-File:
+Kalau satu gagal:
+jangan bilang sukses.
 
-- `src/utils/storage.ts`
-- `src/pages/student/ExamTakingPage.tsx`
+Lebih baik:
+buat server operation batch:
+save_essay_grading(submission_id, grades, feedback)
 
-### Fase 7
+agar atomik.
 
-Security review.
+==================================================
+BAGIAN H — STATUS NILAI SEMENTARA VS FINAL
+==================================================
 
-- jangan expose correct answer
-- jangan expose seluruh submissions
-- jangan expose daftar siswa
+Untuk exam kombinasi PG + Essay:
 
-### Fase 8
+Jangan anggap essay belum dinilai = nilai final 0.
 
-E2E.
+Gunakan status:
 
-Guru → murid → submit → guru hasil.
+PENDING_ESSAY_GRADING
+FINAL
 
----
+Saat essay belum selesai:
+PG: 18/20
+Essay: Menunggu penilaian
+Total: Nilai sementara
+Status: Belum final
 
-# ATURAN KERAS
+Setelah seluruh essay dinilai:
+PG: 18/20
+Essay: 24/30
+Total: 42/50
+Status: Final
 
-## 20. Jangan Melakukan Ini
+Ranking final, rata-rata final, median final, ketuntasan final:
+jangan dianggap final kalau essay belum selesai dinilai.
 
-JANGAN memperbaiki problem dengan:
+Boleh tampil statistik sementara dengan label jelas:
+"Statistik sementara"
 
-```sql
-alter table ... disable row level security;
-```
+==================================================
+BAGIAN I — FIX “ESSAY DINILAI” STAT
+==================================================
 
-JANGAN membuat policy universal:
+Jangan:
 
-```sql
-using (true)
-```
+essayScores.length > 0
 
-untuk data sensitif.
+sebagai tanda sudah dinilai.
 
-JANGAN beri `anon` akses membaca seluruh:
+Harus:
 
-- submissions
-- student_answers
-- teachers
-- preloaded_students
+jumlah essay score
+===
+jumlah seluruh soal essay
 
-JANGAN menaruh:
+Untuk tiap submission.
 
-`service_role`
+Status:
+- Belum dinilai
+- Dinilai sebagian
+- Selesai dinilai
 
-di Vite/frontend.
+==================================================
+BAGIAN J — SISTEM PENILAIAN ESSAY TANPA AI
+==================================================
 
-JANGAN menghapus project Supabase lama sebelum migrasi diverifikasi.
+Tambahkan tiga mode non-PG:
 
-JANGAN mengganti UUID user jika bisa dihindari.
+1. JAWABAN_SINGKAT
+2. ESSAY_RUBRIK
+3. ESSAY_MANUAL
 
-JANGAN melakukan redesign UI besar sebelum flow utama stabil.
+Jangan gunakan AI.
 
----
+==================================================
+BAGIAN K — JAWABAN SINGKAT
+==================================================
 
-# DEFINITION OF DONE
+Tujuan:
+Cocok untuk LCC.
 
-## 21. Kuizku Dianggap Stabil Jika
+Contoh:
+Pertanyaan:
+"Siapa khalifah pertama?"
 
-- [ ] Supabase baru aktif
-- [ ] semua schema sudah tersedia
-- [ ] Auth guru bekerja
-- [ ] RPC `save_exam_full` bekerja
-- [ ] guru bisa membuat exam
-- [ ] soal tersimpan di database
-- [ ] publish benar-benar mengubah row DB
-- [ ] publish tidak bisa sukses palsu
-- [ ] murid anonymous bisa menemukan exam ACTIVE
-- [ ] backend error tidak tampil sebagai “kode tidak ditemukan”
-- [ ] murid tidak bisa membaca exam DRAFT
-- [ ] murid tidak bisa membaca submission siswa lain
-- [ ] daftar murid tidak diexpose penuh
-- [ ] kunci jawaban tidak terkirim sebelum waktunya
-- [ ] autosave bekerja
-- [ ] offline queue bekerja
-- [ ] session tidak hilang saat backend gagal
-- [ ] submit final tersimpan di Supabase
-- [ ] hasil muncul di portal guru
-- [ ] E2E test lulus
+Accepted answers:
+- Abu Bakar
+- Abu Bakar Ash-Shiddiq
+- Abu Bakr
 
----
+Server auto-grade.
 
-# HASIL AKHIR YANG DIINGINKAN
+Normalization:
+- trim
+- lowercase
+- collapse whitespace
+- optional remove punctuation
+- optional normalize dash/apostrophe
 
-Arsitektur target:
+Jangan terlalu fuzzy secara default.
 
-```text
-GURU
-  ↓
-authenticated Supabase
-  ↓
-create/save exam
-  ↓
-publish_exam RPC
-  ↓
-ACTIVE
+Mode:
+EXACT_NORMALIZED
 
-MURID
-  ↓
-anonymous client
-  ↓
-student RPC/API terbatas
-  ↓
-validasi exam & peserta
-  ↓
-load soal tanpa answer key
-  ↓
-autosave
-  ↓
-submit_exam RPC
-  ↓
-submission tersimpan
+Optional config:
+acceptedAnswers: string[]
 
-GURU
-  ↓
-hasil / grading
-```
+Jika match salah satu:
+score = weight
 
-Target utama bukan hanya membuat Kuizku “bisa dibuka lagi”, tetapi memastikan portal guru dan murid memiliki satu sumber kebenaran yang sama di server dan tidak lagi bergantung pada asumsi state frontend.
+Kalau tidak:
+0
+
+Jangan gunakan AI.
+
+==================================================
+BAGIAN L — ESSAY RUBRIK
+==================================================
+
+Setiap essay bisa punya rubric criteria.
+
+Contoh soal bobot 10:
+
+[
+  {
+    id: "...",
+    label: "Pengertian benar",
+    maxScore: 3
+  },
+  {
+    id: "...",
+    label: "Menyebutkan minimal 2 poin",
+    maxScore: 4
+  },
+  {
+    id: "...",
+    label: "Contoh relevan",
+    maxScore: 2
+  },
+  {
+    id: "...",
+    label: "Jawaban runtut",
+    maxScore: 1
+  }
+]
+
+Total maxScore rubric harus <= atau = question.weight.
+
+UI guru:
+- checkbox atau input per kriteria
+- skor otomatis dijumlahkan
+- total tidak boleh > weight
+
+Simpan detail rubric grading supaya audit jelas.
+
+==================================================
+BAGIAN M — ESSAY MANUAL
+==================================================
+
+Pertahankan mode manual:
+
+- tampilkan jawaban murid
+- tampilkan panduan jawaban
+- guru isi skor 0 sampai weight
+- komentar opsional
+
+Tidak perlu rubrik.
+
+==================================================
+BAGIAN N — PG + JAWABAN SINGKAT + ESSAY
+==================================================
+
+Total nilai:
+
+PG auto
++
+Jawaban Singkat auto
++
+Essay Rubrik/Manual
+=
+Total Final
+
+Jangan hitung essay pending sebagai nilai final.
+
+==================================================
+BAGIAN O — OFFLINE SUBMIT
+==================================================
+
+Masalah nyata:
+Murid mulai online.
+Internet mati.
+Klik Kumpulkan.
+UI bilang:
+"Ujian sudah tidak aktif."
+
+Ini salah.
+
+Root:
+getStudentExamByCode gagal karena network
+→ exam null
+→ dianggap not active
+
+Bedakan:
+NETWORK_ERROR
+BACKEND_UNAVAILABLE
+PERMISSION_ERROR
+ENDED
+NOT_FOUND
+
+Jika network/offline:
+- jangan bilang exam tidak aktif
+- build final submission dari local session
+- simpan ke pending queue
+- jangan clear session
+- jangan show final result
+
+UI:
+"Jawaban tersimpan di perangkat tetapi belum terkirim."
+
+==================================================
+BAGIAN P — SYNC OFFLINE
+==================================================
+
+Audit:
+syncPendingSubmissions()
+window online listener
+
+Flow target:
+
+offline submit
+→ pending queue
+→ internet kembali
+→ sync
+→ server validate
+→ server saved
+→ queue item removed
+→ related local session cleared
+→ UI/toast success
+
+Jangan duplicate.
+
+Server tetap validasi:
+- exam
+- participant
+- attempt
+- deadline
+- status
+- question ids
+- duplicate id
+
+==================================================
+BAGIAN Q — RESUME SESSION
+==================================================
+
+Pertahankan local session yang sudah terbukti bekerja.
+
+"Lanjutkan dari Sesi Sebelumnya":
+- same attempt
+- same answers
+- same index
+- timer state konsisten
+
+Jangan membuat attempt baru.
+
+==================================================
+BAGIAN R — MULAI ULANG DAN ATTEMPT NUMBER
+==================================================
+
+Audit JoinExamPage.handleStartFresh().
+
+Jika masih:
+attemptNumber: 1
+hardcoded
+
+fix.
+
+Gunakan next_attempt_number server.
+
+Jika maxAttempts = 2:
+attempt 1 → boleh
+attempt 2 → boleh
+attempt 3 → ditolak
+
+==================================================
+BAGIAN S — GOOGLE LOGIN SALAH MASUK RESET PASSWORD
+==================================================
+
+Masalah:
+Existing Google user login lagi.
+OAuth berhasil.
+App malah membuka:
+"Atur Password Baru"
+
+Root:
+LoginPage mengecek access_token di URL hash sebagai recovery.
+
+Jangan gunakan:
+hash.includes('access_token=')
+
+Password recovery hanya boleh dari:
+type=recovery
+atau Supabase event:
+PASSWORD_RECOVERY
+
+Gunakan:
+supabase.auth.onAuthStateChange
+
+SIGNED_IN:
+→ dashboard
+
+PASSWORD_RECOVERY:
+→ reset mode
+
+Manual login harus tetap bekerja.
+Forgot password harus tetap bekerja.
+
+==================================================
+BAGIAN T — DROPDOWN GURU MENUTUP SAAT CURSOR MASUK
+==================================================
+
+Bug:
+Menu tiga titik ujian muncul.
+Saat cursor masuk item menu, dropdown nutup/ketutup.
+
+Audit:
+- onMouseLeave
+- onBlur
+- hover
+- overflow hidden
+- z-index
+- pointer-events
+- outside click listener
+
+Target:
+click menu → stay open
+cursor masuk → stay open
+click item → close
+click outside → close
+Escape → close
+
+Jangan close hanya karena mouse leave tombol.
+
+==================================================
+BAGIAN U — IMPORT EXCEL RELIABILITY
+==================================================
+
+Jangan rewrite parser.
+
+Upgrade:
+1. bobot kosong → default 1
+2. bobot invalid → error
+3. opsi harus berurutan
+4. tipe normalize
+5. kunci normalize
+6. header validation
+7. preview
+8. error per baris
+9. import valid only
+10. template resmi
+
+==================================================
+BAGIAN V — TEMPLATE EXCEL RESMI
+==================================================
+
+Workbook:
+Sheet 1: SOAL
+Sheet 2: PETUNJUK
+
+Header:
+Tipe
+Pertanyaan
+Opsi A
+Opsi B
+Opsi C
+Opsi D
+Opsi E
+Opsi F
+Kunci
+Bobot
+Tag
+Panduan Jawaban
+
+Petunjuk:
+- tipe PG/Essay/Jawaban Singkat
+- pertanyaan wajib
+- bobot kosong = 1
+- opsi berurutan
+- kunci A-F
+- tag opsional
+- accepted answers jika ditambah tipe jawaban singkat
+
+==================================================
+BAGIAN W — BUG DOWNLOAD TEMPLATE MEMBUKA MODAL KEDUA
+==================================================
+
+Masalah:
+Klik Download Template di modal import.
+Modal import muncul lagi di atas modal lama.
+
+Fix:
+- type="button"
+- cek event bubbling
+- stopPropagation bila perlu
+- jangan trigger opener modal
+- jangan trigger file picker
+
+Expected:
+download file
+→ modal tetap satu
+→ tidak duplicate overlay
+
+==================================================
+BAGIAN X — IMPORT VALIDATION UI
+==================================================
+
+Setelah upload:
+"60 soal ditemukan"
+"57 valid"
+"3 invalid"
+
+Per baris:
+Baris 8:
+Kunci E tidak valid
+
+Baris 17:
+Pertanyaan kosong
+
+Baris 24:
+Bobot invalid
+
+Preview soal sebelum import.
+
+Boleh import valid rows saja.
+
+==================================================
+BAGIAN Y — SECURITY STUDENT DATA
+==================================================
+
+Pastikan student RPC tidak mengirim:
+- correct_option_id
+- answer_guide
+- daftar murid
+- submission peserta lain
+
+Response student hanya field yang diperlukan.
+
+get_student_exam:
+tetap aman.
+
+Test via Network DevTools.
+
+==================================================
+BAGIAN Z — CLEANUP DATA ACCESS
+==================================================
+
+Hapus/deprecate direct student query yang tidak dipakai:
+getStudentSubmissionsByExam
+jika flow baru sudah RPC-based.
+
+Jangan biarkan future code memakai jalur yang rawan.
+
+==================================================
+TEST SUITE WAJIB
+==================================================
+
+AUTH:
+1. Google existing user
+2. Google new user
+3. manual login
+4. forgot password
+5. refresh auth
+
+EXAM CRUD:
+6. create sukses
+7. create gagal
+8. duplicate sukses
+9. duplicate gagal
+10. delete sukses + refresh
+11. delete gagal tidak hilang palsu
+
+PUBLISH:
+12. DRAFT → ACTIVE
+13. server reject → UI tidak false-success
+
+STUDENT:
+14. valid code
+15. invalid code
+16. backend error
+17. draft exam
+18. ended exam
+19. deadline
+
+ATTEMPT:
+20. max 2:
+1 sukses
+2 sukses
+3 ditolak
+
+OFFLINE:
+21. offline during exam
+22. offline submit
+23. refresh offline
+24. reconnect sync
+25. close browser then reopen
+
+SCORING PG:
+26. 0 benar
+27. 2 benar
+28. semua benar
+29. weighted questions
+
+SHORT ANSWER:
+30. exact
+31. normalized
+32. alias accepted
+33. wrong answer
+
+ESSAY RUBRIC:
+34. full score
+35. partial
+36. zero
+37. total rubric > weight harus ditolak
+
+ESSAY MANUAL:
+38. save grading sukses
+39. save grading gagal
+40. refresh tetap konsisten
+
+COMBINATION:
+41. PG+Essay pending
+42. PG+Essay final
+43. ranking sementara
+44. ranking final
+
+EXCEL:
+45. PG 4 opsi
+46. PG 6 opsi
+47. bobot kosong
+48. gap opsi
+49. invalid key
+50. 100 soal
+
+SECURITY:
+51. answer key tidak bocor
+52. student tidak bisa baca submission lain
+53. no service role frontend
+
+==================================================
+PRIORITAS EKSEKUSI
+==================================================
+
+P0:
+1. PG score bug
+2. delete false-success
+3. seluruh mutation false-success
+4. essay save false-success
+5. silent read error
+6. offline submit classification
+
+P1:
+7. auth Google reset bug
+8. attempt/resume hardening
+9. nilai sementara/final
+10. essay grading completeness
+
+P2:
+11. jawaban singkat
+12. essay rubric
+13. Excel UX
+14. dropdown/menu UI
+
+P3:
+15. cleanup/refactor ringan
+16. automated regression tests
+
+==================================================
+JANGAN LAKUKAN
+==================================================
+
+Jangan:
+- disable RLS
+- USING(true) global
+- service_role di frontend
+- expose answer key
+- menilai PG di client sebagai final
+- menampilkan success sebelum server confirm
+- rewrite besar local session
+- menambah AI
+- refactor visual besar
+- mengubah fitur unrelated
+
+==================================================
+DEFINITION OF DONE
+==================================================
+
+[ ] skor PG benar
+[ ] delete bertahan setelah refresh
+[ ] create/duplicate tidak ghost
+[ ] grading benar-benar tersimpan
+[ ] feedback/revisi tidak false-success
+[ ] backend error tidak dianggap data kosong
+[ ] offline submit aman
+[ ] reconnect sync bekerja
+[ ] auth Google langsung dashboard
+[ ] forgot password tetap bekerja
+[ ] attempt limit aman
+[ ] answer key tidak bocor
+[ ] nilai PG+Essay punya status sementara/final
+[ ] Jawaban Singkat auto-grade bekerja
+[ ] Essay Rubrik bekerja
+[ ] Essay Manual tetap bekerja
+[ ] import Excel lebih aman
+[ ] template Excel jelas
+[ ] dropdown guru stabil
+[ ] build production sukses
+[ ] E2E guru → murid → hasil lolos
+
+==================================================
+OUTPUT CODEX
+==================================================
+
+Setelah selesai setiap fase, laporkan:
+
+1. root cause
+2. file yang berubah
+3. behavior sebelum
+4. behavior sesudah
+5. DB migration yang ditambah
+6. test yang dijalankan
+7. hasil build
+8. regression
+9. bug tambahan yang ditemukan
+
+Jangan memperbaiki bug tambahan di luar scope tanpa melaporkannya dahulu.
