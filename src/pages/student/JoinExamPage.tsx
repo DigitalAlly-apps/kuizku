@@ -6,6 +6,7 @@ import { loadSession } from '../../utils/examSession';
 import { formatExamFormat, formatTimerMode } from '../../utils/helpers';
 import { Spinner } from '../../components/ui';
 import type { Exam } from '../../types';
+import { APP_CONFIG } from '../../lib/appConfig';
 
 type Step = 'code' | 'identity' | 'resume';
 
@@ -122,8 +123,8 @@ export default function JoinExamPage() {
       <div style={styles.container}>
         {/* Logo */}
         <div style={styles.logo}>
-          <div style={styles.logoIcon}>⚡</div>
-          <span style={styles.logoText}>Ujianly</span>
+          <div style={styles.logoIcon}>{APP_CONFIG.icon}</div>
+          <span style={styles.logoText}>{APP_CONFIG.name}</span>
         </div>
 
         {/* Step: Enter Code */}

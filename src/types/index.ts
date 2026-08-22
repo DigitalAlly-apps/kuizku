@@ -1,5 +1,5 @@
 // ============================================================
-// Ujianly — Core Type Definitions
+// Kuizku — Core Type Definitions
 // ============================================================
 
 export type ExamFormat = 'PG_ONLY' | 'ESSAY_ONLY' | 'COMBINATION';

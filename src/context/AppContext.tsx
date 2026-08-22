@@ -1,5 +1,5 @@
 // ============================================================
-// Ujianly — Global App Context (Personal Use — no billing)
+// Kuizku — Global App Context (Personal Use — no billing)
 // ============================================================
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';

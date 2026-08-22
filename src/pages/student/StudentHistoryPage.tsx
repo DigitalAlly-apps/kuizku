@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Clock, FileText, Award, BookOpen, History, ArrowRight, Trash2, RotateCcw, Search } from 'lucide-react';
 import { storage } from '../../utils/storage';
 import { calcMaxMCScore } from '../../utils/helpers';
+import { APP_CONFIG } from '../../lib/appConfig';
 
 interface HistoryEntry {
   id: string;
@@ -19,7 +20,7 @@ interface HistoryEntry {
   maxMC: number;
 }
 
-const HISTORY_KEY = 'ujianly_student_history';
+const HISTORY_KEY = 'kuizku_student_history';
 
 function formatDate(iso?: string) {
   if (!iso) return '—';
@@ -152,7 +153,7 @@ export default function StudentHistoryPage() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ width: 32, height: 32, background: 'linear-gradient(135deg, var(--primary), var(--secondary))', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem' }}>⚡</div>
-          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: '1.2rem', background: 'linear-gradient(135deg, var(--primary), var(--secondary))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Ujianly</span>
+          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: '1.2rem', background: 'linear-gradient(135deg, var(--primary), var(--secondary))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{APP_CONFIG.name}</span>
         </div>
         <button className="btn btn-primary btn-sm" onClick={() => navigate('/ujian')}>
           <ArrowRight size={14} /> Kerjakan Ujian

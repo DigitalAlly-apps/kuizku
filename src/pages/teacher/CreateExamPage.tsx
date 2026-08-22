@@ -60,7 +60,7 @@ export default function CreateExamPage() {
   const [saving, setSaving] = useState(false);
 
   // Fix #7: Autosave wizard draft ke localStorage
-  const DRAFT_KEY = 'ujianly_wizard_draft';
+  const DRAFT_KEY = 'kuizku_wizard_draft';
 
   // Load draft on mount
   useEffect(() => {

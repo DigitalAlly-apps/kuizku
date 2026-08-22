@@ -4,6 +4,7 @@ import Sidebar from './Sidebar';
 import { useAuth } from '../../context/AppContext';
 import { PageLoader } from '../ui';
 import { Menu, X, Sun, Moon } from 'lucide-react';
+import { APP_CONFIG } from '../../lib/appConfig';
 
 export default function TeacherLayout() {
   const { currentTeacher, isLoading } = useAuth();
@@ -30,8 +31,8 @@ export default function TeacherLayout() {
     <div className="app-layout">
       <div className="mobile-header">
         <div className="sidebar-logo">
-          <div className="sidebar-logo-icon">⚡</div>
-          <span className="sidebar-logo-text">Ujianly</span>
+          <div className="sidebar-logo-icon">{APP_CONFIG.icon}</div>
+          <span className="sidebar-logo-text">{APP_CONFIG.name}</span>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button className="btn btn-ghost btn-icon" onClick={toggleTheme}>

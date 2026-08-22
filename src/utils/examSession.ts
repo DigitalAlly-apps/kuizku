@@ -1,12 +1,12 @@
 // ============================================================
-// Ujianly — Student Exam Session Manager
+// Kuizku — Student Exam Session Manager
 // Handles: autosave, resume, attempt tracking, timer state
 // ============================================================
 
 import type { Exam, Submission, StudentAnswer } from '../types';
 import { generateId, calcMCScore } from './helpers';
 
-const SESSION_KEY = (code: string, nis: string) => `kk_session_${code}_${nis}`;
+const SESSION_KEY = (code: string, nis: string) => `kuizku_session_${code}_${nis}`;
 
 export interface ExamSession {
   submissionId: string;

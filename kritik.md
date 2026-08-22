@@ -1,4 +1,4 @@
-# Kritik Aplikasi Ujianly — Audit Workflow & Fitur
+# Kritik Aplikasi Kuizku — Audit Workflow & Fitur
 
 ## 🔴 Critical — Workflow & Data Integrity
 
