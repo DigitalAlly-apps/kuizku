@@ -22,6 +22,7 @@ export default function JoinExamPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [foundExam, setFoundExam] = useState<Exam | null>(null);
+  const [nextAttemptNumber, setNextAttemptNumber] = useState(1);
   const [, setHasResume] = useState(false);
 
   // Format kode saat mengetik
@@ -82,6 +83,7 @@ export default function JoinExamPage() {
     setLoading(false);
 
     if (!access.exam) { setError(access.error?.message ?? 'Akses ditolak'); return; }
+    setNextAttemptNumber(access.attemptNumber ?? 1);
 
     if (loadSession(foundExam.code, identifier)) {
       setHasResume(true);
@@ -109,7 +111,7 @@ export default function JoinExamPage() {
   const handleStartFresh = () => {
     const identifier = nis.trim() || name.trim();
     navigate(`/ujian/${foundExam!.code}/instruksi`, {
-      state: { examId: foundExam!.id, studentName: name.trim(), nis: identifier, attemptNumber: 1 }
+      state: { examId: foundExam!.id, studentName: name.trim(), nis: identifier, attemptNumber: nextAttemptNumber }
     });
   };
 

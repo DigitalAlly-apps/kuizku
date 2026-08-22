@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AppContext';
 import { Spinner } from '../../components/ui';
 import { APP_CONFIG } from '../../lib/appConfig';
 import { storage } from '../../utils/storage';
+import { supabase } from '../../lib/supabase';
 
 export default function LoginPage() {
   const { login, loginWithGoogle } = useAuth();
@@ -28,14 +29,23 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Detect password recovery mode from URL hash
-    const hash = window.location.hash;
-    if (hash && (hash.includes('access_token=') || hash.includes('type=recovery'))) {
+    const enterRecovery = () => {
       setMode('reset');
       setError('');
       setSuccessMsg('');
-    }
-  }, []);
+    };
+    if (window.location.hash.includes('type=recovery')) enterRecovery();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        enterRecovery();
+      } else if (event === 'SIGNED_IN' && session?.user) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+        navigate('/guru/dashboard', { replace: true });
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

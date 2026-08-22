@@ -41,6 +41,7 @@ export default function ExamTakingPage() {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [showSubmit, setShowSubmit] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitPending, setSubmitPending] = useState(false);
   const [submittedData, setSubmittedData] = useState<ReturnType<typeof buildSubmission> | null>(null);
   const [error] = useState('');
   const submitRef = useRef(false);
@@ -110,9 +111,20 @@ export default function ExamTakingPage() {
 
     const latestLookup = code ? await storage.getStudentExamByCode(code, session.studentName, session.nis) : { exam: null };
     const latestExam = latestLookup.exam;
+    const isUnavailable = latestLookup.error?.type === 'NETWORK_ERROR' || latestLookup.error?.type === 'BACKEND_UNAVAILABLE';
+    if (!latestExam && isUnavailable) {
+      const sub = { ...buildSubmission(session, exam), antiCheatEvents: antiCheatEventsRef.current };
+      setSubmittedData(sub);
+      const saveResult = await storage.saveSubmission(sub);
+      submitRef.current = false;
+      setShowSubmit(false);
+      if (saveResult.queued) setSubmitPending(true);
+      else setLoadError('Jawaban belum dapat disimpan. Silakan coba lagi.');
+      return;
+    }
     if (!latestExam || latestExam.id !== exam.id || latestExam.status !== 'ACTIVE') {
       submitRef.current = false;
-      setLoadError('Ujian sudah tidak aktif. Jawaban tidak dapat dikumpulkan.');
+      setLoadError(latestLookup.error?.type === 'PERMISSION_ERROR' ? 'Ujian tidak dapat diakses.' : 'Ujian sudah ditutup.');
       return;
     }
 
@@ -138,7 +150,7 @@ export default function ExamTakingPage() {
     } else {
       submitRef.current = false;
       setShowSubmit(false);
-      setLoadError('Jawaban belum terkirim ke server. Salinan lokal tetap tersimpan; periksa koneksi lalu coba kumpulkan lagi.');
+      setSubmitPending(true);
       return;
     }
 
@@ -300,6 +312,19 @@ export default function ExamTakingPage() {
 
   if (submitted && submittedData) {
     return <ResultScreen exam={exam} submission={submittedData} studentName={session.studentName} />;
+  }
+
+  if (submitPending) {
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--sp-6)' }}>
+        <div style={{ maxWidth: 480, textAlign: 'center', background: 'var(--surface)', border: '1px solid var(--warning)', borderRadius: 'var(--r-xl)', padding: 'var(--sp-8)' }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>📥</div>
+          <h1 style={{ marginBottom: 8 }}>Jawaban Belum Terkirim</h1>
+          <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>Jawaban Anda sudah tersimpan aman di perangkat. Sambungkan internet untuk mengirim jawaban ke server.</p>
+          <button className="btn btn-primary" style={{ marginTop: 20 }} onClick={() => { setSubmitPending(false); void handleSubmit(false); }}>Coba Kirim Sekarang</button>
+        </div>
+      </div>
+    );
   }
 
   const answeredIds = new Set(session.answers.map(a => a.questionId));

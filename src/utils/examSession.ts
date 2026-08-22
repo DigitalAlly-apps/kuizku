@@ -47,6 +47,17 @@ export function clearSession(code: string, nis: string): void {
   localStorage.removeItem(SESSION_KEY(code, nis));
 }
 
+export function clearSessionBySubmissionId(submissionId: string): void {
+  try {
+    for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+      const key = localStorage.key(index);
+      if (!key?.startsWith('kuizku_session_')) continue;
+      const session = JSON.parse(localStorage.getItem(key) || '{}') as Partial<ExamSession>;
+      if (session.submissionId === submissionId) localStorage.removeItem(key);
+    }
+  } catch { /* ignore unavailable/corrupt local storage */ }
+}
+
 // ---- Create a new session ----
 export function createSession(
   exam: Exam,

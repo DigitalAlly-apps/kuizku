@@ -464,16 +464,15 @@ export const storage = {
     return readPendingSubmissionQueue().length;
   },
 
-  async syncPendingSubmissions(): Promise<number> {
+  async syncPendingSubmissions(): Promise<{ count: number; submissionIds: string[] }> {
     const queue = readPendingSubmissionQueue();
-    if (!queue.length) return 0;
-    let synced = 0;
+    if (!queue.length) return { count: 0, submissionIds: [] };
+    const submissionIds: string[] = [];
     for (const submission of queue) {
-      await this.saveSubmission(submission);
+      const result = await this.saveSubmission(submission);
+      if (result.saved) submissionIds.push(submission.id);
     }
-    const remaining = readPendingSubmissionQueue();
-    synced = queue.length - remaining.length;
-    return synced;
+    return { count: submissionIds.length, submissionIds };
   },
 
   // ---- Question Bank ----

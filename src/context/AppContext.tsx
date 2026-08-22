@@ -7,6 +7,7 @@ import type { Teacher, Exam, Submission, BankQuestion, ToastMessage } from '../t
 import { storage } from '../utils/storage';
 import { generateId, generateExamCode } from '../utils/helpers';
 import { v4 as uuidv4 } from 'uuid';
+import { clearSessionBySubmissionId } from '../utils/examSession';
 
 // Semua fitur aktif — tidak ada gate
 const featureAccess = {
@@ -306,8 +307,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const syncPending = async () => {
       const synced = await storage.syncPendingSubmissions();
-      if (synced > 0) {
-        addToast({ type: 'success', title: 'Sinkronisasi offline berhasil', message: `${synced} submission tertunda berhasil dikirim.` });
+      if (synced.count > 0) {
+        synced.submissionIds.forEach(clearSessionBySubmissionId);
+        addToast({ type: 'success', title: 'Sinkronisasi offline berhasil', message: `${synced.count} submission tertunda berhasil dikirim.` });
         if (currentTeacher) await refreshSubmissions();
       }
     };
