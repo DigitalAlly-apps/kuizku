@@ -102,6 +102,13 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
     if (file) processFile(file);
   };
 
+  const handleTemplateDownload = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setShowFormat(false);
+    downloadExcelTemplate();
+  };
+
   return (
     <>
     <Modal open={open} onClose={handleClose} title="Import Soal dari File" size="xl"
@@ -116,8 +123,8 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
               <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Format paling aman: Tipe | Pertanyaan | Opsi A–D | Kunci | Bobot. Template resmi berisi sheet SOAL dan PETUNJUK.</div>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button className="btn btn-ghost btn-sm" onClick={() => setShowFormat(true)}><Info size={14} /> Lihat Format Excel</button>
-              <button className="btn btn-secondary btn-sm" onClick={downloadExcelTemplate}><Download size={14} /> Template</button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowFormat(true)}><Info size={14} /> Lihat Format Excel</button>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={handleTemplateDownload}><Download size={14} /> Template</button>
             </div>
           </div>
 
@@ -159,7 +166,7 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
           {error && (
             <div style={{ marginTop: 'var(--sp-4)', padding: '10px 14px', background: 'var(--danger-light)', borderRadius: 'var(--r-md)', color: 'var(--danger)', fontSize: '0.875rem', display: 'flex', gap: 8 }}>
               <AlertCircle size={15} style={{ flexShrink: 0, marginTop: 1 }} />
-              <div><div>{error}</div><button className="btn btn-secondary btn-sm" style={{ marginTop: 8 }} onClick={downloadExcelTemplate}><Download size={14} /> Unduh Template Kuizku</button></div>
+              <div><div>{error}</div><button type="button" className="btn btn-secondary btn-sm" style={{ marginTop: 8 }} onClick={handleTemplateDownload}><Download size={14} /> Unduh Template Kuizku</button></div>
             </div>
           )}
         </div>
@@ -310,7 +317,7 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
           <li>Bobot boleh kosong dan otomatis bernilai 1.</li>
           <li>Tag boleh dipisahkan dengan koma, titik koma, atau tanda <code>|</code>.</li>
         </ul>
-        <button className="btn btn-primary btn-sm" style={{ marginTop: 16 }} onClick={downloadExcelTemplate}><Download size={14} /> Download Template</button>
+        <button type="button" className="btn btn-primary btn-sm" style={{ marginTop: 16 }} onClick={handleTemplateDownload}><Download size={14} /> Download Template</button>
       </div>
     </Modal>
     </>
