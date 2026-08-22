@@ -391,6 +391,25 @@ export const storage = {
   },
 
   async saveSubmission(sub: Submission): Promise<SaveSubmissionResult> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      const { error } = await supabase.rpc('save_student_submission', {
+        p_submission: {
+          id: sub.id, exam_id: sub.examId, student_name: sub.studentName, nis: sub.nis,
+          attempt_number: sub.attemptNumber, started_at: sub.startedAt, is_complete: sub.isComplete,
+          answers: sub.answers.map(answer => ({ question_id: answer.questionId, question_type: answer.questionType, selected_option_id: answer.selectedOptionId ?? null, essay_text: answer.essayText ?? null, time_taken_seconds: answer.timeTakenSeconds ?? null })),
+          anti_cheat_events: sub.antiCheatEvents ?? [],
+        },
+      });
+      if (error) {
+        console.error('Error saving student submission:', error);
+        const queue = readPendingSubmissionQueue().filter(item => item.id !== sub.id);
+        writePendingSubmissionQueue([...queue, sub]);
+        return { saved: false, queued: true, error: error.message };
+      }
+      writePendingSubmissionQueue(readPendingSubmissionQueue().filter(item => item.id !== sub.id));
+      return { saved: true, queued: false };
+    }
     const { error: subErr } = await supabase.from('submissions').upsert({
       id: sub.id,
       exam_id: sub.examId,
