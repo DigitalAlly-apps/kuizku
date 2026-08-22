@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, Search, Copy, Edit2, Trash2, BarChart2, Archive, Play, MoreVertical, FileText, Users, ChevronDown, ChevronRight, CheckCircle2, Clock, X, Save, Loader2, Calendar, Share2, QrCode } from 'lucide-react';
 import { useApp, useToast } from '../../context/AppContext';
@@ -38,6 +38,7 @@ export default function ExamListPage() {
   const [typeFilter, setTypeFilter] = useState<ExamType | 'ALL'>('ALL');
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const activeMenuRef = useRef<HTMLDivElement | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [groupBy, setGroupBy] = useState<'kelas' | 'mapel' | 'tipe' | 'none'>('kelas');
   const [qrExam, setQrExam] = useState<{ code: string; title: string } | null>(null);
@@ -53,6 +54,26 @@ export default function ExamListPage() {
   const [editTo, setEditTo] = useState('');
   const [editStudents, setEditStudents] = useState('');
   const [editSaving, setEditSaving] = useState(false);
+
+  useEffect(() => {
+    if (!openMenuId) return;
+
+    const closeOnOutsidePress = (event: PointerEvent) => {
+      if (!activeMenuRef.current?.contains(event.target as Node)) {
+        setOpenMenuId(null);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpenMenuId(null);
+    };
+
+    document.addEventListener('pointerdown', closeOnOutsidePress);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePress);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [openMenuId]);
 
   const myExams = useMemo(() =>
     exams.filter(e => e.teacherId === currentTeacher?.id), [exams, currentTeacher]);
@@ -221,7 +242,7 @@ export default function ExamListPage() {
     const isPastDeadline = hasDeadline && new Date(exam.activeTo!) < new Date();
 
     return (
-      <div key={exam.id} className="exam-card" style={{ position: 'relative' }}
+      <div key={exam.id} className="exam-card" style={{ position: 'relative', zIndex: openMenuId === exam.id ? 10 : undefined }}
         onClick={() => navigate(exam.status === 'DRAFT' ? '/guru/ujian?status=DRAFT' : `/guru/hasil?exam=${exam.id}`)}>
         <div className="exam-card-header">
           <div className="exam-card-badges">
@@ -242,8 +263,20 @@ export default function ExamListPage() {
               <Edit2 size={14} />
             </button>
             {exam.status !== 'ARCHIVED' && (
-              <div style={{ position: 'relative' }}>
-                <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setOpenMenuId(openMenuId === exam.id ? null : exam.id)}>
+              <div
+                ref={openMenuId === exam.id ? activeMenuRef : undefined}
+                style={{ position: 'relative' }}
+                onClick={e => e.stopPropagation()}
+              >
+                <button
+                  className="btn btn-ghost btn-sm btn-icon"
+                  aria-label="Buka menu aksi ujian"
+                  aria-expanded={openMenuId === exam.id}
+                  onClick={e => {
+                    e.stopPropagation();
+                    setOpenMenuId(current => current === exam.id ? null : exam.id);
+                  }}
+                >
                   <MoreVertical size={14} />
                 </button>
                 {openMenuId === exam.id && (
@@ -258,7 +291,7 @@ export default function ExamListPage() {
                         <Archive size={14} /> Tutup Ujian
                       </button>
                     )}
-                    <button style={menuItemStyle} onClick={() => navigate(`/guru/hasil?exam=${exam.id}`)}>
+                    <button style={menuItemStyle} onClick={() => { navigate(`/guru/hasil?exam=${exam.id}`); setOpenMenuId(null); }}>
                       <BarChart2 size={14} /> Lihat Hasil
                     </button>
                     <button style={menuItemStyle} onClick={() => { navigate(`/guru/ujian/${exam.id}/edit-soal`); setOpenMenuId(null); }}>
@@ -267,7 +300,7 @@ export default function ExamListPage() {
                     <button style={menuItemStyle} onClick={() => { navigate(`/guru/ujian/${exam.id}/preview`); setOpenMenuId(null); }}>
                       <FileText size={14} style={{ color: 'var(--secondary)' }} /> Preview
                     </button>
-                    <button style={menuItemStyle} onClick={() => copyLink(exam.code)}>
+                    <button style={menuItemStyle} onClick={() => { copyLink(exam.code); setOpenMenuId(null); }}>
                       <Copy size={14} /> Salin Link
                     </button>
                     <button style={menuItemStyle} onClick={() => shareWhatsApp(exam.code, exam.title)}>
@@ -529,7 +562,7 @@ export default function ExamListPage() {
 }
 
 const menuStyle: React.CSSProperties = {
-  position: 'absolute', top: '100%', right: 0, zIndex: 20,
+  position: 'absolute', top: '100%', right: 0, zIndex: 20, pointerEvents: 'auto',
   background: 'var(--surface-2)', border: '1px solid var(--border-strong)',
   borderRadius: 'var(--r-md)', padding: '4px', minWidth: 180,
   boxShadow: 'var(--shadow-lg)', animation: 'fadeIn 0.1s ease',

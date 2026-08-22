@@ -518,8 +518,21 @@ export const storage = {
     });
   },
 
-  async deleteBankQuestion(id: string): Promise<void> {
-    await supabase.from('bank_questions').delete().eq('id', id);
+  async deleteBankQuestion(id: string): Promise<{ error?: string }> {
+    const { data, error } = await supabase
+      .from('bank_questions')
+      .delete()
+      .eq('id', id)
+      .select('id');
+
+    if (error) {
+      console.error('Error deleting bank question:', error);
+      return { error: error.message };
+    }
+    if (!data?.some(question => question.id === id)) {
+      return { error: 'Soal tidak ditemukan atau Anda tidak memiliki izin untuk menghapusnya.' };
+    }
+    return {};
   },
 
   // ---- Student History ----

@@ -50,7 +50,7 @@ interface AppContextShape {
   // Question Bank
   bankQuestions: BankQuestion[];
   addToBankFromQuestion: (q: import('../types').Question, subject: string) => Promise<void>;
-  deleteBankQuestion: (id: string) => Promise<void>;
+  deleteBankQuestion: (id: string) => Promise<{ error?: string }>;
   updateBankQuestion: (id: string, data: Partial<BankQuestion>) => Promise<void>;
   refreshBank: () => Promise<void>;
 
@@ -245,9 +245,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await storage.saveBankQuestion(bq);
   };
 
-  const deleteBankQuestion = async (id: string) => {
+  const deleteBankQuestion = async (id: string): Promise<{ error?: string }> => {
+    const result = await storage.deleteBankQuestion(id);
+    if (result.error) return result;
     setBankState(prev => prev.filter(b => b.id !== id));
-    await storage.deleteBankQuestion(id);
+    return {};
   };
 
   const updateBankQuestion = async (id: string, data: Partial<BankQuestion>) => {

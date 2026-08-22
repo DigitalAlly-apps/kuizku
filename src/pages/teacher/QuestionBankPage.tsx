@@ -66,9 +66,13 @@ export default function QuestionBankPage() {
     });
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleteId) return;
-    deleteBankQuestion(deleteId);
+    const result = await deleteBankQuestion(deleteId);
+    if (result.error) {
+      addToast({ type: 'error', title: 'Soal gagal dihapus', message: result.error });
+      return;
+    }
     if (preview?.id === deleteId) setPreview(null);
     setDeleteId(null);
     addToast({ type: 'success', title: 'Soal dihapus dari bank soal.' });
