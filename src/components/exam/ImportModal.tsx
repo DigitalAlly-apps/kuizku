@@ -31,6 +31,12 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
     setLoading(true);
     setError('');
     try {
+      if (file.size > 5 * 1024 * 1024) {
+        setError('File terlalu besar. Maksimal 5 MB.');
+        setLoading(false);
+        return;
+      }
+
       const ext = file.name.split('.').pop()?.toLowerCase();
       let res: ImportResult;
       if (ext === 'csv') res = await parseCSVFile(file);
@@ -38,7 +44,12 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
       else if (ext === 'docx') res = await parseWordFile(file);
       else { setError('Format file tidak didukung. Gunakan .xlsx, .xls, .csv, atau .docx'); setLoading(false); return; }
 
-      // Filter by exam format
+      if (res.totalRows > 200) {
+        setError(`File berisi ${res.totalRows} soal. Maksimal 200 soal per import.`);
+        setLoading(false);
+        return;
+      }
+
       const filtered = filterByFormat(res, format);
       setResult(filtered);
       setStep('preview');
@@ -49,7 +60,6 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
   };
 
   const filterByFormat = (res: ImportResult, fmt: ExamFormat): ImportResult => {
-    // If PG only, flag essay as invalid
     if (fmt === 'PG_ONLY') {
       const moved = res.valid.filter(r => r.question.type === 'ESSAY').map(r => ({
         ...r, isValid: false, errors: [...r.errors, 'Format ujian ini hanya mendukung soal Pilihan Ganda'],
@@ -87,23 +97,32 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
     if (file) processFile(file);
   };
 
-
-
   return (
     <Modal open={open} onClose={handleClose} title="Import Soal dari File" size="xl"
       subtitle="Upload file Excel, CSV, atau Word (.docx) berisi daftar soal Anda">
       {step === 'upload' && (
         <div>
           {/* Template download */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'var(--primary-light)', border: '1px solid rgba(79,110,247,0.2)', borderRadius: 'var(--r-md)', marginBottom: 'var(--sp-5)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'var(--primary-light)', border: '1px solid rgba(79,110,247,0.2)', borderRadius: 'var(--r-md)', marginBottom: 'var(--sp-4)' }}>
             <FileSpreadsheet size={18} style={{ color: 'var(--primary)', flexShrink: 0 }} />
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>Download Template Excel</div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Isi template ini lalu upload kembali. Word juga didukung: nomor soal, opsi A-F, kunci dengan *A atau Kunci: A, dan [Essay] untuk uraian.</div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Paling aman: pakai template resmi. Di dalamnya sekarang ada sheet SOAL + PETUNJUK lengkap.</div>
             </div>
             <button className="btn btn-secondary btn-sm" onClick={downloadExcelTemplate}>
               <Download size={14} /> Template
             </button>
+          </div>
+
+          {/* Quick Excel rules */}
+          <div style={{ padding: '12px 16px', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', marginBottom: 'var(--sp-5)' }}>
+            <div style={{ fontWeight: 700, fontSize: '0.84rem', marginBottom: 8 }}>Excel aman kalau:</div>
+            <div style={{ display: 'grid', gap: 5, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+              <div>• <strong style={{ color: 'var(--text-primary)' }}>Pertanyaan</strong> wajib diisi.</div>
+              <div>• PG minimal punya <strong style={{ color: 'var(--text-primary)' }}>2 opsi</strong> dan <strong style={{ color: 'var(--text-primary)' }}>Kunci A–F</strong>.</div>
+              <div>• <strong style={{ color: 'var(--text-primary)' }}>Bobot boleh kosong</strong> — otomatis jadi 1.</div>
+              <div>• Setelah upload, Kuizku akan <strong style={{ color: 'var(--text-primary)' }}>cek tiap baris dulu</strong>. Soal error tidak akan ikut diimport.</div>
+            </div>
           </div>
 
           {/* Drop zone */}
@@ -140,6 +159,24 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
 
       {step === 'preview' && result && (
         <div>
+          {/* Ready/not-ready indicator */}
+          <div style={{
+            padding: '12px 16px', marginBottom: 'var(--sp-4)', borderRadius: 'var(--r-md)',
+            background: result.invalid.length === 0 ? 'var(--success-light)' : 'var(--warning-light)',
+            border: `1px solid ${result.invalid.length === 0 ? 'rgba(16,185,129,0.25)' : 'rgba(245,158,11,0.25)'}`,
+          }}>
+            <div style={{ fontWeight: 700, color: result.invalid.length === 0 ? 'var(--success)' : 'var(--warning)' }}>
+              {result.invalid.length === 0
+                ? `✓ File siap diimport — ${result.valid.length}/${result.totalRows} soal valid`
+                : `${result.valid.length}/${result.totalRows} soal siap diimport — ${result.invalid.length} baris perlu diperbaiki`}
+            </div>
+            {result.invalid.length > 0 && (
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                Anda tetap bisa mengimport soal yang valid. Baris bermasalah tidak akan ikut masuk.
+              </div>
+            )}
+          </div>
+
           {/* Summary bar */}
           <div style={{ display: 'flex', gap: 'var(--sp-4)', marginBottom: 'var(--sp-5)', flexWrap: 'wrap' }}>
             <div style={{ padding: '8px 16px', background: 'var(--success-light)', borderRadius: 'var(--r-md)', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -193,7 +230,7 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
             </table>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'var(--sp-5)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'var(--sp-5)', gap: 12, flexWrap: 'wrap' }}>
             <button className="btn btn-secondary" onClick={reset}>← Upload Ulang</button>
             <button className="btn btn-primary" disabled={result.valid.length === 0} onClick={handleConfirmImport}>
               Import {result.valid.length} Soal Valid
@@ -207,7 +244,7 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
           <CheckCircle size={48} style={{ color: 'var(--success)', margin: '0 auto var(--sp-4)' }} />
           <h3 style={{ marginBottom: 8 }}>{result.valid.length} soal berhasil diimport!</h3>
           <p style={{ color: 'var(--text-muted)', marginBottom: 'var(--sp-6)' }}>
-            Anda bisa mengedit soal yang diimport di langkah berikutnya.
+            Anda bisa mengecek dan mengedit soal yang diimport sebelum melanjutkan.
           </p>
           <button className="btn btn-primary" onClick={handleClose}>Selesai</button>
         </div>
