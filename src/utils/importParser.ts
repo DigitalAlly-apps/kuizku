@@ -128,12 +128,19 @@ export async function parseExcelFile(file: File): Promise<ImportResult> {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const workbook = XLSX.read(e.target?.result, { type: 'binary' });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { defval: '', raw: false });
-        resolve(parseRows(rows));
+        const data = e.target?.result;
+        const workbook = XLSX.read(data, { type: 'binary' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, {
+          defval: '',
+          raw: false,
+        });
+        validateSpreadsheetHeaders(rows);
+        resolve(parseSpreadsheetRows(rows));
       } catch (err) {
-        reject(new Error('Gagal membaca file Excel: ' + String(err)));
+        if (err instanceof Error && err.message.startsWith('Format Excel tidak dikenali')) reject(err);
+        else reject(new Error('Gagal membaca file Excel: ' + String(err)));
       }
     };
     reader.onerror = () => reject(new Error('Gagal membaca file'));
@@ -146,12 +153,19 @@ export async function parseCSVFile(file: File): Promise<ImportResult> {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const workbook = XLSX.read(e.target?.result as string, { type: 'string' });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { defval: '', raw: false });
-        resolve(parseRows(rows));
+        const text = e.target?.result as string;
+        const workbook = XLSX.read(text, { type: 'string' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, {
+          defval: '',
+          raw: false,
+        });
+        validateSpreadsheetHeaders(rows);
+        resolve(parseSpreadsheetRows(rows));
       } catch (err) {
-        reject(new Error('Gagal membaca file CSV: ' + String(err)));
+        if (err instanceof Error && err.message.startsWith('Format Excel tidak dikenali')) reject(err);
+        else reject(new Error('Gagal membaca file CSV: ' + String(err)));
       }
     };
     reader.onerror = () => reject(new Error('Gagal membaca file'));
@@ -177,18 +191,45 @@ function findValue(row: Record<string, string>, ...candidates: string[]): string
   return '';
 }
 
-function parseRows(rows: Record<string, string>[]): ImportResult {
+function hasColumn(headers: string[], ...candidates: string[]): boolean {
+  return candidates.some(candidate =>
+    headers.some(header => normalizeKey(header) === normalizeKey(candidate))
+  );
+}
+
+function validateSpreadsheetHeaders(rows: Record<string, string>[]): void {
+  const headers = rows.length > 0 ? Object.keys(rows[0]) : [];
+  const hasQuestion = hasColumn(headers, 'Pertanyaan', 'Soal', 'Question');
+  const hasType = hasColumn(headers, 'Tipe', 'Type');
+  const hasOptionA = hasColumn(headers, 'Opsi A', 'Option A', 'A');
+  const hasOptionB = hasColumn(headers, 'Opsi B', 'Option B', 'B');
+  const hasAnswerKey = hasColumn(headers, 'Kunci', 'Jawaban Benar', 'Kunci Jawaban', 'Answer');
+
+  if (!hasQuestion || (!hasType && (!hasOptionA || !hasOptionB || !hasAnswerKey))) {
+    throw new Error(
+      'Format Excel tidak dikenali. Gunakan header Pertanyaan/Soal. Untuk soal PG tanpa kolom Tipe, sertakan Opsi A, Opsi B, dan Kunci.'
+    );
+  }
+}
+
+function normalizeQuestionType(value: string): string {
+  return value.trim().toUpperCase().replace(/[\s-]+/g, '_');
+}
+
+export function parseSpreadsheetRows(rows: Record<string, string>[]): ImportResult {
   const valid: ImportRow[] = [];
   const invalid: ImportRow[] = [];
 
   rows.forEach((row, idx) => {
     const rowIndex = idx + 2;
     const errors: string[] = [];
-    const tipeRaw = findValue(row, 'Tipe', 'type').toUpperCase();
-    const questionText = findValue(row, 'Pertanyaan', 'Soal', 'Question');
-    const bobotRaw = findValue(row, 'Bobot', 'Nilai', 'Weight', 'Points');
-    const tagRaw = findValue(row, 'Tag', 'Tags', 'Kategori');
-    const kunciRaw = findValue(row, 'Kunci', 'Jawaban Benar', 'jawaban_benar', 'Kunci Jawaban', 'Answer').toUpperCase();
+    const warnings: string[] = [];
+
+    const tipeRaw = normalizeQuestionType(findValue(row, 'Tipe', 'tipe', 'type', 'Type'));
+    const questionText = findValue(row, 'Pertanyaan', 'pertanyaan', 'Soal', 'soal', 'Question', 'question');
+    const bobotRaw = findValue(row, 'Bobot', 'bobot', 'Nilai', 'nilai', 'Weight', 'weight', 'Points', 'points');
+    const tagRaw = findValue(row, 'Tag', 'tag', 'Tags', 'tags', 'Kategori', 'kategori');
+    const kunciRaw = findValue(row, 'Kunci', 'kunci', 'Jawaban Benar', 'jawaban_benar', 'Kunci Jawaban', 'Answer', 'answer').toUpperCase();
     const answerGuide = findValue(row, 'Panduan Jawaban', 'panduan_jawaban', 'Kunci Essay', 'Guide');
 
     let type: QuestionType = 'MULTIPLE_CHOICE';
@@ -198,30 +239,43 @@ function parseRows(rows: Record<string, string>[]): ImportResult {
 
     if (!questionText) errors.push('Teks pertanyaan kosong');
 
-    // Kosong = default 1. Hanya nilai yang diisi tetapi tidak valid yang ditolak.
-    const parsedWeight = bobotRaw === '' ? 1 : parseFloat(bobotRaw);
-    const weight = Number.isFinite(parsedWeight) && parsedWeight > 0 ? parsedWeight : 1;
-    if (bobotRaw !== '' && (!Number.isFinite(parsedWeight) || parsedWeight <= 0)) {
+    const weight = bobotRaw === '' ? 1 : Number(bobotRaw);
+    if (bobotRaw === '') {
+      warnings.push('Bobot kosong otomatis diisi 1.');
+    } else if (isNaN(weight) || weight <= 0) {
       errors.push(`Bobot nilai tidak valid: "${bobotRaw}". Harus berupa angka positif`);
     }
 
     const tags = tagRaw ? tagRaw.split(/[,;|]/).map(t => t.trim()).filter(Boolean) : [];
     const optionLetters = ['A', 'B', 'C', 'D', 'E', 'F'];
-    const optionsWithLetters = optionLetters.map(letter => ({
-      id: generateId(),
-      letter,
-      text: findValue(row, `Opsi ${letter}`, `opsi_${letter.toLowerCase()}`, `Option ${letter}`, letter),
-    })).filter(o => o.text !== '');
+    const optionValues = optionLetters
+      .map(l => ({
+        id: generateId(),
+        text: findValue(row, `Opsi ${l}`, `opsi_${l.toLowerCase()}`, `Option ${l}`, l),
+      }));
+    const lastOptionIndex = optionValues.reduce((last, option, index) => option.text ? index : last, -1);
+    const gapIndex = lastOptionIndex >= 0
+      ? optionValues.slice(0, lastOptionIndex).findIndex(option => !option.text)
+      : -1;
+    if (gapIndex >= 0) {
+      const missing = optionLetters[gapIndex];
+      const later = optionLetters[gapIndex + 1];
+      errors.push(`Opsi harus berurutan. Jangan kosongkan Opsi ${missing} jika Opsi ${later} diisi.`);
+    }
+    const options = optionValues.filter(option => option.text !== '');
 
     let correctOptionId: string | undefined;
     if (type === 'MULTIPLE_CHOICE') {
-      if (optionsWithLetters.length < 2) errors.push('Minimal 2 opsi jawaban untuk soal Pilihan Ganda');
+      if (options.length < 2) errors.push('Minimal 2 opsi jawaban untuk soal Pilihan Ganda');
       if (!kunciRaw) {
         errors.push('Kunci jawaban tidak ditemukan');
       } else {
-        const correctOpt = optionsWithLetters.find(o => o.letter === kunciRaw);
-        if (!correctOpt) errors.push(`Kunci jawaban "${kunciRaw}" tidak valid atau opsi tidak ada`);
-        else correctOptionId = correctOpt.id;
+        const kunciIndex = optionLetters.indexOf(kunciRaw);
+        if (kunciIndex === -1 || !optionValues[kunciIndex]?.text) {
+          errors.push(`Kunci jawaban "${kunciRaw}" tidak valid atau opsi tidak ada`);
+        } else {
+          correctOptionId = optionValues[kunciIndex].id;
+        }
       }
     }
 
@@ -233,12 +287,24 @@ function parseRows(rows: Record<string, string>[]): ImportResult {
       tags,
       order: rowIndex - 1,
       ...(type === 'MULTIPLE_CHOICE'
-        ? { options: optionsWithLetters.map(({ id, text }) => ({ id, text })), correctOptionId }
+        ? { options, correctOptionId }
         : { answerGuide }),
     };
 
-    const importRow: ImportRow = { rowIndex, question, errors, isValid: errors.length === 0 };
-    (importRow.isValid ? valid : invalid).push(importRow);
+    const importRow: ImportRow = {
+      rowIndex,
+      question,
+      errors,
+      warnings,
+      sourceRow: row,
+      isValid: errors.length === 0,
+    };
+
+    if (importRow.isValid) {
+      valid.push(importRow);
+    } else {
+      invalid.push(importRow);
+    }
   });
 
   return { valid, invalid, totalRows: rows.length };
@@ -248,35 +314,74 @@ function parseRows(rows: Record<string, string>[]): ImportResult {
 export function downloadExcelTemplate(): void {
   const soalSheet = XLSX.utils.aoa_to_sheet([
     ['Tipe', 'Pertanyaan', 'Opsi A', 'Opsi B', 'Opsi C', 'Opsi D', 'Opsi E', 'Opsi F', 'Kunci', 'Bobot', 'Tag', 'Panduan Jawaban'],
-    ['PG', 'Siapa khalifah pertama setelah Rasulullah?', 'Abu Bakar', 'Umar bin Khattab', 'Utsman bin Affan', 'Ali bin Abi Thalib', '', '', 'A', '1', 'PAI', ''],
-    ['PG', 'Jumlah rukun Islam adalah...', '4', '5', '6', '7', '', '', 'B', '', 'PAI', ''],
-    ['Essay', 'Sebutkan lima rukun Islam!', '', '', '', '', '', '', '', '5', 'PAI', 'Syahadat, shalat, zakat, puasa Ramadan, dan haji bagi yang mampu.'],
+    ['PG', 'Manakah yang merupakan bilangan prima?', '2', '4', '6', '8', '', '', 'A', '1', 'Matematika', ''],
+    ['PG', 'Pilih huruf vokal.', 'B', 'C', 'D', 'F', 'A', 'E', 'E', '', 'Bahasa Indonesia;LCC', ''],
+    ['Essay', 'Jelaskan pengertian fotosintesis!', '', '', '', '', '', '', '', '5', 'IPA,Biologi', 'Fotosintesis adalah proses pembuatan makanan oleh tumbuhan menggunakan cahaya matahari.'],
   ]);
+
+  // Set column widths
   soalSheet['!cols'] = [
-    { wch: 10 }, { wch: 52 }, { wch: 22 }, { wch: 22 }, { wch: 22 }, { wch: 22 },
-    { wch: 22 }, { wch: 22 }, { wch: 10 }, { wch: 10 }, { wch: 20 }, { wch: 48 },
+    { wch: 8 }, { wch: 50 }, { wch: 20 }, { wch: 20 }, { wch: 20 },
+    { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 8 }, { wch: 8 },
+    { wch: 20 }, { wch: 40 },
   ];
   soalSheet['!autofilter'] = { ref: 'A1:L4' };
 
   const petunjukSheet = XLSX.utils.aoa_to_sheet([
     ['PETUNJUK IMPORT SOAL KUIZKU'],
+    ['Gunakan sheet SOAL untuk mengisi soal. Jangan mengubah nama header pada baris pertama.'],
+    [''],
     ['Kolom', 'Aturan'],
-    ['Tipe', 'Isi PG atau Essay. Jika kosong, dianggap PG.'],
-    ['Pertanyaan', 'Wajib diisi. Bisa juga memakai header Soal/Question.'],
-    ['Opsi A-F', 'Untuk PG minimal 2 opsi. Isi berurutan A, B, C, D, dst.'],
-    ['Kunci', 'Untuk PG wajib huruf A-F dan harus menunjuk opsi yang tersedia.'],
-    ['Bobot', 'Boleh kosong; otomatis bernilai 1. Jika diisi harus angka positif.'],
-    ['Tag', 'Opsional. Pisahkan beberapa tag dengan koma, titik koma, atau |.'],
-    ['Panduan Jawaban', 'Opsional untuk Essay.'],
+    ['Tipe', 'Isi PG atau Essay. Boleh juga: Pilihan Ganda, Multiple Choice, MC, Uraian, atau E. Jika kosong, dianggap PG.'],
+    ['Pertanyaan', 'Wajib diisi untuk setiap soal.'],
+    ['Opsi A–F', 'Khusus PG: minimal 2 opsi, isi berurutan mulai A. Jangan kosongkan C lalu mengisi D.'],
+    ['Kunci', 'Khusus PG: isi A sampai F dan harus sesuai dengan opsi yang tersedia.'],
+    ['Bobot', 'Opsional. Jika kosong otomatis bernilai 1. Jika diisi, harus angka positif.'],
+    ['Tag', 'Opsional. Pisahkan beberapa tag dengan koma, titik koma, atau garis tegak. Contoh: PAI,Sirah atau PAI;Sirah.'],
+    ['Panduan Jawaban', 'Khusus Essay, opsional. Isi pedoman jawaban untuk guru.'],
     ['Tips', 'Jangan ubah nama sheet SOAL dan jangan taruh baris judul tambahan di atas header.'],
-    ['Sebelum import', 'Kuizku akan menampilkan preview: soal valid dan baris yang perlu diperbaiki.'],
+    [''],
+    ['CONTOH BENAR', 'PG | Soal | A | B | C | D | Kunci D | Bobot 1'],
+    ['CONTOH SALAH', 'PG | Soal | A | B | (Opsi C kosong) | D — tidak boleh ada opsi yang terlewat.'],
   ]);
-  petunjukSheet['!cols'] = [{ wch: 22 }, { wch: 90 }];
+  petunjukSheet['!cols'] = [{ wch: 22 }, { wch: 105 }];
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, soalSheet, 'SOAL');
   XLSX.utils.book_append_sheet(wb, petunjukSheet, 'PETUNJUK');
   XLSX.writeFile(wb, 'template_soal_kuizku.xlsx');
+}
+
+export function downloadInvalidRows(rows: ImportRow[]): void {
+  const headers = ['Baris', 'Tipe', 'Pertanyaan', 'Opsi A', 'Opsi B', 'Opsi C', 'Opsi D', 'Opsi E', 'Opsi F', 'Kunci', 'Bobot', 'Tag', 'Panduan Jawaban', 'Masalah'];
+  const data = rows.map(row => {
+    const question = row.question;
+    const options = question.options ?? [];
+    const optionAt = (index: number) => options[index]?.text ?? '';
+    const correctIndex = options.findIndex(option => option.id === question.correctOptionId);
+    const source = row.sourceRow;
+    return [
+      row.rowIndex,
+      source ? findValue(source, 'Tipe', 'Type') : question.type === 'ESSAY' ? 'Essay' : 'PG',
+      source ? findValue(source, 'Pertanyaan', 'Soal', 'Question') : question.text ?? '',
+      source ? findValue(source, 'Opsi A', 'Option A', 'A') : optionAt(0),
+      source ? findValue(source, 'Opsi B', 'Option B', 'B') : optionAt(1),
+      source ? findValue(source, 'Opsi C', 'Option C', 'C') : optionAt(2),
+      source ? findValue(source, 'Opsi D', 'Option D', 'D') : optionAt(3),
+      source ? findValue(source, 'Opsi E', 'Option E', 'E') : optionAt(4),
+      source ? findValue(source, 'Opsi F', 'Option F', 'F') : optionAt(5),
+      source ? findValue(source, 'Kunci', 'Jawaban Benar', 'Kunci Jawaban', 'Answer') : correctIndex >= 0 ? String.fromCharCode(65 + correctIndex) : '',
+      source ? findValue(source, 'Bobot', 'Nilai', 'Weight', 'Points') : question.weight ?? '',
+      source ? findValue(source, 'Tag', 'Tags', 'Kategori') : question.tags?.join(',') ?? '',
+      source ? findValue(source, 'Panduan Jawaban', 'Kunci Essay', 'Guide') : question.answerGuide ?? '',
+      row.errors.join(' | '),
+    ];
+  });
+  const sheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
+  sheet['!cols'] = headers.map((header, index) => ({ wch: index === 2 || index === 13 ? 55 : Math.max(12, header.length + 2) }));
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, sheet, 'Soal Bermasalah');
+  XLSX.writeFile(workbook, 'soal_bermasalah_kuizku.xlsx');
 }
 
 // ---- Export Results ----

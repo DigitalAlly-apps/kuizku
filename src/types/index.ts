@@ -199,6 +199,8 @@ export interface ImportRow {
   rowIndex: number;
   question: Partial<Question>;
   errors: string[];
+  warnings?: string[];
+  sourceRow?: Record<string, string>;
   isValid: boolean;
 }
 

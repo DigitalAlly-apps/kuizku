@@ -2,9 +2,9 @@
 // Import File Modal — supports Excel, CSV, Word (.docx)
 // ============================================================
 import { useState, useRef } from 'react';
-import { Upload, Download, CheckCircle, AlertCircle, FileSpreadsheet } from 'lucide-react';
+import { Upload, Download, CheckCircle, AlertCircle, FileSpreadsheet, Eye, Info } from 'lucide-react';
 import { Modal } from '../ui';
-import { parseExcelFile, parseCSVFile, parseWordFile, downloadExcelTemplate } from '../../utils/importParser';
+import { parseExcelFile, parseCSVFile, parseWordFile, downloadExcelTemplate, downloadInvalidRows } from '../../utils/importParser';
 import type { ImportResult, ExamFormat, Question } from '../../types';
 
 interface Props {
@@ -22,9 +22,10 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showFormat, setShowFormat] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const reset = () => { setStep('upload'); setResult(null); setError(''); };
+  const reset = () => { setStep('upload'); setResult(null); setError(''); setShowFormat(false); };
   const handleClose = () => { reset(); onClose(); };
 
   const processFile = async (file: File) => {
@@ -90,6 +91,10 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
     setStep('done');
   };
 
+  const warningCount = result
+    ? [...result.valid, ...result.invalid].reduce((count, row) => count + (row.warnings?.length ?? 0), 0)
+    : 0;
+
   const dropHandler = (e: React.DragEvent) => {
     e.preventDefault();
     setDragging(false);
@@ -98,6 +103,7 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
   };
 
   return (
+    <>
     <Modal open={open} onClose={handleClose} title="Import Soal dari File" size="xl"
       subtitle="Upload file Excel, CSV, atau Word (.docx) berisi daftar soal Anda">
       {step === 'upload' && (
@@ -107,11 +113,12 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
             <FileSpreadsheet size={18} style={{ color: 'var(--primary)', flexShrink: 0 }} />
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>Download Template Excel</div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Paling aman: pakai template resmi. Di dalamnya sekarang ada sheet SOAL + PETUNJUK lengkap.</div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Format paling aman: Tipe | Pertanyaan | Opsi A–D | Kunci | Bobot. Template resmi berisi sheet SOAL dan PETUNJUK.</div>
             </div>
-            <button className="btn btn-secondary btn-sm" onClick={downloadExcelTemplate}>
-              <Download size={14} /> Template
-            </button>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button className="btn btn-ghost btn-sm" onClick={() => setShowFormat(true)}><Info size={14} /> Lihat Format Excel</button>
+              <button className="btn btn-secondary btn-sm" onClick={downloadExcelTemplate}><Download size={14} /> Template</button>
+            </div>
           </div>
 
           {/* Quick Excel rules */}
@@ -151,7 +158,8 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
 
           {error && (
             <div style={{ marginTop: 'var(--sp-4)', padding: '10px 14px', background: 'var(--danger-light)', borderRadius: 'var(--r-md)', color: 'var(--danger)', fontSize: '0.875rem', display: 'flex', gap: 8 }}>
-              <AlertCircle size={15} style={{ flexShrink: 0, marginTop: 1 }} />{error}
+              <AlertCircle size={15} style={{ flexShrink: 0, marginTop: 1 }} />
+              <div><div>{error}</div><button className="btn btn-secondary btn-sm" style={{ marginTop: 8 }} onClick={downloadExcelTemplate}><Download size={14} /> Unduh Template Kuizku</button></div>
             </div>
           )}
         </div>
@@ -179,10 +187,14 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
 
           {/* Summary bar */}
           <div style={{ display: 'flex', gap: 'var(--sp-4)', marginBottom: 'var(--sp-5)', flexWrap: 'wrap' }}>
+            <div style={{ padding: '8px 16px', background: 'var(--surface-2)', borderRadius: 'var(--r-md)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <FileSpreadsheet size={15} style={{ color: 'var(--primary)' }} />
+              <span style={{ fontWeight: 700 }}>{result.totalRows}</span><span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>soal ditemukan</span>
+            </div>
             <div style={{ padding: '8px 16px', background: 'var(--success-light)', borderRadius: 'var(--r-md)', display: 'flex', alignItems: 'center', gap: 6 }}>
               <CheckCircle size={15} style={{ color: 'var(--success)' }} />
               <span style={{ fontWeight: 700, color: 'var(--success)' }}>{result.valid.length}</span>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>soal valid</span>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>siap diimpor</span>
             </div>
             {result.invalid.length > 0 && (
               <div style={{ padding: '8px 16px', background: 'var(--danger-light)', borderRadius: 'var(--r-md)', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -191,6 +203,17 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>soal error (tidak diimport)</span>
               </div>
             )}
+            {warningCount > 0 && (
+              <div style={{ padding: '8px 16px', background: 'var(--warning-light)', borderRadius: 'var(--r-md)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <AlertCircle size={15} style={{ color: 'var(--warning)' }} />
+                <span style={{ fontWeight: 700, color: 'var(--warning)' }}>{warningCount}</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>warning otomatis</span>
+              </div>
+            )}
+          </div>
+
+          <div style={{ marginBottom: 'var(--sp-4)', padding: '10px 14px', background: result.invalid.length ? 'var(--warning-light)' : 'var(--success-light)', borderRadius: 'var(--r-md)', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+            {result.invalid.length ? '⚠️ Ada soal yang perlu diperbaiki. Soal valid tetap bisa diimpor.' : '✅ File siap diimpor.'}
           </div>
 
           {/* Preview table */}
@@ -223,6 +246,9 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
                       {!row.isValid && row.errors.map((e, i) => (
                         <div key={i} style={{ color: 'var(--danger)', fontSize: '0.75rem' }}>• {e}</div>
                       ))}
+                      {row.warnings?.map((warning, i) => (
+                        <div key={`warning-${i}`} style={{ color: 'var(--warning)', fontSize: '0.75rem' }}>• {warning}</div>
+                      ))}
                     </td>
                   </tr>
                 ))}
@@ -230,11 +256,34 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
             </table>
           </div>
 
+          {result.valid.length > 0 && (
+            <details style={{ marginTop: 'var(--sp-5)' }}>
+              <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}><Eye size={16} /> Preview soal seperti murid ({result.valid.length})</summary>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)', marginTop: 'var(--sp-3)', maxHeight: 420, overflowY: 'auto', paddingRight: 4 }}>
+                {result.valid.map((row, index) => {
+                  const q = row.question;
+                  const correct = q.options?.findIndex(option => option.id === q.correctOptionId) ?? -1;
+                  return <div key={row.rowIndex} style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 'var(--sp-3)', background: 'var(--surface-2)' }}>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--primary)', fontWeight: 700, marginBottom: 5 }}>SOAL {index + 1} · {q.type === 'ESSAY' ? 'ESSAY' : 'PILIHAN GANDA'}</div>
+                    <div style={{ fontWeight: 600, marginBottom: 8 }}>{q.text}</div>
+                    {q.type === 'MULTIPLE_CHOICE' && q.options?.map((option, optionIndex) => <div key={option.id} style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: 3 }}>{String.fromCharCode(65 + optionIndex)}. {option.text}</div>)}
+                    <div style={{ marginTop: 8, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      {q.type === 'MULTIPLE_CHOICE' && <>Kunci: <strong style={{ color: 'var(--success)' }}>{correct >= 0 ? String.fromCharCode(65 + correct) : '—'}</strong> · </>}
+                      Bobot: {q.weight} {q.tags?.length ? `· Tag: ${q.tags.join(', ')}` : ''}
+                    </div>
+                    {q.type === 'ESSAY' && q.answerGuide && <div style={{ marginTop: 6, fontSize: '0.78rem', color: 'var(--text-muted)' }}>Panduan jawaban: {q.answerGuide}</div>}
+                  </div>;
+                })}
+              </div>
+            </details>
+          )}
+
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'var(--sp-5)', gap: 12, flexWrap: 'wrap' }}>
-            <button className="btn btn-secondary" onClick={reset}>← Upload Ulang</button>
-            <button className="btn btn-primary" disabled={result.valid.length === 0} onClick={handleConfirmImport}>
-              Import {result.valid.length} Soal Valid
-            </button>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button className="btn btn-secondary" onClick={reset}>Perbaiki File Dulu</button>
+              {result.invalid.length > 0 && <button className="btn btn-ghost" onClick={() => downloadInvalidRows(result.invalid)}><Download size={14} /> Download Soal Bermasalah</button>}
+            </div>
+            <button className="btn btn-primary" disabled={result.valid.length === 0} onClick={handleConfirmImport}>Import {result.valid.length} Soal Valid</button>
           </div>
         </div>
       )}
@@ -250,6 +299,21 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
         </div>
       )}
     </Modal>
+
+    <Modal open={showFormat} onClose={() => setShowFormat(false)} title="Format Excel Kuizku">
+      <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.7 }}>
+        <p style={{ marginBottom: 10 }}>Gunakan baris pertama sebagai header berikut:</p>
+        <div style={{ padding: 10, borderRadius: 'var(--r-sm)', background: 'var(--surface-2)', fontFamily: 'monospace', fontSize: '0.75rem', overflowX: 'auto', marginBottom: 12 }}>Tipe | Pertanyaan | Opsi A | Opsi B | Opsi C | Opsi D | Kunci | Bobot | Tag</div>
+        <ul style={{ paddingLeft: 18, margin: 0 }}>
+          <li>PG: minimal opsi A dan B, lalu isi berurutan sampai F bila perlu.</li>
+          <li>Essay: isi Tipe = Essay; opsi dan kunci boleh kosong.</li>
+          <li>Bobot boleh kosong dan otomatis bernilai 1.</li>
+          <li>Tag boleh dipisahkan dengan koma, titik koma, atau tanda <code>|</code>.</li>
+        </ul>
+        <button className="btn btn-primary btn-sm" style={{ marginTop: 16 }} onClick={downloadExcelTemplate}><Download size={14} /> Download Template</button>
+      </div>
+    </Modal>
+    </>
   );
 }
 
