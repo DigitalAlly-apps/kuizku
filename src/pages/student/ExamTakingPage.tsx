@@ -60,7 +60,11 @@ export default function ExamTakingPage() {
 
     if (!state?.examId || !code) { navigate('/ujian'); return; }
 
-    storage.getExamByCode(code).then(async found => {
+    storage.getStudentExamByCode(code, state.studentName, state.nis).then(async ({ exam: found, error: lookupError, attemptNumber }) => {
+      if (!found && lookupError?.type !== 'NOT_FOUND') {
+        setLoadError(lookupError?.message ?? 'Ujian belum dapat dimuat. Silakan coba lagi.');
+        return;
+      }
       if (!found || found.id !== state.examId) { navigate('/ujian'); return; }
 
       // Guard: exam harus punya soal
@@ -90,9 +94,7 @@ export default function ExamTakingPage() {
         setCurrentIdx(existing.currentQuestionIndex);
       } else {
         // Fetch completed submissions for this student to determine attempt number
-        const subs = await storage.getSubmissionsByExam(found.id);
-        const prevComplete = subs.filter(s => s.nis === state.nis && s.isComplete).length;
-        const newSession = createSession(found, state.studentName, state.nis, prevComplete + 1);
+        const newSession = createSession(found, state.studentName, state.nis, attemptNumber ?? 1);
         setSession(newSession);
         setCurrentIdx(0);
       }
@@ -106,7 +108,8 @@ export default function ExamTakingPage() {
     if (submitRef.current || !session || !exam) return;
     submitRef.current = true;
 
-    const latestExam = code ? await storage.getExamByCode(code) : null;
+    const latestLookup = code ? await storage.getStudentExamByCode(code, session.studentName, session.nis) : { exam: null };
+    const latestExam = latestLookup.exam;
     if (!latestExam || latestExam.id !== exam.id || latestExam.status !== 'ACTIVE') {
       submitRef.current = false;
       setLoadError('Ujian sudah tidak aktif. Jawaban tidak dapat dikumpulkan.');
@@ -125,24 +128,18 @@ export default function ExamTakingPage() {
       return;
     }
 
-    const subs = await storage.getSubmissionsByExam(latestExam.id);
-    const completedAttempts = subs.filter(s => s.nis === session.nis && s.isComplete && s.id !== session.submissionId).length;
-    if (latestExam.settings.maxAttempts > 0 && completedAttempts >= latestExam.settings.maxAttempts) {
-      submitRef.current = false;
-      setLoadError(`Anda sudah mencapai batas percobaan (${latestExam.settings.maxAttempts}x).`);
-      return;
-    }
-
     const sub = { ...buildSubmission(session, latestExam), antiCheatEvents: antiCheatEventsRef.current };
     setSubmittedData(sub);
 
-    // Fix #1: Jangan clear session sampai save berhasil. Tampilkan warning kalau pending.
-    try {
-      await storage.saveSubmission(sub);
+    // Jangan clear session sampai server mengonfirmasi submission final tersimpan.
+    const saveResult = await storage.saveSubmission(sub);
+    if (saveResult.saved) {
       clearSession(session.examCode, session.nis);
-    } catch {
-      // Save gagal — masuk pending queue (sudah di-handle di storage.saveSubmission)
-      // Jangan clear session agar bisa retry
+    } else {
+      submitRef.current = false;
+      setShowSubmit(false);
+      setLoadError('Jawaban belum terkirim ke server. Salinan lokal tetap tersimpan; periksa koneksi lalu coba kumpulkan lagi.');
+      return;
     }
 
     setSubmitted(true);

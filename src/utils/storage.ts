@@ -7,6 +7,41 @@ import type { Teacher, Exam, BankQuestion, Submission, StudentAnswer, BillingSna
 
 const PENDING_SUBMISSION_QUEUE_KEY = 'ujianly_pending_submission_queue';
 
+export type ExamLookupErrorType = 'NOT_FOUND' | 'NETWORK_ERROR' | 'PERMISSION_ERROR' | 'DATABASE_ERROR' | 'BACKEND_UNAVAILABLE';
+
+export interface ExamLookupResult {
+  exam: Exam | null;
+  error?: {
+    type: ExamLookupErrorType;
+    message: string;
+  };
+}
+
+export interface SaveSubmissionResult {
+  saved: boolean;
+  queued: boolean;
+  error?: string;
+}
+
+export interface StudentExamLookupResult extends ExamLookupResult {
+  attemptNumber?: number;
+}
+
+function classifyExamLookupError(error: { code?: string; message?: string; status?: number }): ExamLookupResult['error'] {
+  const message = error.message?.toLowerCase() ?? '';
+
+  if (error.status === 401 || error.status === 403 || error.code === '42501' || message.includes('permission denied')) {
+    return { type: 'PERMISSION_ERROR', message: 'Ujian tidak dapat diakses saat ini.' };
+  }
+  if (message.includes('failed to fetch') || message.includes('network') || message.includes('networkerror')) {
+    return { type: 'NETWORK_ERROR', message: 'Koneksi ke server ujian bermasalah. Silakan coba lagi.' };
+  }
+  if (error.status === 502 || error.status === 503 || error.status === 504 || message.includes('project is paused')) {
+    return { type: 'BACKEND_UNAVAILABLE', message: 'Server ujian sedang bermasalah. Silakan coba lagi.' };
+  }
+  return { type: 'DATABASE_ERROR', message: 'Ujian belum dapat dimuat. Silakan coba lagi.' };
+}
+
 function defaultFreeSubscription(teacherId: string): Subscription {
   const now = new Date().toISOString();
   return {
@@ -104,6 +139,14 @@ export const storage = {
     };
   },
 
+  async loginWithGoogle(): Promise<{ error?: string }> {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/login` },
+    });
+    return error ? { error: error.message } : {};
+  },
+
   async logout(): Promise<void> {
     await supabase.auth.signOut();
   },
@@ -112,7 +155,17 @@ export const storage = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
     const { data: tData } = await supabase.from('teachers').select('*').eq('id', user.id).single();
-    if (!tData) return null;
+    if (!tData) {
+      const { error } = await supabase.from('teachers').upsert({
+        id: user.id,
+        name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'Guru',
+        email: user.email?.toLowerCase() || '',
+        subject: '',
+        institution: '',
+      }, { onConflict: 'id' });
+      if (error) return null;
+      return this.getCurrentTeacher();
+    }
     return {
       id: tData.id, name: tData.name, email: tData.email,
       subject: tData.subject || '', institution: tData.institution || '', createdAt: tData.created_at
@@ -199,18 +252,21 @@ export const storage = {
     return data.map(dbToExam);
   },
 
-  async getExamByCode(code: string): Promise<Exam | null> {
-    const { data, error } = await supabase
-      .from('exams')
-      .select('*, questions(*), preloaded_students(*)')
-      .eq('code', code.toUpperCase())
-      .maybeSingle();
+  async getExamByCode(code: string): Promise<ExamLookupResult> {
+    const { data, error } = await supabase.rpc('get_public_exam', { p_code: code });
     if (error) {
       console.error('getExamByCode error:', error);
-      return null;
+      return { exam: null, error: classifyExamLookupError(error) };
     }
-    if (!data) return null;
-    return dbToExam(data);
+    if (!data) return { exam: null, error: { type: 'NOT_FOUND', message: 'Kode ujian tidak ditemukan. Periksa kembali kode dari guru Anda.' } };
+    return { exam: dbToExam({ ...data, questions: [], preloaded_students: [] }) };
+  },
+
+  async getStudentExamByCode(code: string, name: string, identifier: string): Promise<StudentExamLookupResult> {
+    const { data, error } = await supabase.rpc('get_student_exam', { p_code: code, p_name: name, p_identifier: identifier });
+    if (error) return { exam: null, error: classifyExamLookupError(error) };
+    if (!data?.allowed) return { exam: null, error: { type: 'PERMISSION_ERROR', message: 'Akses ujian ditolak.' } };
+    return { exam: dbToExam(data.exam), attemptNumber: Number(data.next_attempt_number ?? 1) };
   },
 
   async saveExam(exam: Exam): Promise<{ error?: string }> {
@@ -284,8 +340,17 @@ export const storage = {
     if (data.status !== undefined) payload.status = data.status;
     if (data.settings !== undefined) payload.settings = data.settings;
 
-    const { error } = await supabase.from('exams').update(payload).eq('id', id);
+    const { data: updatedRow, error } = await supabase
+      .from('exams')
+      .update(payload)
+      .eq('id', id)
+      .select('id, status')
+      .maybeSingle();
     if (error) return { error: error.message };
+    if (!updatedRow) return { error: 'Perubahan tidak dikonfirmasi oleh server. Ujian belum diperbarui.' };
+    if (data.status !== undefined && updatedRow.status !== data.status) {
+      return { error: 'Status ujian di server tidak sesuai dengan perubahan yang diminta.' };
+    }
     return {};
   },
 
@@ -315,7 +380,17 @@ export const storage = {
     return data.map(dbToSubmission);
   },
 
-  async saveSubmission(sub: Submission): Promise<void> {
+  // Portal murid hanya perlu melihat submission miliknya sendiri untuk menghitung attempt/resume.
+  async getStudentSubmissionsByExam(examId: string, nis: string): Promise<Submission[]> {
+    const { data, error } = await supabase.from('submissions')
+      .select('*, student_answers(*)')
+      .eq('exam_id', examId)
+      .eq('nis', nis);
+    if (error || !data) return [];
+    return data.map(dbToSubmission);
+  },
+
+  async saveSubmission(sub: Submission): Promise<SaveSubmissionResult> {
     const { error: subErr } = await supabase.from('submissions').upsert({
       id: sub.id,
       exam_id: sub.examId,
@@ -335,7 +410,7 @@ export const storage = {
       console.error('Error saving submission:', subErr);
       const queue = readPendingSubmissionQueue().filter(item => item.id !== sub.id);
       writePendingSubmissionQueue([...queue, sub]);
-      return;
+      return { saved: false, queued: true, error: subErr.message };
     }
 
     if (sub.answers.length > 0) {
@@ -358,11 +433,12 @@ export const storage = {
         console.error('Error saving student answers:', answersErr);
         const queue = readPendingSubmissionQueue().filter(item => item.id !== sub.id);
         writePendingSubmissionQueue([...queue, sub]);
-        return;
+        return { saved: false, queued: true, error: answersErr.message };
       }
     }
 
     writePendingSubmissionQueue(readPendingSubmissionQueue().filter(item => item.id !== sub.id));
+    return { saved: true, queued: false };
   },
 
   getPendingSubmissionQueueCount(): number {

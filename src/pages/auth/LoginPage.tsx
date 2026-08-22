@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, AlertCircle, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, AlertCircle, ArrowLeft, CheckCircle2, Chrome } from 'lucide-react';
 import { useAuth } from '../../context/AppContext';
 import { Spinner } from '../../components/ui';
 import { APP_CONFIG } from '../../lib/appConfig';
 import { storage } from '../../utils/storage';
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const [mode, setMode] = useState<'login' | 'forgot' | 'reset'>('login');
   
@@ -46,6 +46,13 @@ export default function LoginPage() {
     setLoading(false);
     if (res.success) navigate('/guru/dashboard', { replace: true });
     else setError(res.error || 'Email atau password salah');
+  };
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    setError('');
+    const res = await loginWithGoogle();
+    if (res.error) { setError(res.error); setLoading(false); }
   };
 
   const handleForgotSubmit = async (e: React.FormEvent) => {
@@ -146,6 +153,10 @@ export default function LoginPage() {
               <button type="submit" className="btn btn-primary w-full btn-lg" disabled={loading}
                 style={{ marginTop: 8, justifyContent: 'center' }}>
                 {loading ? <Spinner /> : 'Masuk'}
+              </button>
+              <button type="button" className="btn btn-secondary w-full btn-lg" disabled={loading} onClick={handleGoogleLogin}
+                style={{ justifyContent: 'center' }}>
+                <Chrome size={18} /> Masuk dengan Google
               </button>
             </form>
 

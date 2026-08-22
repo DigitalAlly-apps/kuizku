@@ -26,7 +26,7 @@ export default function InstructionsPage() {
     if (!state?.examId || !code) { navigate('/ujian'); return; }
 
     // Query langsung ke Supabase by code — murid tidak butuh login
-    storage.getExamByCode(code).then(found => {
+    storage.getStudentExamByCode(code, state.studentName, state.nis).then(({ exam: found }) => {
       if (!found || found.id !== state.examId) { navigate('/ujian'); return; }
       setExam(found);
     });

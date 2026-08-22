@@ -27,6 +27,7 @@ interface AppContextShape {
   currentTeacher: Teacher | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  loginWithGoogle: () => Promise<{ error?: string }>;
   register: (data: Omit<Teacher, 'id' | 'createdAt'> & { password: string }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
 
@@ -130,6 +131,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(false);
     return { success: false, error };
   };
+  const loginWithGoogle = () => storage.loginWithGoogle();
 
   const register = async (data: Omit<Teacher, 'id' | 'createdAt'> & { password: string }): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
@@ -172,18 +174,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Kalau ada questions/preloadedStudents, pakai saveExam (RPC transactional).
   const updateExam = async (id: string, data: Partial<Exam>): Promise<{ error?: string }> => {
     const updatedAt = new Date().toISOString();
-    let oldExam: Exam | undefined;
-    let updated: Exam | undefined;
-
-    setExamsState(prev => {
-      const existing = prev.find(e => e.id === id);
-      if (!existing) return prev;
-      oldExam = { ...existing };
-      updated = { ...existing, ...data, updatedAt };
-      return prev.map(e => e.id === id ? updated! : e);
-    });
-
-    if (!updated) return { error: 'Ujian tidak ditemukan.' };
+    const existing = exams.find(e => e.id === id);
+    if (!existing) return { error: 'Ujian tidak ditemukan.' };
+    const updated: Exam = { ...existing, ...data, updatedAt };
 
     const hasQuestions = data.questions !== undefined;
     const hasStudents = data.preloadedStudents !== undefined;
@@ -207,13 +200,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (res?.error) {
-      // Rollback local state
-      if (oldExam) {
-        setExamsState(prev => prev.map(e => e.id === id ? oldExam! : e));
-      }
       return { error: res.error };
     }
 
+    // State lokal baru diperbarui setelah database mengonfirmasi perubahan.
+    setExamsState(prev => prev.map(e => e.id === id ? updated : e));
     return {};
   };
 
@@ -328,7 +319,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const value: AppContextShape = {
     currentTeacher, isLoading,
-    login, register, logout,
+    login, loginWithGoogle, register, logout,
     featureAccess,
     exams, getExam, createExam, updateExam, deleteExam, duplicateExam,
     publishExam, archiveExam, endExam, refreshExams,
@@ -347,8 +338,8 @@ export function useApp(): AppContextShape {
 }
 
 export const useAuth = () => {
-  const { currentTeacher, isLoading, login, register, logout } = useApp();
-  return { currentTeacher, isLoading, login, register, logout };
+  const { currentTeacher, isLoading, login, loginWithGoogle, register, logout } = useApp();
+  return { currentTeacher, isLoading, login, loginWithGoogle, register, logout };
 };
 
 export const useExams = () => {

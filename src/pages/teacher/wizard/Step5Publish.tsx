@@ -13,6 +13,7 @@ export default function Step5Publish({ exam, onFinish }: Props) {
   const { publishExam } = useApp();
   const { addToast } = useToast();
   const [published, setPublished] = useState(false);
+  const [publishing, setPublishing] = useState(false);
 
   const examUrl = `${window.location.origin}/ujian/${exam.code}`;
 
@@ -41,7 +42,9 @@ export default function Step5Publish({ exam, onFinish }: Props) {
       addToast({ type: 'error', title: 'Ujian belum siap dipublish', message: error });
       return;
     }
+    setPublishing(true);
     const res = await publishExam(exam.id);
+    setPublishing(false);
     if (res?.error) {
       addToast({ type: 'error', title: 'Gagal mempublikasikan ujian', message: res.error });
     } else {
@@ -95,8 +98,8 @@ export default function Step5Publish({ exam, onFinish }: Props) {
       {/* Publish button */}
       {!published ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)', alignItems: 'center' }}>
-          <button className="btn btn-success btn-lg" onClick={handlePublish}>
-            <Share2 size={16} /> Publikasikan Sekarang
+          <button className="btn btn-success btn-lg" onClick={handlePublish} disabled={publishing}>
+            <Share2 size={16} /> {publishing ? 'Memublikasikan…' : 'Publikasikan Sekarang'}
           </button>
           <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
             Ujian masih Draft. Publikasikan agar murid bisa mengerjakan.

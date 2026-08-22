@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Hash, User, CreditCard, ListOrdered, Search, AlertCircle, ArrowRight, Clock, FileText, Calendar } from 'lucide-react';
 import { storage } from '../../utils/storage';
-import { validateExamAccess } from '../../utils/examSession';
+import { loadSession } from '../../utils/examSession';
 import { formatExamFormat, formatTimerMode } from '../../utils/helpers';
 import { Spinner } from '../../components/ui';
-import type { Exam, Submission } from '../../types';
+import type { Exam } from '../../types';
 
 type Step = 'code' | 'identity' | 'resume';
 
@@ -21,7 +21,6 @@ export default function JoinExamPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [foundExam, setFoundExam] = useState<Exam | null>(null);
-  const [examSubmissions, setExamSubmissions] = useState<Submission[]>([]);
   const [, setHasResume] = useState(false);
 
   // Format kode saat mengetik
@@ -35,13 +34,14 @@ export default function JoinExamPage() {
     setError('');
     setLoading(true);
     // Query langsung ke Supabase — murid tidak perlu login
-    const exam = await storage.getExamByCode(examCode);
+    const lookup = await storage.getExamByCode(examCode);
     setLoading(false);
 
-    if (!exam) {
-      setError(`Kode "${examCode}" tidak ditemukan. Periksa kembali kode dari guru Anda.`);
+    if (!lookup.exam) {
+      setError(lookup.error?.message ?? 'Ujian belum dapat dimuat. Silakan coba lagi.');
       return;
     }
+    const exam = lookup.exam;
     if (exam.status !== 'ACTIVE') {
       const msg = exam.status === 'DRAFT' ? 'Ujian ini belum dipublikasikan.' :
                   exam.status === 'ENDED' ? 'Ujian ini sudah ditutup.' : 'Ujian ini sudah diarsipkan.';
@@ -49,11 +49,7 @@ export default function JoinExamPage() {
       return;
     }
 
-    // Load submissions untuk exam ini (untuk validasi attempt)
-    const subs = await storage.getSubmissionsByExam(exam.id);
-
     setFoundExam(exam);
-    setExamSubmissions(subs);
     setStep('identity');
   };
 
@@ -77,34 +73,21 @@ export default function JoinExamPage() {
     if (!name.trim()) { setError('Nama lengkap wajib diisi'); return; }
     if (!foundExam) return;
 
-    // ---- Whitelist validation: jika ada daftar murid, harus cocok ----
-    if (foundExam.preloadedStudents && foundExam.preloadedStudents.length > 0) {
-      const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
-      const trimName = normalize(name);
-      const trimNis  = nis.trim();
-      const byNis    = trimNis && foundExam.preloadedStudents.some(s => s.nis.trim() === trimNis);
-      const byName   = foundExam.preloadedStudents.some(s => normalize(s.name) === trimName);
-      if (!byNis && !byName) {
-        setError('Nama atau nomor Anda tidak terdaftar di ujian ini. Pastikan penulisan sama persis atau hubungi guru Anda.');
-        return;
-      }
-    }
-
     // Gunakan nis sebagai identifier — bisa NISN, no absen, atau fallback ke nama
     const identifier = nis.trim() || name.trim();
 
     setLoading(true);
-    const access = validateExamAccess(foundExam, identifier, examSubmissions);
+    const access = await storage.getStudentExamByCode(foundExam.code, name.trim(), identifier);
     setLoading(false);
 
-    if (!access.allowed) { setError(access.reason ?? 'Akses ditolak'); return; }
+    if (!access.exam) { setError(access.error?.message ?? 'Akses ditolak'); return; }
 
-    if (access.existingSession) {
+    if (loadSession(foundExam.code, identifier)) {
       setHasResume(true);
       setStep('resume');
     } else {
       navigate(`/ujian/${foundExam.code}/instruksi`, {
-        state: { examId: foundExam.id, studentName: name.trim(), nis: identifier, attemptNumber: access.attemptNumber }
+        state: { examId: access.exam.id, studentName: name.trim(), nis: identifier, attemptNumber: access.attemptNumber }
       });
     }
   };

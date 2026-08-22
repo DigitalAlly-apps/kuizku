@@ -113,9 +113,9 @@ export default function StudentHistoryPage() {
     // Fallback: cari via kode ujian (cara lama)
     const code = lookupCode.trim().toUpperCase();
     if (code.length === 6) {
-      const exam = await storage.getExamByCode(code);
+      const { exam } = await storage.getExamByCode(code);
       if (exam) {
-        const subs = (await storage.getSubmissionsByExam(exam.id)).filter(s => s.nis === nis && s.isComplete);
+        const subs = (await storage.getStudentSubmissionsByExam(exam.id, nis)).filter(s => s.isComplete);
         if (subs.length > 0) {
           setOnlineHistory(subs.map(s => ({
             id: s.id,
