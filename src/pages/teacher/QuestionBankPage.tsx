@@ -184,36 +184,47 @@ export default function QuestionBankPage() {
       </div>
 
       {/* Filter Bar */}
-      <div className="filter-bar bank-filter-toolbar" style={{ flexWrap: 'wrap', gap: 'var(--sp-3)' }}>
-        <div className="search-input-wrap" style={{ flex: '1 1 200px' }}>
-          <Search size={15} />
-          <input id="bank-page-search" className="form-input search-input" placeholder="Cari soal, mapel, atau kelas..."
-            value={search} onChange={e => setSearch(e.target.value)} />
+      <div className="filter-bar bank-filter-toolbar">
+        <div className="bank-filter-search-row">
+          <div className="search-input-wrap">
+            <Search size={15} />
+            <input id="bank-page-search" className="form-input search-input" placeholder="Cari soal, mapel, atau kelas..."
+              value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
+          <span className="bank-filter-result-count">{filtered.length} dari {myBank.length} soal</span>
         </div>
-        <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
-          {(['ALL', 'MULTIPLE_CHOICE', 'SHORT_ANSWER', 'ESSAY'] as const).map(t => (
-            <button key={t} className={`btn btn-sm ${typeFilter === t ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setTypeFilter(t)}>
-              {t === 'ALL' ? 'Semua' : t === 'MULTIPLE_CHOICE' ? 'PG' : t === 'SHORT_ANSWER' ? 'Short' : 'Essay'}
+        <div className="bank-filter-select-row">
+          <label>
+            <span>Jenis soal</span>
+            <select className="form-select" value={typeFilter} onChange={e => setTypeFilter(e.target.value as typeof typeFilter)}>
+              <option value="ALL">Semua jenis</option>
+              <option value="MULTIPLE_CHOICE">Pilihan ganda</option>
+              <option value="SHORT_ANSWER">Jawaban singkat</option>
+              <option value="ESSAY">Essay</option>
+            </select>
+          </label>
+          {allTags.length > 0 && (
+            <label>
+              <span>Tag</span>
+              <select className="form-select" value={tagFilter} onChange={e => setTagFilter(e.target.value)}>
+                <option value="">Semua tag</option>
+                {allTags.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </label>
+          )}
+          <label>
+            <span>Kelompokkan menurut</span>
+            <select className="form-select" value={groupBy} onChange={e => setGroupBy(e.target.value as typeof groupBy)}>
+              <option value="kelas">Kelas</option>
+              <option value="mapel">Mata pelajaran</option>
+              <option value="none">Tanpa kelompok</option>
+            </select>
+          </label>
+          {(search || typeFilter !== 'ALL' || tagFilter || groupBy !== 'kelas') && (
+            <button className="btn btn-ghost btn-sm bank-filter-reset" onClick={() => { setSearch(''); setTypeFilter('ALL'); setTagFilter(''); setGroupBy('kelas'); }}>
+              Reset filter
             </button>
-          ))}
-        </div>
-        {allTags.length > 0 && (
-          <select className="form-select" style={{ width: 160, fontSize: '0.8rem' }}
-            value={tagFilter} onChange={e => setTagFilter(e.target.value)}>
-            <option value="">Semua Tag</option>
-            {allTags.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-        )}
-        {/* Group by */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Kelompokkan:</span>
-          {(['kelas', 'mapel', 'none'] as const).map(g => (
-            <button key={g} className={`btn btn-sm ${groupBy === g ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setGroupBy(g)}>
-              {g === 'kelas' ? 'Kelas' : g === 'mapel' ? 'Mapel' : 'Tidak'}
-            </button>
-          ))}
+          )}
         </div>
       </div>
 

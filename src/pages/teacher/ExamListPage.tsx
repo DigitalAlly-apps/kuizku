@@ -20,9 +20,9 @@ const STATUS_FILTERS: { label: string; value: ExamAvailability | 'ALL' }[] = [
 
 const TYPE_FILTERS: { label: string; value: ExamType | 'ALL' }[] = [
   { label: 'Semua Tipe', value: 'ALL' },
-  { label: '📝 Ujian', value: 'UJIAN' },
-  { label: '📋 Tugas', value: 'TUGAS' },
-  { label: '🎯 Latihan', value: 'LATIHAN' },
+  { label: 'Ujian', value: 'UJIAN' },
+  { label: 'Tugas', value: 'TUGAS' },
+  { label: 'Latihan', value: 'LATIHAN' },
 ];
 
 function getAvailability(exam: Exam, now = Date.now()): ExamAvailability {
@@ -421,41 +421,50 @@ export default function ExamListPage() {
       </div>
 
       {/* Filters */}
-      <div className="filter-bar">
-        <div className="search-input-wrap">
+      <div className="filter-bar exam-filter-panel">
+        <div className="exam-filter-search-row">
+          <div className="search-input-wrap">
           <Search size={15} />
           <input className="form-input search-input" placeholder="Cari judul, mapel, kelas, atau kode..."
             value={search} onChange={e => setSearch(e.target.value)} id="exam-search" />
+          </div>
+          <span className="exam-filter-result-count">{filtered.length} dari {myExams.length} item</span>
         </div>
-        {/* Status filter */}
-        <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
+
+        <div className="exam-filter-status">
+          <span className="exam-filter-label">Status</span>
+          <div className="exam-filter-chips" role="group" aria-label="Filter status ujian">
           {STATUS_FILTERS.map(f => (
             <button key={f.value}
-              className={`btn btn-sm ${statusFilter === f.value ? 'btn-primary' : 'btn-secondary'}`}
+              className={`exam-filter-chip ${statusFilter === f.value ? 'is-active' : ''}`}
               onClick={() => setStatusFilter(f.value)}>
               {f.label}
             </button>
           ))}
+          </div>
         </div>
-        {/* Type filter */}
-        <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
-          {TYPE_FILTERS.map(f => (
-            <button key={f.value}
-              className={`btn btn-sm ${typeFilter === f.value ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setTypeFilter(f.value)}>
-              {f.label}
+
+        <div className="exam-filter-select-row">
+          <label>
+            <span>Jenis kegiatan</span>
+            <select className="form-select" value={typeFilter} onChange={e => setTypeFilter(e.target.value as ExamType | 'ALL')}>
+              {TYPE_FILTERS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Kelompokkan menurut</span>
+            <select className="form-select" value={groupBy} onChange={e => setGroupBy(e.target.value as typeof groupBy)}>
+              <option value="kelas">Kelas</option>
+              <option value="mapel">Mata pelajaran</option>
+              <option value="tipe">Jenis kegiatan</option>
+              <option value="none">Tanpa kelompok</option>
+            </select>
+          </label>
+          {(search || statusFilter !== 'ALL' || typeFilter !== 'ALL' || groupBy !== 'kelas') && (
+            <button className="btn btn-ghost btn-sm exam-filter-reset" onClick={() => { setSearch(''); setStatusFilter('ALL'); setTypeFilter('ALL'); setGroupBy('kelas'); }}>
+              Reset filter
             </button>
-          ))}
-        </div>
-        {/* Group by */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }} className="group-by-filter">
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Kelompokkan:</span>
-          {(['kelas', 'mapel', 'tipe', 'none'] as const).map(g => (
-            <button key={g} className={`btn btn-sm ${groupBy === g ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setGroupBy(g)}>
-              {g === 'kelas' ? 'Kelas' : g === 'mapel' ? 'Mapel' : g === 'tipe' ? 'Tipe' : 'Tidak'}
-            </button>
-          ))}
+          )}
         </div>
       </div>
 
