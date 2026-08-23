@@ -19,6 +19,7 @@ export default function ResultScreen({ exam, submission, studentName }: Props) {
   const showScore     = exam.settings.showScoreAfterSubmit && finalReleased;
   const showAnswerKey = exam.settings.showAnswerKeyAfterSubmit && exam.status === 'ENDED';
   const maxMC         = calcMaxMCScore(exam);
+  const hasShortAnswer = exam.questions.some(question => question.type === 'SHORT_ANSWER');
   const mcPct         = maxMC > 0 ? Math.round((submission.mcScore / maxMC) * 100) : 0;
   const [ranking, setRanking] = useState<StudentRanking | null>(null);
 
@@ -108,7 +109,7 @@ export default function ResultScreen({ exam, submission, studentName }: Props) {
             <div>
               {exam.format !== 'ESSAY_ONLY' && (
                 <div style={{ marginBottom: 'var(--sp-4)' }}>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 8, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Skor Pilihan Ganda</div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 8, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{hasShortAnswer ? 'Skor Otomatis' : 'Skor Pilihan Ganda'}</div>
                   <div style={{ fontSize: '3rem', fontWeight: 800, color: 'var(--primary)', lineHeight: 1 }}>
                     {submission.mcScore}<span style={{ fontSize: '1.2rem', color: 'var(--text-muted)', fontWeight: 400 }}>/{maxMC}</span>
                   </div>
@@ -189,14 +190,17 @@ export default function ResultScreen({ exam, submission, studentName }: Props) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
               {exam.questions.map((q, idx) => {
                 const ans = submission.answers.find(a => a.questionId === q.id);
-                const isCorrect = q.type === 'MULTIPLE_CHOICE' && ans?.selectedOptionId === q.correctOptionId;
+                const normalize = (value: string) => value.trim().toLowerCase().replace(/\s+/g, ' ');
+                const isCorrect = q.type === 'MULTIPLE_CHOICE'
+                  ? ans?.selectedOptionId === q.correctOptionId
+                  : q.type === 'SHORT_ANSWER' && !!ans?.shortAnswer && (q.acceptedAnswers ?? []).some(value => normalize(value) === normalize(ans.shortAnswer!));
                 const essayGrade = submission.essayScores.find(g => g.questionId === q.id);
                 const borderColor = q.type === 'ESSAY' ? 'var(--secondary)' : isCorrect ? 'var(--success)' : 'var(--danger)';
 
                 return (
                   <div key={q.id} style={{ padding: 'var(--sp-3)', background: 'var(--surface-2)', borderRadius: 'var(--r-md)', borderLeft: `3px solid ${borderColor}` }}>
                     <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 4, fontWeight: 600 }}>
-                      Soal {idx + 1} · {q.weight} poin {q.type === 'ESSAY' ? '(Essay)' : ''}
+                      Soal {idx + 1} · {q.weight} poin {q.type === 'ESSAY' ? '(Essay)' : q.type === 'SHORT_ANSWER' ? '(Jawaban Singkat)' : ''}
                     </div>
                     <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: 'var(--sp-2)' }}>{q.text}</div>
 
@@ -217,6 +221,13 @@ export default function ResultScreen({ exam, submission, studentName }: Props) {
                             </span>
                           </div>
                         )}
+                      </div>
+                    )}
+
+                    {q.type === 'SHORT_ANSWER' && (
+                      <div style={{ fontSize: '0.8rem' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Jawaban Anda: </span>
+                        <span style={{ fontWeight: 600, color: isCorrect ? 'var(--success)' : 'var(--danger)' }}>{ans?.shortAnswer || '—'} {isCorrect ? '✓' : '✗'}</span>
                       </div>
                     )}
 

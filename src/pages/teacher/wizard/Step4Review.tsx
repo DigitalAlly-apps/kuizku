@@ -19,7 +19,7 @@ export default function Step4Review({ data, onNext, onBack, saving = false }: Pr
   const [dragIdx, setDragIdx] = useState<number | null>(null);
 
   const totalPts = questions.reduce((s, q) => s + q.weight, 0);
-  const pgCount = questions.filter(q => q.type === 'MULTIPLE_CHOICE').length;
+  const pgCount = questions.filter(q => q.type === 'MULTIPLE_CHOICE' || q.type === 'SHORT_ANSWER').length;
   const essayCount = questions.filter(q => q.type === 'ESSAY').length;
 
   const handleDragStart = (idx: number) => setDragIdx(idx);
@@ -87,8 +87,8 @@ export default function Step4Review({ data, onNext, onBack, saving = false }: Pr
                 </div>
               )}
               <div className="question-item-meta">
-                <span className={`badge ${q.type === 'MULTIPLE_CHOICE' ? 'badge-pg' : 'badge-essay'}`} style={{ fontSize: '0.68rem' }}>
-                  {q.type === 'MULTIPLE_CHOICE' ? 'PG' : 'Essay'}
+                <span className={`badge ${q.type === 'ESSAY' ? 'badge-essay' : 'badge-pg'}`} style={{ fontSize: '0.68rem' }}>
+                  {q.type === 'MULTIPLE_CHOICE' ? 'PG' : q.type === 'SHORT_ANSWER' ? 'Short' : 'Essay'}
                 </span>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{q.weight} poin</span>
                 {q.tags.length > 0 && q.tags.slice(0, 2).map(t => <span key={t} className="tag">{t}</span>)}

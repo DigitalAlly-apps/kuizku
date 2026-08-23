@@ -1,11 +1,16 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Download, User, Edit2, BarChart2, RotateCcw, MessageSquare, RefreshCcw } from 'lucide-react';
+import { Download, User, Edit2, BarChart2, RotateCcw, MessageSquare, RefreshCcw, Zap, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useApp, useToast } from '../../context/AppContext';
 import { EmptyState, FormatBadge, StatusBadge, SectionHeader, Modal } from '../../components/ui';
 import { calcMaxMCScore, calcMaxEssayScore, formatDateTime } from '../../utils/helpers';
 import * as XLSX from 'xlsx';
-import type { Submission } from '../../types';
+import type { Question, Submission } from '../../types';
+
+interface QuickEssayTarget {
+  submission: Submission;
+  question: Question;
+}
 
 
 
@@ -26,6 +31,10 @@ export default function ResultsPage() {
   const [gradingMode, setGradingMode] = useState(false);
   const [gradingScores, setGradingScores] = useState<Record<string, { score: number; comment: string }>>({});
   const [feedbackText, setFeedbackText] = useState('');
+  const [quickMode, setQuickMode] = useState(false);
+  const [quickIndex, setQuickIndex] = useState(0);
+  const [quickScore, setQuickScore] = useState<number | null>(null);
+  const [quickComment, setQuickComment] = useState('');
 
   const selectedExam = useMemo(() => myExams.find(e => e.id === selectedExamId), [myExams, selectedExamId]);
   const examSubs = useMemo(() => submissions.filter(s => s.examId === selectedExamId && s.isComplete), [submissions, selectedExamId]);
@@ -37,7 +46,7 @@ export default function ResultsPage() {
     if (gradedCount === 0) return 'PENDING';
     return gradedCount === essayQuestionIds.length ? 'FINAL' : 'PARTIAL';
   };
-  const finalScoreSubs = useMemo(() => examSubs.filter(sub => essayStatus(sub) === 'NONE' || essayStatus(sub) === 'FINAL'), [examSubs, essayQuestionIds]);
+  const finalScoreSubs = useMemo(() => examSubs.filter(sub => !sub.isReturned && sub.totalScore != null && (essayStatus(sub) === 'NONE' || essayStatus(sub) === 'FINAL')), [examSubs, essayQuestionIds]);
 
   const maxMC = selectedExam ? calcMaxMCScore(selectedExam) : 0;
   const maxEssay = selectedExam ? calcMaxEssayScore(selectedExam) : 0;
@@ -46,14 +55,13 @@ export default function ResultsPage() {
   const avgTotal = useMemo(() => {
     if (!finalScoreSubs.length) return 0;
     const total = finalScoreSubs.reduce((s, sub) => {
-      const essayTotal = sub.essayScores.reduce((a, g) => a + g.score, 0);
-      return s + sub.mcScore + essayTotal;
+      return s + (sub.totalScore ?? 0);
     }, 0);
     return Math.round(total / finalScoreSubs.length);
   }, [finalScoreSubs]);
 
   const scoreStats = useMemo(() => {
-    const totals = finalScoreSubs.map(sub => sub.mcScore + sub.essayScores.reduce((a, g) => a + g.score, 0)).sort((a, b) => a - b);
+    const totals = finalScoreSubs.map(sub => sub.totalScore ?? 0).sort((a, b) => a - b);
     if (!totals.length) return { median: 0, highest: 0, mastery: 0, distribution: [0, 0, 0, 0] };
     const mid = Math.floor(totals.length / 2);
     const median = totals.length % 2 ? totals[mid] : Math.round((totals[mid - 1] + totals[mid]) / 2);
@@ -69,10 +77,20 @@ export default function ResultsPage() {
   }, [finalScoreSubs, maxTotal]);
 
   const ranking = useMemo(() => [...finalScoreSubs]
-    .sort((a, b) => (b.mcScore + b.essayScores.reduce((s, g) => s + g.score, 0)) - (a.mcScore + a.essayScores.reduce((s, g) => s + g.score, 0)))
+    .sort((a, b) => (b.totalScore ?? 0) - (a.totalScore ?? 0))
     .slice(0, 5), [finalScoreSubs]);
 
+  const quickTargets = useMemo<QuickEssayTarget[]>(() => {
+    if (!selectedExam) return [];
+    return examSubs.filter(sub => !sub.isReturned).flatMap(sub => selectedExam.questions
+      .filter(question => question.type === 'ESSAY')
+      .map(question => ({ submission: sub, question })));
+  }, [examSubs, selectedExam]);
+  const quickTarget = quickTargets[quickIndex];
+  const quickGradedCount = useMemo(() => quickTargets.filter(target => target.submission.essayScores.some(grade => grade.questionId === target.question.id)).length, [quickTargets]);
+
   const startGrading = (sub: Submission) => {
+    setQuickMode(false);
     setDetailSub(sub);
     const init: Record<string, { score: number; comment: string }> = {};
     sub.essayScores.forEach(g => { init[g.questionId] = { score: g.score, comment: g.comment ?? '' }; });
@@ -80,6 +98,75 @@ export default function ResultsPage() {
     setFeedbackText(sub.teacherFeedback ?? '');
     setGradingMode(true);
   };
+
+  const startQuickGrading = () => {
+    if (!quickTargets.length) return;
+    const firstPending = quickTargets.findIndex(target => !target.submission.essayScores.some(grade => grade.questionId === target.question.id));
+    setQuickIndex(firstPending >= 0 ? firstPending : 0);
+    setQuickMode(true);
+  };
+
+  const closeQuickGrading = () => {
+    setQuickMode(false);
+    setQuickScore(null);
+    setQuickComment('');
+  };
+
+  const saveQuickGrade = async (score: number) => {
+    if (!quickTarget) return;
+    const boundedScore = Math.max(0, Math.min(score, quickTarget.question.weight));
+    const grades = [
+      ...quickTarget.submission.essayScores.filter(grade => grade.questionId !== quickTarget.question.id),
+      { questionId: quickTarget.question.id, score: boundedScore, comment: quickComment.trim() },
+    ];
+    setQuickScore(boundedScore);
+    const result = await saveSubmissionGrading(quickTarget.submission.id, grades, quickTarget.submission.teacherFeedback ?? '');
+    if (!result.success) {
+      addToast({ type: 'error', title: 'Nilai belum tersimpan', message: result.error });
+      return;
+    }
+    addToast({ type: 'success', title: 'Nilai tersimpan', message: 'Berpindah ke jawaban berikutnya.' });
+    const nextIndex = quickIndex + 1;
+    if (nextIndex < quickTargets.length) {
+      setQuickIndex(nextIndex);
+    } else {
+      addToast({ type: 'success', title: 'Koreksi essay selesai' });
+      closeQuickGrading();
+    }
+  };
+
+  useEffect(() => {
+    if (!quickMode || !quickTarget) return;
+    const grade = quickTarget.submission.essayScores.find(item => item.questionId === quickTarget.question.id);
+    setQuickScore(grade?.score ?? null);
+    setQuickComment(grade?.comment ?? '');
+  }, [quickMode, quickTarget?.submission.id, quickTarget?.question.id, quickTarget?.submission.essayScores]);
+
+  useEffect(() => {
+    if (!quickMode || !quickTarget) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') return;
+      if (/^[0-9]$/.test(event.key)) {
+        const score = Number(event.key);
+        if (score <= quickTarget.question.weight) {
+          event.preventDefault();
+          void saveQuickGrade(score);
+        }
+      } else if (event.key === 'Enter' && quickScore != null) {
+        event.preventDefault();
+        void saveQuickGrade(quickScore);
+      } else if (event.key === 'ArrowRight' && quickIndex < quickTargets.length - 1) {
+        event.preventDefault();
+        setQuickIndex(index => index + 1);
+      } else if (event.key === 'ArrowLeft' && quickIndex > 0) {
+        event.preventDefault();
+        setQuickIndex(index => index - 1);
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [quickMode, quickTarget, quickScore, quickIndex, quickTargets.length]);
 
   const saveGrading = async () => {
     if (!detailSub) return;
@@ -112,23 +199,28 @@ export default function ResultsPage() {
     if (!selectedExam) return;
     const rows = examSubs.map((s, i) => {
       const essayTotal = s.essayScores.reduce((a, g) => a + g.score, 0);
+      const gradingStatus = essayStatus(s);
+      const isFinal = !s.isReturned && s.totalScore != null && (gradingStatus === 'NONE' || gradingStatus === 'FINAL');
       const details = selectedExam.questions.flatMap((q, qIdx) => {
         const answer = s.answers.find(a => a.questionId === q.id);
         const grade = s.essayScores.find(g => g.questionId === q.id);
+        const normalize = (value: string) => value.trim().toLowerCase().replace(/\s+/g, ' ');
+        const shortCorrect = q.type === 'SHORT_ANSWER' && !!answer?.shortAnswer && (q.acceptedAnswers ?? []).some(value => normalize(value) === normalize(answer.shortAnswer!));
         const answerText = q.type === 'MULTIPLE_CHOICE'
           ? q.options?.find(o => o.id === answer?.selectedOptionId)?.text ?? ''
-          : answer?.essayText ?? '';
+          : q.type === 'SHORT_ANSWER' ? answer?.shortAnswer ?? '' : answer?.essayText ?? '';
         const score = q.type === 'MULTIPLE_CHOICE'
           ? (answer?.selectedOptionId === q.correctOptionId ? q.weight : 0)
+          : q.type === 'SHORT_ANSWER' ? (shortCorrect ? q.weight : 0)
           : grade?.score ?? '';
         const comment = q.type === 'ESSAY' ? grade?.comment ?? '' : '';
         return [`${qIdx + 1}. ${answerText}`, score, comment];
       });
-      return [i + 1, s.studentName, s.nis, s.attemptNumber, s.submittedAt ? formatDateTime(s.submittedAt) : '-', s.mcScore, essayTotal, s.mcScore + essayTotal, maxMC, maxEssay, maxTotal, s.antiCheatEvents?.length ?? 0, ...details];
+      return [i + 1, s.studentName, s.nis, s.attemptNumber, s.submittedAt ? formatDateTime(s.submittedAt) : '-', s.mcScore, essayTotal || '', isFinal ? s.totalScore : '', isFinal ? 'FINAL' : gradingStatus === 'PARTIAL' ? 'DINILAI SEBAGIAN' : 'MENUNGGU PENILAIAN', maxMC, maxEssay, maxTotal, s.antiCheatEvents?.length ?? 0, ...details];
     });
     const detailHeaders = selectedExam.questions.flatMap((_, i) => [`S${i + 1} Jawaban`, `S${i + 1} Skor`, `S${i + 1} Komentar`]);
     const ws = XLSX.utils.aoa_to_sheet([
-      ['No','Nama','NIS','Percobaan','Waktu Submit','Skor PG','Skor Essay','Total','Maks PG','Maks Essay','Maks Total','Pelanggaran Anti-cheat', ...detailHeaders],
+      ['No','Nama','NIS','Percobaan','Waktu Submit','Skor PG','Skor Essay','Total','Status Nilai','Maks PG','Maks Essay','Maks Total','Pelanggaran Anti-cheat', ...detailHeaders],
       ...rows,
     ]);
     const wb = XLSX.utils.book_new();
@@ -175,6 +267,11 @@ export default function ResultsPage() {
           {examSubs.length > 0 && (
             <button className="btn btn-secondary results-export-button" onClick={exportExcel}><Download size={15} /> Export Excel</button>
           )}
+          {selectedExam?.format !== 'PG_ONLY' && quickTargets.length > 0 && (
+            <button className="btn btn-primary" onClick={startQuickGrading} title="Koreksi essay satu per satu">
+              <Zap size={15} /> Koreksi Cepat
+            </button>
+          )}
         </div>
       </div>
 
@@ -196,7 +293,7 @@ export default function ResultsPage() {
               { label: 'Median', value: scoreStats.median || '—', color: 'var(--secondary)' },
               { label: 'Tertinggi', value: scoreStats.highest || '—', color: 'var(--success)' },
               { label: 'Ketuntasan', value: `${scoreStats.mastery}%`, color: 'var(--warning)' },
-              { label: 'Essay Dinilai', value: `${examSubs.filter(s => s.essayScores.length > 0).length}/${examSubs.length}`, color: 'var(--warning)' },
+              { label: 'Essay Final', value: `${examSubs.filter(s => essayStatus(s) === 'FINAL').length}/${examSubs.length}`, color: 'var(--warning)' },
             ].map(s => (
               <div key={s.label} className="stat-card">
                 <div className="stat-card-value" style={{ color: s.color }}>{s.value}</div>
@@ -204,6 +301,21 @@ export default function ResultsPage() {
               </div>
             ))}
           </div>
+
+          {selectedExam.format !== 'PG_ONLY' && (() => {
+            const essayCounts = examSubs.reduce((counts, sub) => {
+              const status = essayStatus(sub);
+              if (status === 'FINAL') counts.final += 1;
+              else if (status === 'PARTIAL') counts.partial += 1;
+              else counts.pending += 1;
+              return counts;
+            }, { final: 0, partial: 0, pending: 0 });
+            return <div className="essay-grading-summary" aria-label="Ringkasan status penilaian essay">
+              <span><strong>{essayCounts.final}</strong> Selesai Dinilai</span>
+              <span><strong>{essayCounts.partial}</strong> Sebagian</span>
+              <span><strong>{essayCounts.pending}</strong> Belum Dinilai</span>
+            </div>;
+          })()}
 
           {examSubs.length > 0 && (
             <div className="card" style={{ marginBottom: 'var(--sp-8)' }}>
@@ -219,7 +331,7 @@ export default function ResultsPage() {
                     <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                       <span style={{ width: 60, fontSize: '0.78rem', color: 'var(--text-muted)' }}>{label}</span>
                       <div style={{ flex: 1, height: 8, background: 'var(--surface-2)', borderRadius: 'var(--r-full)', overflow: 'hidden' }}>
-                        <div style={{ width: `${examSubs.length ? (Number(count) / examSubs.length) * 100 : 0}%`, height: '100%', background: String(color) }} />
+                        <div style={{ width: `${finalScoreSubs.length ? (Number(count) / finalScoreSubs.length) * 100 : 0}%`, height: '100%', background: String(color) }} />
                       </div>
                       <strong style={{ fontSize: '0.78rem' }}>{count}</strong>
                     </div>
@@ -227,7 +339,7 @@ export default function ResultsPage() {
                 </div>
                 <div>
                   {ranking.map((sub, i) => {
-                    const total = sub.mcScore + sub.essayScores.reduce((s, g) => s + g.score, 0);
+                    const total = sub.totalScore ?? 0;
                     return <div key={sub.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
                       <span style={{ fontSize: '0.82rem' }}>{i + 1}. {sub.studentName}</span>
                       <strong style={{ color: 'var(--success)' }}>{total}/{maxTotal}</strong>
@@ -260,7 +372,7 @@ export default function ResultsPage() {
                     const essayTotal = sub.essayScores.reduce((a, g) => a + g.score, 0);
                     const gradingStatus = essayStatus(sub);
                     const needsGrading = gradingStatus === 'PENDING' || gradingStatus === 'PARTIAL';
-                    const total = sub.mcScore + essayTotal;
+                    const total = sub.totalScore;
                     return (
                       <tr key={sub.id}>
                         <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{i + 1}</td>
@@ -283,7 +395,7 @@ export default function ResultsPage() {
                           </td>
                         )}
                         <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--success)', fontSize: '1rem' }}>
-                          {needsGrading ? <><span style={{ fontSize: '0.78rem', color: 'var(--warning)' }}>Sementara </span>{sub.mcScore}<span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '0.8rem' }}>/{maxMC}</span></> : <>{total}<span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '0.8rem' }}>/{maxTotal}</span></>}
+                          {needsGrading || total == null || sub.isReturned ? <span style={{ fontSize: '0.78rem', color: sub.isReturned ? 'var(--danger)' : 'var(--warning)' }}>{sub.isReturned ? 'Dikembalikan' : 'Belum final'}</span> : <>{total}<span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '0.8rem' }}>/{maxTotal}</span></>}
                         </td>
                         <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                           {sub.submittedAt ? formatDateTime(sub.submittedAt) : '—'}
@@ -365,7 +477,10 @@ export default function ResultsPage() {
             {selectedExam.questions.map((q, idx) => {
               const answer = detailSub.answers.find(a => a.questionId === q.id);
               const grade = gradingScores[q.id] ?? detailSub.essayScores.find(g => g.questionId === q.id);
-              const isCorrect = q.type === 'MULTIPLE_CHOICE' && answer?.selectedOptionId === q.correctOptionId;
+              const normalizeAnswer = (value: string) => value.trim().toLowerCase().replace(/\s+/g, ' ');
+              const isCorrect = q.type === 'MULTIPLE_CHOICE'
+                ? answer?.selectedOptionId === q.correctOptionId
+                : q.type === 'SHORT_ANSWER' && !!answer?.shortAnswer && (q.acceptedAnswers ?? []).some(value => normalizeAnswer(value) === normalizeAnswer(answer.shortAnswer!));
 
               if (gradingMode && q.type !== 'ESSAY') return null;
 
@@ -394,6 +509,14 @@ export default function ResultsPage() {
                             </span>
                           </div>
                         </>
+                      )}
+
+                      {q.type === 'SHORT_ANSWER' && (
+                        <div style={{ fontSize: '0.8rem' }}>
+                          <div><span style={{ color: 'var(--text-muted)' }}>Jawaban: </span>{answer?.shortAnswer || '—'}</div>
+                          <div style={{ marginTop: 4, color: 'var(--text-muted)' }}>Jawaban diterima: {(q.acceptedAnswers ?? []).join(', ')}</div>
+                          <div style={{ marginTop: 4 }}><span style={{ color: isCorrect ? 'var(--success)' : 'var(--danger)', fontWeight: 700 }}>{isCorrect ? '✓ Benar' : '✗ Salah'} ({isCorrect ? q.weight : 0}/{q.weight} poin)</span></div>
+                        </div>
                       )}
 
                       {q.type === 'ESSAY' && (
@@ -454,6 +577,44 @@ export default function ResultsPage() {
                   value={feedbackText} onChange={e => setFeedbackText(e.target.value)} />
               </div>
             )}
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        open={quickMode && !!quickTarget}
+        onClose={closeQuickGrading}
+        title={quickTarget ? `Koreksi Cepat — ${quickTarget.submission.studentName}` : 'Koreksi Cepat'}
+        size="default"
+        footer={<>
+          <button className="btn btn-secondary" onClick={closeQuickGrading}>Tutup</button>
+          <button className="btn btn-ghost" disabled={quickIndex === 0} onClick={() => setQuickIndex(index => Math.max(0, index - 1))}><ArrowLeft size={14} /> Sebelumnya</button>
+          <button className="btn btn-ghost" disabled={quickIndex >= quickTargets.length - 1} onClick={() => setQuickIndex(index => Math.min(quickTargets.length - 1, index + 1))}>Berikutnya <ArrowRight size={14} /></button>
+        </>}
+      >
+        {quickTarget && (
+          <div className="quick-grading-panel">
+            <div className="quick-grading-progress">
+              <span>Soal {quickTarget.question.order + 1}/{selectedExam?.questions.length ?? 0}</span>
+              <span>Murid {examSubs.findIndex(sub => sub.id === quickTarget.submission.id) + 1}/{examSubs.length}</span>
+              <strong>{quickGradedCount}/{quickTargets.length} jawaban essay selesai dinilai</strong>
+            </div>
+            <div className="quick-grading-question">{quickTarget.question.text}</div>
+            <div className="quick-grading-answer">
+              {quickTarget.submission.answers.find(answer => answer.questionId === quickTarget.question.id)?.essayText || <em>Murid tidak mengisi jawaban.</em>}
+            </div>
+            {quickTarget.question.answerGuide && (
+              <div className="quick-grading-guide"><strong>Panduan Jawaban:</strong> {quickTarget.question.answerGuide}</div>
+            )}
+            <div className="quick-grading-score-label">Pilih skor (maks. {quickTarget.question.weight})</div>
+            <div className="quick-grading-score-grid">
+              {Array.from({ length: Math.floor(quickTarget.question.weight) + 1 }, (_, score) => (
+                <button key={score} type="button" className={`quick-grading-score ${quickScore === score ? 'is-selected' : ''}`} onClick={() => void saveQuickGrade(score)}>{score}</button>
+              ))}
+            </div>
+            <label className="form-label" htmlFor="quick-grade-comment">Komentar (opsional)</label>
+            <textarea id="quick-grade-comment" className="form-textarea" rows={2} value={quickComment} onChange={event => setQuickComment(event.target.value)} placeholder="Catatan untuk murid..." />
+            <p className="quick-grading-hint">Klik skor atau tekan 0–9 untuk menyimpan dan lanjut. Enter mengulangi skor terakhir.</p>
           </div>
         )}
       </Modal>

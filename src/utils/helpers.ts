@@ -25,9 +25,13 @@ export function generateExamCode(length = 6): string {
 export function calcMCScore(exam: Exam, answers: StudentAnswer[]): number {
   let total = 0;
   for (const question of exam.questions) {
-    if (question.type !== 'MULTIPLE_CHOICE') continue;
+    if (question.type !== 'MULTIPLE_CHOICE' && question.type !== 'SHORT_ANSWER') continue;
     const answer = answers.find(a => a.questionId === question.id);
-    if (answer && answer.selectedOptionId === question.correctOptionId) {
+    const normalized = (value: string) => value.trim().toLowerCase().replace(/\s+/g, ' ');
+    const isCorrect = question.type === 'MULTIPLE_CHOICE'
+      ? answer?.selectedOptionId === question.correctOptionId
+      : !!answer?.shortAnswer && (question.acceptedAnswers ?? []).some(value => normalized(value) === normalized(answer.shortAnswer!));
+    if (isCorrect) {
       total += question.weight;
     }
   }
@@ -36,7 +40,7 @@ export function calcMCScore(exam: Exam, answers: StudentAnswer[]): number {
 
 export function calcMaxMCScore(exam: Exam): number {
   return exam.questions
-    .filter(q => q.type === 'MULTIPLE_CHOICE')
+    .filter(q => q.type === 'MULTIPLE_CHOICE' || q.type === 'SHORT_ANSWER')
     .reduce((sum, q) => sum + q.weight, 0);
 }
 
@@ -175,6 +179,9 @@ export function validateQuestion(q: Partial<Question>): string[] {
     if (!q.options || q.options.length < 2) errors.push('Minimal 2 opsi jawaban');
     if (!q.correctOptionId) errors.push('Pilih jawaban yang benar');
     if (q.options?.some(o => !o.text?.trim())) errors.push('Semua opsi harus diisi');
+  }
+  if (q.type === 'SHORT_ANSWER' && !(q.acceptedAnswers ?? []).some(answer => answer.trim())) {
+    errors.push('Isi minimal 1 jawaban yang diterima');
   }
   if (!q.weight || q.weight <= 0) errors.push('Bobot nilai harus lebih dari 0');
   return errors;

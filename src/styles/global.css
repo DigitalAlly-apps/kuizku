@@ -744,6 +744,20 @@ tbody td {
 .student-ranking-row strong { white-space: nowrap; }
 .student-ranking-more { color: var(--text-muted); text-align: center; letter-spacing: 0.2em; }
 .student-ranking-unavailable { display: flex; align-items: center; justify-content: center; gap: 8px; padding: var(--sp-4); border: 1px dashed var(--border-strong); border-radius: var(--r-xl); color: var(--text-muted); font-size: 0.82rem; text-align: center; }
+.essay-grading-summary { display: flex; flex-wrap: wrap; gap: var(--sp-3); margin: calc(var(--sp-8) * -0.5) 0 var(--sp-8); color: var(--text-muted); font-size: 0.8rem; }
+.essay-grading-summary span { padding: 8px 12px; background: var(--surface-2); border-radius: var(--r-full); }
+.essay-grading-summary strong { color: var(--text-primary); margin-right: 4px; }
+.quick-grading-panel { display: flex; flex-direction: column; gap: var(--sp-3); }
+.quick-grading-progress { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; color: var(--text-muted); font-size: 0.78rem; }
+.quick-grading-progress strong { width: 100%; color: var(--primary); }
+.quick-grading-question { padding: var(--sp-4); background: var(--surface-2); border-radius: var(--r-md); font-weight: 700; line-height: 1.55; }
+.quick-grading-answer { min-height: 92px; padding: var(--sp-4); border: 1px solid var(--border-strong); border-radius: var(--r-md); line-height: 1.6; white-space: pre-wrap; }
+.quick-grading-guide { padding: var(--sp-3); background: var(--primary-light); border-radius: var(--r-md); color: var(--text-secondary); font-size: 0.82rem; line-height: 1.5; }
+.quick-grading-score-label { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); }
+.quick-grading-score-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(48px, 1fr)); gap: 8px; }
+.quick-grading-score { min-height: 50px; border: 1px solid var(--border-strong); border-radius: var(--r-md); background: var(--surface); color: var(--text-primary); font-size: 1.05rem; font-weight: 800; cursor: pointer; }
+.quick-grading-score:hover, .quick-grading-score.is-selected { border-color: var(--primary); background: var(--primary); color: white; }
+.quick-grading-hint { margin: 0; color: var(--text-muted); font-size: 0.72rem; }
 
 .modal-lg {
   max-width: 800px;

@@ -12,7 +12,7 @@ export default function QuestionBankPage() {
   const { currentTeacher, bankQuestions, deleteBankQuestion, updateBankQuestion, exams, refreshExams } = useApp();
   const { addToast } = useToast();
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState<'ALL' | 'MULTIPLE_CHOICE' | 'ESSAY'>('ALL');
+  const [typeFilter, setTypeFilter] = useState<'ALL' | 'MULTIPLE_CHOICE' | 'SHORT_ANSWER' | 'ESSAY'>('ALL');
   const [tagFilter, setTagFilter] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editQ, setEditQ] = useState<BankQuestion | null>(null);
@@ -186,10 +186,10 @@ export default function QuestionBankPage() {
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
-          {(['ALL', 'MULTIPLE_CHOICE', 'ESSAY'] as const).map(t => (
+          {(['ALL', 'MULTIPLE_CHOICE', 'SHORT_ANSWER', 'ESSAY'] as const).map(t => (
             <button key={t} className={`btn btn-sm ${typeFilter === t ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setTypeFilter(t)}>
-              {t === 'ALL' ? 'Semua' : t === 'MULTIPLE_CHOICE' ? 'PG' : 'Essay'}
+              {t === 'ALL' ? 'Semua' : t === 'MULTIPLE_CHOICE' ? 'PG' : t === 'SHORT_ANSWER' ? 'Short' : 'Essay'}
             </button>
           ))}
         </div>
@@ -260,8 +260,8 @@ export default function QuestionBankPage() {
                             <div key={bq.id} className={`bank-card ${preview?.id === bq.id ? 'selected' : ''}`}
                               onClick={() => setPreview(bq)}>
                               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6, alignItems: 'center' }}>
-                                <span className={`badge ${bq.type === 'MULTIPLE_CHOICE' ? 'badge-pg' : 'badge-essay'}`}>
-                                  {bq.type === 'MULTIPLE_CHOICE' ? 'PG' : 'Essay'}
+                                <span className={`badge ${bq.type === 'MULTIPLE_CHOICE' || bq.type === 'SHORT_ANSWER' ? 'badge-pg' : 'badge-essay'}`}>
+                                  {bq.type === 'MULTIPLE_CHOICE' ? 'PG' : bq.type === 'SHORT_ANSWER' ? 'Short' : 'Essay'}
                                 </span>
                                 {bq.tags.slice(0, 2).map(t => <span key={t} className="tag">{t}</span>)}
                               </div>
@@ -300,8 +300,8 @@ export default function QuestionBankPage() {
         {preview && (
           <div className="bank-preview-panel" style={{ width: 300, flexShrink: 0, background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 'var(--r-lg)', padding: 'var(--sp-5)', height: 'fit-content', position: 'sticky', top: 100 }}>
             <div style={{ fontWeight: 700, marginBottom: 'var(--sp-3)' }}>Preview Soal</div>
-            <span className={`badge ${preview.type === 'MULTIPLE_CHOICE' ? 'badge-pg' : 'badge-essay'}`} style={{ marginBottom: 'var(--sp-3)', display: 'inline-flex' }}>
-              {preview.type === 'MULTIPLE_CHOICE' ? 'Pilihan Ganda' : 'Essay'}
+            <span className={`badge ${preview.type === 'MULTIPLE_CHOICE' || preview.type === 'SHORT_ANSWER' ? 'badge-pg' : 'badge-essay'}`} style={{ marginBottom: 'var(--sp-3)', display: 'inline-flex' }}>
+              {preview.type === 'MULTIPLE_CHOICE' ? 'Pilihan Ganda' : preview.type === 'SHORT_ANSWER' ? 'Jawaban Singkat' : 'Essay'}
             </span>
             {preview.className && (
               <div style={{ fontSize: '0.72rem', color: 'var(--primary)', fontWeight: 600, marginBottom: 4 }}>
@@ -330,6 +330,9 @@ export default function QuestionBankPage() {
                 <span style={{ color: 'var(--text-secondary)' }}>{preview.answerGuide}</span>
               </div>
             )}
+            {preview.type === 'SHORT_ANSWER' && (
+              <div style={{ marginTop: 'var(--sp-3)', fontSize: '0.8rem', color: 'var(--text-secondary)' }}><strong>Jawaban diterima:</strong> {(preview.acceptedAnswers ?? []).join(', ')}</div>
+            )}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 'var(--sp-3)' }}>
               {preview.tags.map(t => <span key={t} className="tag">{t}</span>)}
             </div>
@@ -349,7 +352,7 @@ export default function QuestionBankPage() {
       <Modal open={!!editQ} onClose={() => setEditQ(null)} size="lg" title="Edit Soal di Bank">
         {editQ && (
           <QuestionEditor
-            format={editQ.type === 'MULTIPLE_CHOICE' ? 'PG_ONLY' : 'ESSAY_ONLY'}
+            format={editQ.type === 'ESSAY' ? 'ESSAY_ONLY' : 'PG_ONLY'}
             initial={editQ}
             onSave={handleEditSave}
             onCancel={() => setEditQ(null)}

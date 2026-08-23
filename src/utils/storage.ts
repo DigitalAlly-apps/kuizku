@@ -28,6 +28,10 @@ export interface SaveSubmissionResult {
 export interface MutationResult {
   success: boolean;
   error?: string;
+  isFinal?: boolean;
+  totalScore?: number;
+  essayGradedCount?: number;
+  essayCount?: number;
 }
 
 export interface StudentExamLookupResult extends ExamLookupResult {
@@ -311,6 +315,7 @@ export const storage = {
       image_url: q.imageUrl || null,
       options: q.options || null,
       correct_option_id: q.correctOptionId || null,
+      accepted_answers: q.acceptedAnswers || [],
       answer_guide: q.answerGuide || null,
       weight: q.weight,
       timer_seconds: q.timerSeconds ?? null,
@@ -449,7 +454,7 @@ export const storage = {
       p_submission: {
         id: sub.id, exam_id: sub.examId, student_name: sub.studentName, nis: sub.nis,
         attempt_number: sub.attemptNumber, started_at: sub.startedAt, is_complete: sub.isComplete,
-        answers: sub.answers.map(answer => ({ question_id: answer.questionId, question_type: answer.questionType, selected_option_id: answer.selectedOptionId ?? null, essay_text: answer.essayText ?? null, time_taken_seconds: answer.timeTakenSeconds ?? null })),
+        answers: sub.answers.map(answer => ({ question_id: answer.questionId, question_type: answer.questionType, selected_option_id: answer.selectedOptionId ?? null, essay_text: answer.essayText ?? null, short_answer: answer.shortAnswer ?? null, time_taken_seconds: answer.timeTakenSeconds ?? null })),
         anti_cheat_events: sub.antiCheatEvents ?? [],
       },
     });
@@ -467,14 +472,20 @@ export const storage = {
   },
 
   async saveSubmissionGrading(submissionId: string, grades: Array<{ questionId: string; score: number; comment?: string }>, feedback: string): Promise<MutationResult> {
-    const { error } = await supabase.rpc('save_submission_grading', {
+    const { data, error } = await supabase.rpc('save_submission_grading', {
       p_submission_id: submissionId,
       p_grades: grades.map(grade => ({ question_id: grade.questionId, score: grade.score, comment: grade.comment ?? '' })),
       p_feedback: feedback,
       p_update_feedback: true,
     });
     if (error) return { success: false, error: error.message };
-    return { success: true };
+    return {
+      success: true,
+      isFinal: data?.is_final === true,
+      totalScore: data?.total_score == null ? undefined : Number(data.total_score),
+      essayGradedCount: data?.essay_graded_count == null ? undefined : Number(data.essay_graded_count),
+      essayCount: data?.essay_count == null ? undefined : Number(data.essay_count),
+    };
   },
 
   async returnSubmission(submissionId: string): Promise<MutationResult> {
@@ -521,6 +532,7 @@ export const storage = {
       imageUrl: q.image_url,
       options: q.options,
       correctOptionId: q.correct_option_id,
+      acceptedAnswers: q.accepted_answers || [],
       answerGuide: q.answer_guide,
       weight: q.weight,
       tags: q.tags || [],
@@ -540,6 +552,7 @@ export const storage = {
       image_url: bq.imageUrl,
       options: bq.options,
       correct_option_id: bq.correctOptionId,
+      accepted_answers: bq.acceptedAnswers || [],
       answer_guide: bq.answerGuide,
       weight: bq.weight,
       tags: bq.tags,
@@ -652,6 +665,7 @@ function dbToExam(db: any): Exam {
       imageUrl: q.image_url,
       options: q.options,
       correctOptionId: q.correct_option_id,
+      acceptedAnswers: q.accepted_answers || [],
       answerGuide: q.answer_guide,
       weight: q.weight,
       timerSeconds: q.timer_seconds,
@@ -671,6 +685,7 @@ function dbToSubmission(db: any): Submission {
       questionType: a.question_type,
       selectedOptionId: a.selected_option_id,
       essayText: a.essay_text,
+      shortAnswer: a.short_answer,
       timeTakenSeconds: a.time_taken_seconds
     });
     if (a.essay_score !== null && a.essay_score !== undefined) {

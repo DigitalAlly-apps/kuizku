@@ -286,10 +286,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!sub) return { success: false, error: 'Jawaban tidak ditemukan.' };
     const result = await storage.saveSubmissionGrading(submissionId, grades, feedback);
     if (!result.success) return result;
-    const essayQuestionCount = exams.find(exam => exam.id === sub.examId)?.questions.filter(question => question.type === 'ESSAY').length ?? 0;
-    const isFinal = grades.length === essayQuestionCount;
-    const essayTotal = grades.reduce((sum, grade) => sum + grade.score, 0);
-    const updated = { ...sub, essayScores: grades, teacherFeedback: feedback || undefined, totalScore: isFinal ? sub.mcScore + essayTotal : undefined };
+    const updated = {
+      ...sub,
+      essayScores: grades,
+      teacherFeedback: feedback || undefined,
+      totalScore: result.isFinal ? result.totalScore : undefined,
+    };
     setSubmissionsState(prev => prev.map(s => s.id === submissionId ? updated : s));
     return result;
   };

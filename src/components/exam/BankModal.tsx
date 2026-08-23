@@ -18,7 +18,7 @@ interface Props {
 export default function BankModal({ open, format, onAdd, onClose }: Props) {
   const { bankQuestions } = useBank();
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState<'ALL' | 'MULTIPLE_CHOICE' | 'ESSAY'>('ALL');
+  const [typeFilter, setTypeFilter] = useState<'ALL' | 'MULTIPLE_CHOICE' | 'SHORT_ANSWER' | 'ESSAY'>('ALL');
   const [difficultyFilter, setDifficultyFilter] = useState<'ALL' | 'easy' | 'medium' | 'hard'>('ALL');
   const [randomCount, setRandomCount] = useState(5);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -26,7 +26,7 @@ export default function BankModal({ open, format, onAdd, onClose }: Props) {
 
   const eligible = useMemo(() => {
     return bankQuestions.filter(bq => {
-      if (format === 'PG_ONLY' && bq.type !== 'MULTIPLE_CHOICE') return false;
+      if (format === 'PG_ONLY' && bq.type !== 'MULTIPLE_CHOICE' && bq.type !== 'SHORT_ANSWER') return false;
       if (format === 'ESSAY_ONLY' && bq.type !== 'ESSAY') return false;
       return true;
     });
@@ -71,6 +71,7 @@ export default function BankModal({ open, format, onAdd, onClose }: Props) {
         text: bq.text,
         options: bq.options,
         correctOptionId: bq.correctOptionId,
+        acceptedAnswers: bq.acceptedAnswers,
         answerGuide: bq.answerGuide,
         weight: bq.weight,
         tags: bq.tags,
@@ -97,10 +98,10 @@ export default function BankModal({ open, format, onAdd, onClose }: Props) {
               <input className="form-input" style={{ paddingLeft: 34, fontSize: '0.8rem' }}
                 placeholder="Cari soal..." value={search} onChange={e => setSearch(e.target.value)} id="bank-search" />
             </div>
-            {['ALL', 'MULTIPLE_CHOICE', 'ESSAY'].map(f => (
+            {['ALL', 'MULTIPLE_CHOICE', 'SHORT_ANSWER', 'ESSAY'].map(f => (
               <button key={f} className={`btn btn-sm ${typeFilter === f ? 'btn-primary' : 'btn-secondary'}`}
                 onClick={() => setTypeFilter(f as typeof typeFilter)}>
-                {f === 'ALL' ? 'Semua' : f === 'MULTIPLE_CHOICE' ? 'PG' : 'Essay'}
+                {f === 'ALL' ? 'Semua' : f === 'MULTIPLE_CHOICE' ? 'PG' : f === 'SHORT_ANSWER' ? 'Short' : 'Essay'}
               </button>
             ))}
             <select className="form-select" style={{ width: 130, fontSize: '0.8rem' }} value={difficultyFilter}
@@ -139,8 +140,8 @@ export default function BankModal({ open, format, onAdd, onClose }: Props) {
                     {selected.has(bq.id) ? <CheckSquare size={18} style={{ color: 'var(--primary)' }} /> : <Square size={18} style={{ color: 'var(--text-muted)' }} />}
                   </div>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
-                    <span className={`badge ${bq.type === 'MULTIPLE_CHOICE' ? 'badge-pg' : 'badge-essay'}`}>
-                      {bq.type === 'MULTIPLE_CHOICE' ? 'PG' : 'Essay'}
+                    <span className={`badge ${bq.type === 'MULTIPLE_CHOICE' || bq.type === 'SHORT_ANSWER' ? 'badge-pg' : 'badge-essay'}`}>
+                      {bq.type === 'MULTIPLE_CHOICE' ? 'PG' : bq.type === 'SHORT_ANSWER' ? 'Short' : 'Essay'}
                     </span>
                     {bq.tags.slice(0, 2).map(t => <span key={t} className="tag">{t}</span>)}
                   </div>
@@ -159,8 +160,8 @@ export default function BankModal({ open, format, onAdd, onClose }: Props) {
           {preview ? (
             <div>
               <div style={{ fontWeight: 700, marginBottom: 'var(--sp-3)', fontSize: '0.875rem' }}>Preview Soal</div>
-              <div className={`badge ${preview.type === 'MULTIPLE_CHOICE' ? 'badge-pg' : 'badge-essay'}`} style={{ marginBottom: 'var(--sp-3)' }}>
-                {preview.type === 'MULTIPLE_CHOICE' ? 'Pilihan Ganda' : 'Essay'}
+              <div className={`badge ${preview.type === 'MULTIPLE_CHOICE' || preview.type === 'SHORT_ANSWER' ? 'badge-pg' : 'badge-essay'}`} style={{ marginBottom: 'var(--sp-3)' }}>
+                {preview.type === 'MULTIPLE_CHOICE' ? 'Pilihan Ganda' : preview.type === 'SHORT_ANSWER' ? 'Jawaban Singkat' : 'Essay'}
               </div>
               <p style={{ fontSize: '0.875rem', color: 'var(--text-primary)', lineHeight: 1.6, marginBottom: 'var(--sp-3)' }}>{preview.text}</p>
               {preview.type === 'MULTIPLE_CHOICE' && preview.options && (
@@ -177,6 +178,9 @@ export default function BankModal({ open, format, onAdd, onClose }: Props) {
                     </div>
                   ))}
                 </div>
+              )}
+              {preview.type === 'SHORT_ANSWER' && (
+                <div style={{ marginTop: 'var(--sp-3)', fontSize: '0.8rem', color: 'var(--text-muted)' }}><strong>Jawaban diterima:</strong> {(preview.acceptedAnswers ?? []).join(', ')}</div>
               )}
               {preview.type === 'ESSAY' && preview.answerGuide && (
                 <div style={{ marginTop: 'var(--sp-3)', padding: '8px 12px', background: 'var(--surface-2)', borderRadius: 'var(--r-sm)', fontSize: '0.8rem', color: 'var(--text-muted)' }}>

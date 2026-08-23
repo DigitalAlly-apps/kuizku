@@ -230,10 +230,12 @@ export function parseSpreadsheetRows(rows: Record<string, string>[]): ImportResu
     const bobotRaw = findValue(row, 'Bobot', 'bobot', 'Nilai', 'nilai', 'Weight', 'weight', 'Points', 'points');
     const tagRaw = findValue(row, 'Tag', 'tag', 'Tags', 'tags', 'Kategori', 'kategori');
     const kunciRaw = findValue(row, 'Kunci', 'kunci', 'Jawaban Benar', 'jawaban_benar', 'Kunci Jawaban', 'Answer', 'answer').toUpperCase();
+    const acceptedRaw = findValue(row, 'Jawaban Diterima', 'jawaban_diterima', 'Accepted Answers', 'accepted_answers', 'Jawaban Singkat');
     const answerGuide = findValue(row, 'Panduan Jawaban', 'panduan_jawaban', 'Kunci Essay', 'Guide');
 
     let type: QuestionType = 'MULTIPLE_CHOICE';
     if (tipeRaw === 'ESSAY' || tipeRaw === 'E' || tipeRaw === 'URAIAN') type = 'ESSAY';
+    else if (tipeRaw === 'SHORT_ANSWER' || tipeRaw === 'SHORT' || tipeRaw === 'ISIAN' || tipeRaw === 'JAWABAN_SINGKAT') type = 'SHORT_ANSWER';
     else if (tipeRaw === 'PG' || tipeRaw === 'MC' || tipeRaw === 'PILIHAN_GANDA' || tipeRaw === 'MULTIPLE_CHOICE' || tipeRaw === '') type = 'MULTIPLE_CHOICE';
     else errors.push(`Tipe soal tidak valid: "${tipeRaw}". Gunakan "PG" atau "Essay"`);
 
@@ -279,6 +281,11 @@ export function parseSpreadsheetRows(rows: Record<string, string>[]): ImportResu
       }
     }
 
+    const acceptedAnswers = type === 'SHORT_ANSWER'
+      ? (acceptedRaw || kunciRaw).split(/[|;]/).map(value => value.trim()).filter(Boolean)
+      : [];
+    if (type === 'SHORT_ANSWER' && acceptedAnswers.length === 0) errors.push('Isi minimal 1 Jawaban Diterima, pisahkan dengan | atau ;');
+
     const question: Partial<Question> = {
       id: generateId(),
       type,
@@ -288,7 +295,7 @@ export function parseSpreadsheetRows(rows: Record<string, string>[]): ImportResu
       order: rowIndex - 1,
       ...(type === 'MULTIPLE_CHOICE'
         ? { options, correctOptionId }
-        : { answerGuide }),
+        : type === 'SHORT_ANSWER' ? { acceptedAnswers } : { answerGuide }),
     };
 
     const importRow: ImportRow = {
@@ -313,10 +320,11 @@ export function parseSpreadsheetRows(rows: Record<string, string>[]): ImportResu
 // ---- Excel Template Generator ----
 export function downloadExcelTemplate(): void {
   const soalSheet = XLSX.utils.aoa_to_sheet([
-    ['Tipe', 'Pertanyaan', 'Opsi A', 'Opsi B', 'Opsi C', 'Opsi D', 'Opsi E', 'Opsi F', 'Kunci', 'Bobot', 'Tag', 'Panduan Jawaban'],
+    ['Tipe', 'Pertanyaan', 'Opsi A', 'Opsi B', 'Opsi C', 'Opsi D', 'Opsi E', 'Opsi F', 'Kunci', 'Jawaban Diterima', 'Bobot', 'Tag', 'Panduan Jawaban'],
     ['PG', 'Manakah yang merupakan bilangan prima?', '2', '4', '6', '8', '', '', 'A', '1', 'Matematika', ''],
     ['PG', 'Pilih huruf vokal.', 'B', 'C', 'D', 'F', 'A', 'E', 'E', '', 'Bahasa Indonesia;LCC', ''],
-    ['Essay', 'Jelaskan pengertian fotosintesis!', '', '', '', '', '', '', '', '5', 'IPA,Biologi', 'Fotosintesis adalah proses pembuatan makanan oleh tumbuhan menggunakan cahaya matahari.'],
+    ['Essay', 'Jelaskan pengertian fotosintesis!', '', '', '', '', '', '', '', '', '5', 'IPA,Biologi', 'Fotosintesis adalah proses pembuatan makanan oleh tumbuhan menggunakan cahaya matahari.'],
+    ['Short', 'Siapa khalifah pertama?', '', '', '', '', '', '', '', 'Abu Bakar|Abu Bakar Ash-Shiddiq|Abu Bakr', '1', 'PAI', ''],
   ]);
 
   // Set column widths
@@ -325,17 +333,18 @@ export function downloadExcelTemplate(): void {
     { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 8 }, { wch: 8 },
     { wch: 20 }, { wch: 40 },
   ];
-  soalSheet['!autofilter'] = { ref: 'A1:L4' };
+  soalSheet['!autofilter'] = { ref: 'A1:M5' };
 
   const petunjukSheet = XLSX.utils.aoa_to_sheet([
     ['PETUNJUK IMPORT SOAL KUIZKU'],
     ['Gunakan sheet SOAL untuk mengisi soal. Jangan mengubah nama header pada baris pertama.'],
     [''],
     ['Kolom', 'Aturan'],
-    ['Tipe', 'Isi PG atau Essay. Boleh juga: Pilihan Ganda, Multiple Choice, MC, Uraian, atau E. Jika kosong, dianggap PG.'],
+    ['Tipe', 'Isi PG, Short, atau Essay. Bisa juga: Pilihan Ganda, Isian, Uraian, E. Jika kosong, dianggap PG.'],
     ['Pertanyaan', 'Wajib diisi untuk setiap soal.'],
     ['Opsi A–F', 'Khusus PG: minimal 2 opsi, isi berurutan mulai A. Jangan kosongkan C lalu mengisi D.'],
     ['Kunci', 'Khusus PG: isi A sampai F dan harus sesuai dengan opsi yang tersedia.'],
+    ['Jawaban Diterima', 'Khusus Short: isi beberapa jawaban yang benar, pisahkan dengan tanda | atau titik koma.'],
     ['Bobot', 'Opsional. Jika kosong otomatis bernilai 1. Jika diisi, harus angka positif.'],
     ['Tag', 'Opsional. Pisahkan beberapa tag dengan koma, titik koma, atau garis tegak. Contoh: PAI,Sirah atau PAI;Sirah.'],
     ['Panduan Jawaban', 'Khusus Essay, opsional. Isi pedoman jawaban untuk guru.'],

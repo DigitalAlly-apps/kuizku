@@ -72,7 +72,7 @@ export default function PreviewExamPage() {
 
 function QuestionPreview({ question, number }: { question: Question; number: number }) {
   return (
-    <div className="card" style={{ borderLeft: `3px solid ${question.type === 'MULTIPLE_CHOICE' ? 'var(--primary)' : 'var(--secondary)'}` }}>
+    <div className="card" style={{ borderLeft: `3px solid ${question.type === 'ESSAY' ? 'var(--secondary)' : 'var(--primary)'}` }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 'var(--sp-3)' }}>
         <div style={{
           width: 30, height: 30, borderRadius: '50%',
@@ -82,8 +82,8 @@ function QuestionPreview({ question, number }: { question: Question; number: num
         }}>
           {number}
         </div>
-        <span className={`badge ${question.type === 'MULTIPLE_CHOICE' ? 'badge-pg' : 'badge-essay'}`}>
-          {question.type === 'MULTIPLE_CHOICE' ? 'PG' : 'Essay'}
+        <span className={`badge ${question.type === 'ESSAY' ? 'badge-essay' : 'badge-pg'}`}>
+          {question.type === 'MULTIPLE_CHOICE' ? 'PG' : question.type === 'SHORT_ANSWER' ? 'Short' : 'Essay'}
         </span>
         <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{question.weight} poin</span>
       </div>
@@ -110,6 +110,11 @@ function QuestionPreview({ question, number }: { question: Question; number: num
       {question.type === 'ESSAY' && question.answerGuide && (
         <div style={{ padding: '8px 12px', background: 'var(--surface-2)', borderRadius: 'var(--r-md)', fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 'var(--sp-2)' }}>
           <strong>Panduan jawaban:</strong> {question.answerGuide}
+        </div>
+      )}
+      {question.type === 'SHORT_ANSWER' && (
+        <div style={{ padding: '8px 12px', background: 'var(--surface-2)', borderRadius: 'var(--r-md)', fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 'var(--sp-2)' }}>
+          <strong>Jawaban diterima:</strong> {(question.acceptedAnswers ?? []).join(', ')}
         </div>
       )}
 

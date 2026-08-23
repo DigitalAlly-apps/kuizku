@@ -35,8 +35,17 @@ export default function QuestionView({
     });
   }, [question.id, onAnswer]);
 
+  const handleShortAnswerChange = useCallback((text: string) => {
+    onAnswer({
+      questionId: question.id,
+      questionType: 'SHORT_ANSWER',
+      shortAnswer: text,
+    });
+  }, [question.id, onAnswer]);
+
   const selectedId = currentAnswer?.selectedOptionId;
   const essayText = currentAnswer?.essayText ?? '';
+  const shortAnswer = currentAnswer?.shortAnswer ?? '';
 
   return (
     <div key={question.id} style={{ animation: 'slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
@@ -51,8 +60,8 @@ export default function QuestionView({
           {questionNumber}
         </div>
         <div>
-          <span className={`badge ${question.type === 'MULTIPLE_CHOICE' ? 'badge-pg' : 'badge-essay'}`}>
-            {question.type === 'MULTIPLE_CHOICE' ? 'Pilihan Ganda' : 'Essay'}
+          <span className={`badge ${question.type === 'MULTIPLE_CHOICE' || question.type === 'SHORT_ANSWER' ? 'badge-pg' : 'badge-essay'}`}>
+            {question.type === 'MULTIPLE_CHOICE' ? 'Pilihan Ganda' : question.type === 'SHORT_ANSWER' ? 'Jawaban Singkat' : 'Essay'}
           </span>
         </div>
         <div style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -152,6 +161,20 @@ export default function QuestionView({
       )}
 
       {/* Essay Input */}
+      {question.type === 'SHORT_ANSWER' && (
+        <div>
+          <input
+            id={`short-answer-${question.id}`}
+            className="form-input"
+            placeholder="Tulis jawaban singkat Anda..."
+            value={shortAnswer}
+            onChange={e => handleShortAnswerChange(e.target.value)}
+            style={{ fontSize: '1rem', minHeight: 48, borderColor: shortAnswer.trim() ? 'var(--success)' : undefined }}
+          />
+          <div style={{ marginTop: 6, fontSize: '0.75rem', color: 'var(--text-muted)' }}>{shortAnswer.trim() ? '✓ Jawaban tersimpan otomatis' : 'Belum dijawab'}</div>
+        </div>
+      )}
+
       {question.type === 'ESSAY' && (
         <div>
           <textarea

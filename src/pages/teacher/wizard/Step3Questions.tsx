@@ -79,7 +79,7 @@ export default function Step3Questions({ format, subject, initial, onNext, onBac
 
 
 
-  const pgCount = questions.filter(q => q.type === 'MULTIPLE_CHOICE').length;
+  const pgCount = questions.filter(q => q.type === 'MULTIPLE_CHOICE' || q.type === 'SHORT_ANSWER').length;
   const essayCount = questions.filter(q => q.type === 'ESSAY').length;
   const totalWeight = questions.reduce((s, q) => s + q.weight, 0);
 
@@ -165,7 +165,7 @@ export default function Step3Questions({ format, subject, initial, onNext, onBac
                 )}
                 <div className="question-item-meta">
                   <span className={`badge ${q.type === 'MULTIPLE_CHOICE' ? 'badge-pg' : 'badge-essay'}`} style={{ fontSize: '0.68rem' }}>
-                    {q.type === 'MULTIPLE_CHOICE' ? 'PG' : 'Essay'}
+                    {q.type === 'MULTIPLE_CHOICE' ? 'PG' : q.type === 'SHORT_ANSWER' ? 'Short' : 'Essay'}
                   </span>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Bobot: {q.weight}</span>
                   {q.timerSeconds && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>⏱ {q.timerSeconds}s</span>}

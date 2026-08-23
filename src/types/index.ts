@@ -3,7 +3,7 @@
 // ============================================================
 
 export type ExamFormat = 'PG_ONLY' | 'ESSAY_ONLY' | 'COMBINATION';
-export type QuestionType = 'MULTIPLE_CHOICE' | 'ESSAY';
+export type QuestionType = 'MULTIPLE_CHOICE' | 'SHORT_ANSWER' | 'ESSAY';
 export type TimerMode = 'PER_QUESTION' | 'WHOLE_EXAM' | 'NONE';
 export type ExamStatus = 'DRAFT' | 'ACTIVE' | 'ENDED' | 'ARCHIVED';
 export type ExamType = 'UJIAN' | 'TUGAS' | 'LATIHAN';
@@ -93,6 +93,7 @@ export interface Question {
   // Multiple Choice fields
   options?: QuestionOption[];
   correctOptionId?: string;
+  acceptedAnswers?: string[]; // normalized alternatives for short answer
   // Essay fields
   answerGuide?: string;
   // Shared
@@ -159,6 +160,7 @@ export interface StudentAnswer {
   questionType: QuestionType;
   selectedOptionId?: string;  // for MC
   essayText?: string;         // for Essay
+  shortAnswer?: string;       // for Short Answer
   timeTakenSeconds?: number;  // time spent on this question
 }
 

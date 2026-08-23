@@ -72,11 +72,11 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
       };
     }
     if (fmt === 'ESSAY_ONLY') {
-      const moved = res.valid.filter(r => r.question.type === 'MULTIPLE_CHOICE').map(r => ({
+      const moved = res.valid.filter(r => r.question.type !== 'ESSAY').map(r => ({
         ...r, isValid: false, errors: [...r.errors, 'Format ujian ini hanya mendukung soal Essay'],
       }));
       return {
-        valid: res.valid.filter(r => r.question.type !== 'MULTIPLE_CHOICE'),
+        valid: res.valid.filter(r => r.question.type === 'ESSAY'),
         invalid: [...res.invalid, ...moved],
         totalRows: res.totalRows,
       };
@@ -242,7 +242,7 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
                         ? <CheckCircle size={14} style={{ color: 'var(--success)' }} />
                         : <AlertCircle size={14} style={{ color: 'var(--danger)' }} />}
                     </td>
-                    <td style={td}>{row.question.type === 'MULTIPLE_CHOICE' ? 'PG' : 'Essay'}</td>
+                    <td style={td}>{row.question.type === 'MULTIPLE_CHOICE' ? 'PG' : row.question.type === 'SHORT_ANSWER' ? 'Short' : 'Essay'}</td>
                     <td style={{ ...td, maxWidth: 280 }}>
                       <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {row.question.text || <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>—</span>}
@@ -271,9 +271,10 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
                   const q = row.question;
                   const correct = q.options?.findIndex(option => option.id === q.correctOptionId) ?? -1;
                   return <div key={row.rowIndex} style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 'var(--sp-3)', background: 'var(--surface-2)' }}>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--primary)', fontWeight: 700, marginBottom: 5 }}>SOAL {index + 1} · {q.type === 'ESSAY' ? 'ESSAY' : 'PILIHAN GANDA'}</div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--primary)', fontWeight: 700, marginBottom: 5 }}>SOAL {index + 1} · {q.type === 'ESSAY' ? 'ESSAY' : q.type === 'SHORT_ANSWER' ? 'JAWABAN SINGKAT' : 'PILIHAN GANDA'}</div>
                     <div style={{ fontWeight: 600, marginBottom: 8 }}>{q.text}</div>
                     {q.type === 'MULTIPLE_CHOICE' && q.options?.map((option, optionIndex) => <div key={option.id} style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: 3 }}>{String.fromCharCode(65 + optionIndex)}. {option.text}</div>)}
+                    {q.type === 'SHORT_ANSWER' && <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>Jawaban diterima: {(q.acceptedAnswers ?? []).join(', ')}</div>}
                     <div style={{ marginTop: 8, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                       {q.type === 'MULTIPLE_CHOICE' && <>Kunci: <strong style={{ color: 'var(--success)' }}>{correct >= 0 ? String.fromCharCode(65 + correct) : '—'}</strong> · </>}
                       Bobot: {q.weight} {q.tags?.length ? `· Tag: ${q.tags.join(', ')}` : ''}

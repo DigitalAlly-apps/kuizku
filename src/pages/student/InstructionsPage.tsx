@@ -38,7 +38,7 @@ export default function InstructionsPage() {
     </div>
   );
 
-  const pgCount = exam.questions.filter(q => q.type === 'MULTIPLE_CHOICE').length;
+  const pgCount = exam.questions.filter(q => q.type === 'MULTIPLE_CHOICE' || q.type === 'SHORT_ANSWER').length;
   const essayCount = exam.questions.filter(q => q.type === 'ESSAY').length;
 
   const totalMins = exam.settings.timerMode === 'WHOLE_EXAM'

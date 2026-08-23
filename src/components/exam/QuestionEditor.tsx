@@ -16,6 +16,7 @@ interface Props {
 
 const DEFAULT_PG: Partial<Question> = { type: 'MULTIPLE_CHOICE', text: '', options: [{ id: generateId(), text: '' }, { id: generateId(), text: '' }], correctOptionId: '', weight: 1, tags: [] };
 const DEFAULT_ESSAY: Partial<Question> = { type: 'ESSAY', text: '', answerGuide: '', weight: 5, tags: [] };
+const DEFAULT_SHORT: Partial<Question> = { type: 'SHORT_ANSWER', text: '', acceptedAnswers: [], weight: 1, tags: [] };
 
 export default function QuestionEditor({ format, initial, onSave, onCancel }: Props) {
   const canPG = format === 'PG_ONLY' || format === 'COMBINATION';
@@ -32,7 +33,7 @@ export default function QuestionEditor({ format, initial, onSave, onCancel }: Pr
   const switchType = (t: QuestionType) => {
     setQ(t === 'MULTIPLE_CHOICE'
       ? { ...DEFAULT_PG, options: [{ id: generateId(), text: '' }, { id: generateId(), text: '' }] }
-      : { ...DEFAULT_ESSAY });
+      : t === 'SHORT_ANSWER' ? { ...DEFAULT_SHORT } : { ...DEFAULT_ESSAY });
     setErrors([]);
   };
 
@@ -60,6 +61,7 @@ export default function QuestionEditor({ format, initial, onSave, onCancel }: Pr
       text: q.text!,
       options: q.options,
       correctOptionId: q.correctOptionId,
+      acceptedAnswers: q.acceptedAnswers,
       answerGuide: q.answerGuide,
       weight: q.weight ?? 1,
       tags: q.tags ?? [],
@@ -73,7 +75,7 @@ export default function QuestionEditor({ format, initial, onSave, onCancel }: Pr
   return (
     <div>
       {/* Type switcher (only in COMBINATION mode) */}
-      {format === 'COMBINATION' && (
+      {format !== 'ESSAY_ONLY' && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 'var(--sp-5)' }}>
           <button className={`btn btn-sm ${q.type === 'MULTIPLE_CHOICE' ? 'btn-primary' : 'btn-secondary'}`}
             type="button" onClick={() => switchType('MULTIPLE_CHOICE')}>
@@ -82,6 +84,10 @@ export default function QuestionEditor({ format, initial, onSave, onCancel }: Pr
           <button className={`btn btn-sm ${q.type === 'ESSAY' ? 'btn-primary' : 'btn-secondary'}`}
             type="button" onClick={() => switchType('ESSAY')}>
             Essay
+          </button>
+          <button className={`btn btn-sm ${q.type === 'SHORT_ANSWER' ? 'btn-primary' : 'btn-secondary'}`}
+            type="button" onClick={() => switchType('SHORT_ANSWER')}>
+            Jawaban Singkat
           </button>
         </div>
       )}
@@ -147,6 +153,17 @@ export default function QuestionEditor({ format, initial, onSave, onCancel }: Pr
           <p className="form-hint" style={{ marginTop: 'var(--sp-2)' }}>
             Klik lingkaran di kiri opsi untuk menandai jawaban yang benar.
           </p>
+        </div>
+      )}
+
+      {/* Essay Guide */}
+      {q.type === 'SHORT_ANSWER' && (
+        <div className="form-group" style={{ marginBottom: 'var(--sp-4)' }}>
+          <label className="form-label">Jawaban yang Diterima <span style={{ color: 'var(--danger)' }}>*</span></label>
+          <textarea className="form-textarea" rows={4} placeholder="Satu jawaban per baris, contoh:\nAbu Bakar\nAbu Bakar Ash-Shiddiq\nAbu Bakr"
+            value={(q.acceptedAnswers ?? []).join('\n')}
+            onChange={e => setField('acceptedAnswers', e.target.value.split(/\r?\n/).map(value => value.trim()).filter(Boolean))} />
+          <span className="form-hint">Perbandingan otomatis memakai huruf kecil, trim, dan spasi berulang yang dirapikan.</span>
         </div>
       )}
 
