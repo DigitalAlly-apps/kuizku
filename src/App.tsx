@@ -17,6 +17,8 @@ const EditExamQuestionsPage = lazy(() => import('./pages/teacher/EditExamQuestio
 const PreviewExamPage  = lazy(() => import('./pages/teacher/PreviewExamPage'));
 const QuestionBankPage = lazy(() => import('./pages/teacher/QuestionBankPage'));
 const ResultsPage      = lazy(() => import('./pages/teacher/ResultsPage'));
+const ExamWorkspacePage = lazy(() => import('./pages/teacher/ExamWorkspacePage'));
+const ExamGradingRedirect = lazy(() => import('./pages/teacher/ExamGradingRedirect'));
 const SettingsPage     = lazy(() => import('./pages/teacher/SettingsPage'));
 
 // Student
@@ -43,6 +45,7 @@ function App() {
             <Route path="/ujian"                    element={<JoinExamPage />} />
             <Route path="/ujian/:code"              element={<JoinExamPage />} />
             <Route path="/ujian/:code/instruksi"    element={<InstructionsPage />} />
+            <Route path="/ujian/:code/siap"         element={<InstructionsPage />} />
             <Route path="/ujian/:code/kerjakan"     element={<ExamTakingPage />} />
             <Route path="/riwayat"                  element={<StudentHistoryPage />} />
 
@@ -52,6 +55,12 @@ function App() {
               <Route path="dashboard"  element={<DashboardPage />} />
               <Route path="ujian"      element={<ExamListPage />} />
               <Route path="ujian/baru" element={<CreateExamPage />} />
+              <Route path="ujian/:id" element={<ExamWorkspacePage />} />
+              <Route path="ujian/:id/soal" element={<ExamWorkspacePage />} />
+              <Route path="ujian/:id/peserta" element={<ExamWorkspacePage />} />
+              <Route path="ujian/:id/hasil" element={<ExamWorkspacePage />} />
+              <Route path="ujian/:id/koreksi" element={<ExamGradingRedirect />} />
+              <Route path="ujian/:id/pengaturan" element={<ExamWorkspacePage />} />
               <Route path="ujian/:id/edit-soal" element={<EditExamQuestionsPage />} />
               <Route path="ujian/:id/preview" element={<PreviewExamPage />} />
               <Route path="bank-soal"  element={<QuestionBankPage />} />

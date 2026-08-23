@@ -125,7 +125,7 @@ export default function DashboardPage() {
           {recentExams.map(exam => {
             const examSubs = submissions.filter(s => s.examId === exam.id);
             return (
-              <div key={exam.id} className="exam-card" onClick={() => navigate(exam.status === 'DRAFT' ? '/guru/ujian?status=DRAFT' : `/guru/hasil?exam=${exam.id}`)}>
+              <div key={exam.id} className="exam-card" onClick={() => navigate(`/guru/ujian/${exam.id}`)}>
                 <div className="exam-card-header">
                   <div className="exam-card-badges">
                     <ExamTypeBadge examType={exam.examType} />

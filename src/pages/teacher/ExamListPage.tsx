@@ -254,7 +254,7 @@ export default function ExamListPage() {
 
     return (
       <div key={exam.id} className="exam-card" style={{ position: 'relative', zIndex: openMenuId === exam.id ? 10 : undefined }}
-        onClick={() => navigate(exam.status === 'DRAFT' ? '/guru/ujian?status=DRAFT' : `/guru/hasil?exam=${exam.id}`)}>
+        onClick={() => navigate(`/guru/ujian/${exam.id}`)}>
         <div className="exam-card-header">
           <div className="exam-card-badges">
             <ExamTypeBadge examType={exam.examType} />

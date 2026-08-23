@@ -39,6 +39,10 @@
   z-index: 40;
 }
 
+.mobile-header-kicker { color: var(--text-muted); font-size: 0.68rem; line-height: 1; margin-bottom: 3px; }
+.teacher-mobile-create { display: none; }
+.teacher-mobile-bottom-nav, .teacher-mobile-more-overlay { display: none; }
+
 .desktop-theme-toggle {
   display: flex;
 }
@@ -218,6 +222,48 @@
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
+
+/* ---- Exam workspace ---- */
+.exam-workspace-header { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--sp-6); margin-bottom: var(--sp-5); }
+.workspace-back-link { color: var(--text-muted); font-size: 0.78rem; text-decoration: none; }
+.workspace-title-row { display: flex; align-items: center; gap: var(--sp-3); margin-top: var(--sp-2); }
+.workspace-title-row h1 { margin: 0; }
+.exam-workspace-header p { margin: 6px 0 0; color: var(--text-muted); }
+.exam-workspace-actions, .workspace-tab-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+.workspace-code-strip { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-5); padding: var(--sp-3) var(--sp-4); background: var(--primary-light); border: 1px solid rgba(37, 99, 235, 0.18); border-radius: var(--r-md); color: var(--text-muted); }
+.workspace-code-strip strong { font-family: monospace; font-size: 1.25rem; letter-spacing: 0.12em; color: var(--primary); }
+.workspace-code-strip button { margin-left: auto; }
+.workspace-tabs { display: flex; gap: 2px; overflow-x: auto; margin-bottom: var(--sp-6); border-bottom: 1px solid var(--border); }
+.workspace-tabs button { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 0 var(--sp-4); border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--text-muted); white-space: nowrap; font-weight: 600; }
+.workspace-tabs button.active { color: var(--primary); border-bottom-color: var(--primary); }
+.workspace-summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-3); margin-bottom: var(--sp-6); }
+.workspace-summary-grid > div { padding: var(--sp-4); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); }
+.workspace-summary-grid span, .workspace-summary-grid strong { display: block; }
+.workspace-summary-grid span { color: var(--text-muted); font-size: 0.78rem; }
+.workspace-summary-grid strong { margin-top: 6px; font-size: 1.5rem; }
+.workspace-section-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); }
+.workspace-progress-row { display: flex; align-items: baseline; gap: 8px; }
+.workspace-progress-row strong { font-size: 2rem; color: var(--primary); }
+.workspace-progress-row span, .workspace-muted { color: var(--text-muted); font-size: 0.82rem; }
+.workspace-progress-bar { height: 8px; margin: var(--sp-3) 0; overflow: hidden; background: var(--surface-3); border-radius: var(--r-full); }
+.workspace-progress-bar span { display: block; height: 100%; background: var(--primary); border-radius: inherit; }
+.workspace-action-list { display: grid; gap: 6px; }
+.workspace-action-list button { display: flex; align-items: center; gap: var(--sp-3); min-height: 48px; padding: 0 var(--sp-3); border: 0; border-radius: var(--r-md); background: transparent; color: var(--text-primary); text-align: left; font-weight: 600; }
+.workspace-action-list button:hover { background: var(--surface-2); color: var(--primary); }
+.workspace-question-list, .workspace-participant-list, .workspace-results-list { display: flex; flex-direction: column; }
+.workspace-question-row, .workspace-participant-row, .workspace-result-row { display: grid; align-items: center; gap: var(--sp-3); min-height: 58px; padding: var(--sp-3) 0; border-bottom: 1px solid var(--border); }
+.workspace-question-row { grid-template-columns: 28px 120px minmax(0, 1fr) 70px 40px; }
+.workspace-question-row p { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.workspace-participant-row { grid-template-columns: minmax(0, 1fr) auto auto; }
+.workspace-participant-row strong, .workspace-participant-row span { display: block; }
+.workspace-participant-row span { color: var(--text-muted); font-size: 0.75rem; }
+.workspace-result-row { grid-template-columns: minmax(150px, 1fr) 100px 110px 110px 120px; font-size: 0.82rem; }
+.workspace-status { white-space: nowrap; font-size: 0.72rem !important; font-weight: 700; }
+.status-final, .status-none { color: var(--success) !important; }
+.status-pending, .status-partial { color: var(--warning) !important; }
+.workspace-empty-tab { display: flex; flex-direction: column; align-items: center; gap: var(--sp-3); padding: var(--sp-12); text-align: center; }
+.workspace-empty-tab h2, .workspace-empty-tab p { margin: 0; }
+.workspace-empty-tab p { color: var(--text-muted); }
 
 .exam-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); }
 .exam-card-badges { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
@@ -490,6 +536,20 @@
     width: 100%;
   }
 
+  .mobile-header { padding-right: var(--sp-4); }
+  .teacher-mobile-create { display: grid; place-items: center; width: 42px; height: 42px; border: 0; border-radius: var(--r-md); background: var(--primary); color: white; }
+  .teacher-mobile-bottom-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 75; display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); background: color-mix(in srgb, var(--surface) 96%, transparent); border-top: 1px solid var(--border-strong); box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.1); backdrop-filter: blur(12px); }
+  .teacher-mobile-bottom-nav button { min-height: 48px; border: 0; border-radius: var(--r-md); background: transparent; color: var(--text-muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 0.68rem; }
+  .teacher-mobile-bottom-nav button.active { background: var(--primary-light); color: var(--primary); font-weight: 700; }
+  .teacher-mobile-more-overlay { position: fixed; inset: 0; z-index: 80; display: flex; align-items: flex-end; background: rgba(15, 23, 42, 0.35); }
+  .teacher-mobile-more { width: 100%; padding: var(--sp-4) var(--sp-4) calc(var(--sp-4) + env(safe-area-inset-bottom)); background: var(--surface); border-radius: var(--r-xl) var(--r-xl) 0 0; box-shadow: 0 -12px 30px rgba(15, 23, 42, 0.18); }
+  .teacher-mobile-more-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--sp-2); }
+  .teacher-mobile-more > button { width: 100%; min-height: 48px; display: flex; align-items: center; gap: var(--sp-3); border: 0; border-radius: var(--r-md); background: transparent; color: var(--text-primary); text-align: left; padding: 0 var(--sp-3); font-size: 0.9rem; }
+  .teacher-mobile-more > button:hover { background: var(--surface-2); }
+  .teacher-mobile-more > button.danger { color: var(--danger); }
+
+  .main-content { padding-bottom: 76px; }
+
   .sidebar-user {
     padding-bottom: calc(var(--sp-4) + env(safe-area-inset-bottom));
   }
@@ -510,6 +570,22 @@
   .exam-card {
     padding: var(--sp-4);
   }
+
+  .exam-workspace-header { display: block; }
+  .workspace-title-row { align-items: flex-start; flex-direction: column; gap: 6px; }
+  .exam-workspace-actions { margin-top: var(--sp-4); }
+  .exam-workspace-actions .btn { flex: 1; justify-content: center; }
+  .workspace-summary-grid { grid-template-columns: repeat(2, 1fr); }
+  .workspace-section-grid { grid-template-columns: 1fr; }
+  .workspace-question-row { grid-template-columns: 24px minmax(0, 1fr) 40px; }
+  .workspace-question-row .badge, .workspace-question-row button { display: none; }
+  .workspace-question-row p { grid-column: 2; grid-row: 1; white-space: normal; }
+  .workspace-participant-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .workspace-participant-row > span:last-child { grid-column: 1 / -1; }
+  .workspace-result-row { grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
+  .workspace-result-row span:nth-child(2), .workspace-result-row span:nth-child(3) { display: none; }
+  .workspace-result-row > strong:nth-child(4) { text-align: right; }
+  .workspace-result-row .workspace-status { grid-column: 2; }
 
   .exam-card-meta {
     gap: var(--sp-2);

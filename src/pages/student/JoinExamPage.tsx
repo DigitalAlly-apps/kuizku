@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Hash, User, CreditCard, ListOrdered, Search, AlertCircle, ArrowRight, Clock, FileText, Calendar } from 'lucide-react';
+import { Hash, User, CreditCard, ListOrdered, Search, AlertCircle, ArrowRight, Clock, FileText, Calendar, History } from 'lucide-react';
 import { storage } from '../../utils/storage';
 import { loadSession } from '../../utils/examSession';
 import { formatExamFormat, formatTimerMode } from '../../utils/helpers';
@@ -119,12 +119,12 @@ export default function JoinExamPage() {
   const totalPts = foundExam?.questions.reduce((s, q) => s + q.weight, 0) ?? 0;
 
   return (
-    <div style={styles.page}>
+    <div className="student-join-page" style={styles.page}>
       <div style={styles.bg} />
 
       <div style={styles.container}>
         {/* Logo */}
-        <div style={styles.logo}>
+        <div className="student-brand" style={styles.logo}>
           <div style={styles.logoIcon}>{APP_CONFIG.icon}</div>
           <span style={styles.logoText}>{APP_CONFIG.name}</span>
         </div>
@@ -132,8 +132,9 @@ export default function JoinExamPage() {
         {/* Step: Enter Code */}
         {step === 'code' && (
           <div style={styles.card}>
+            <div className="student-page-kicker">Portal Murid</div>
             <h1 style={styles.title}>Masuk ke Ujian</h1>
-            <p style={styles.subtitle}>Masukkan kode ujian dari guru Anda</p>
+            <p style={styles.subtitle}>Masukkan kode 6 karakter dari guru Anda.</p>
 
             <form onSubmit={handleFindExam}>
               <div style={styles.codeInputWrap}>
@@ -183,7 +184,10 @@ export default function JoinExamPage() {
               </button>
             </form>
 
-            <p style={styles.hint}>Kode ujian terdiri dari 6 huruf/angka, diberikan oleh guru Anda.</p>
+            <p style={styles.hint}>Kode terdiri dari huruf dan angka. Tidak perlu login untuk mengerjakan.</p>
+            <button type="button" className="student-history-link" onClick={() => navigate('/riwayat')}>
+              <History size={15} /> Riwayat Saya
+            </button>
           </div>
         )}
 
@@ -322,7 +326,7 @@ export default function JoinExamPage() {
         {step === 'resume' && foundExam && (
           <div style={styles.card}>
             <div style={{ textAlign: 'center', marginBottom: 'var(--sp-6)' }}>
-              <div style={{ fontSize: '3rem', marginBottom: 'var(--sp-3)' }}>⚡</div>
+              <div style={{ fontSize: '3rem', marginBottom: 'var(--sp-3)' }}>{APP_CONFIG.icon}</div>
               <h2>Ada Sesi Tersimpan</h2>
               <p style={{ color: 'var(--text-muted)', marginTop: 8 }}>
                 Anda pernah mengerjakan ujian <strong style={{ color: 'var(--text-primary)' }}>{foundExam.title}</strong> sebelumnya dan belum selesai. Ingin melanjutkan?

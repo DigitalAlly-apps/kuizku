@@ -1,6 +1,6 @@
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { Clock, FileText, BookOpen, AlertTriangle, Play, ChevronRight, Calendar } from 'lucide-react';
+import { Clock, FileText, BookOpen, AlertTriangle, Play, ChevronDown, Check, Calendar } from 'lucide-react';
 import { storage } from '../../utils/storage';
 import { formatExamFormat } from '../../utils/helpers';
 import { createSession } from '../../utils/examSession';
@@ -21,6 +21,7 @@ export default function InstructionsPage() {
   const state = location.state as LocationState | null;
   const [exam, setExam] = useState<Exam | null>(null);
   const [starting, setStarting] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
     if (!state?.examId || !code) { navigate('/ujian'); return; }
@@ -38,7 +39,6 @@ export default function InstructionsPage() {
     </div>
   );
 
-  const pgCount = exam.questions.filter(q => q.type === 'MULTIPLE_CHOICE' || q.type === 'SHORT_ANSWER').length;
   const essayCount = exam.questions.filter(q => q.type === 'ESSAY').length;
 
   const totalMins = exam.settings.timerMode === 'WHOLE_EXAM'
@@ -54,121 +54,54 @@ export default function InstructionsPage() {
   };
 
   return (
-    <div style={styles.page}>
+    <div className="student-instructions-page" style={styles.page}>
       <div style={styles.bg} />
       <div style={styles.container}>
-        {/* Header */}
-        <div style={styles.card}>
-          <div style={{ display: 'flex', gap: 'var(--sp-3)', marginBottom: 'var(--sp-4)', flexWrap: 'wrap', alignItems: 'center' }}>
-            <span className={`badge ${exam.format === 'PG_ONLY' ? 'badge-pg' : exam.format === 'ESSAY_ONLY' ? 'badge-essay' : 'badge-combo'}`}>
-              {formatExamFormat(exam.format)}
-            </span>
-            {/* Tipe Ujian/Tugas */}
-            {(() => {
-              const typeConfig: Record<string, { label: string; color: string; bg: string }> = {
-                UJIAN:   { label: '📝 Ujian',   color: 'var(--danger)',  bg: 'var(--danger-light)' },
-                TUGAS:   { label: '📋 Tugas',   color: 'var(--warning)', bg: 'var(--warning-light)' },
-                LATIHAN: { label: '🎯 Latihan', color: 'var(--success)', bg: 'var(--success-light)' },
-              };
-              const c = typeConfig[(exam as any).examType ?? 'UJIAN'] ?? typeConfig['UJIAN'];
-              return <span style={{ fontSize: '0.78rem', padding: '3px 10px', borderRadius: 'var(--r-sm)', background: c.bg, color: c.color, fontWeight: 700 }}>{c.label}</span>;
-            })()}
-            <span style={{ fontFamily: 'monospace', color: 'var(--primary)', fontWeight: 700, fontSize: '0.875rem' }}>#{exam.code}</span>
+        <div className="student-instructions-brand">Kuizku · Persiapan Ujian</div>
+
+        <section className="student-instructions-hero" style={styles.card}>
+          <span className={`badge ${exam.format === 'PG_ONLY' ? 'badge-pg' : exam.format === 'ESSAY_ONLY' ? 'badge-essay' : 'badge-combo'}`}>{formatExamFormat(exam.format)}</span>
+          <h1>{exam.title}</h1>
+          <p className="student-instructions-subject">{exam.subject}</p>
+          <div className="student-exam-summary">
+            <span><FileText size={18} /> {exam.questions.length} soal</span>
+            <span><Clock size={18} /> {totalMins ? `${totalMins} menit` : exam.settings.timerMode === 'PER_QUESTION' ? 'Per soal' : 'Tanpa batas waktu'}</span>
           </div>
+        </section>
 
-          <h1 style={{ fontSize: '1.4rem', marginBottom: 4 }}>{exam.title}</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: 'var(--sp-4)' }}>{exam.subject}</p>
+        <section className="student-identity-summary" aria-label="Identitas peserta">
+          <div><span>Peserta</span><strong>{state.studentName}</strong></div>
+          {state.nis !== state.studentName && <div><span>NIS / ID</span><strong>{state.nis}</strong></div>}
+          <div><span>Percobaan</span><strong>{state.attemptNumber} dari {exam.settings.maxAttempts === 0 ? '∞' : exam.settings.maxAttempts}</strong></div>
+        </section>
 
-          {exam.description && (
-            <div style={{ padding: 'var(--sp-3) var(--sp-4)', background: 'var(--surface-2)', borderRadius: 'var(--r-md)', fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: 'var(--sp-4)' }}>
-              {exam.description}
-            </div>
-          )}
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'var(--primary-light)', borderRadius: 'var(--r-md)', border: '1px solid rgba(79,110,247,0.2)', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Peserta:</span>
-            <strong style={{ color: 'var(--text-primary)' }}>{state.studentName}</strong>
-            {state.nis !== state.studentName && (
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>ID: {state.nis}</span>
-            )}
-            {state.attemptNumber > 1 && (
-              <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--warning)' }}>Percobaan ke-{state.attemptNumber}</span>
-            )}
-          </div>
-
-          {/* Deadline info */}
-          {exam.activeTo && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', marginTop: 8,
-              background: new Date(exam.activeTo) < new Date() ? 'var(--danger-light)' : 'var(--warning-light)',
-              borderRadius: 'var(--r-md)',
-              border: `1px solid ${new Date(exam.activeTo) < new Date() ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)'}` }}>
-              <Calendar size={15} style={{ color: new Date(exam.activeTo) < new Date() ? 'var(--danger)' : 'var(--warning)', flexShrink: 0 }} />
-              <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                {new Date(exam.activeTo) < new Date()
-                  ? <><strong style={{ color: 'var(--danger)' }}>Batas waktu sudah lewat</strong> — {new Date(exam.activeTo).toLocaleString('id-ID')}</>
-                  : <>Batas waktu: <strong>{new Date(exam.activeTo).toLocaleString('id-ID', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong></>}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Info Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 'var(--sp-3)', width: '100%' }}>
-          {[
-            { icon: <FileText size={20} />, label: 'Total Soal', value: `${exam.questions.length} soal`, color: 'var(--primary)', bg: 'var(--primary-light)' },
-            { icon: <Clock size={20} />, label: 'Waktu', value: totalMins ? `${totalMins} menit` : (exam.settings.timerMode === 'PER_QUESTION' ? 'Per soal' : 'Tidak terbatas'), color: 'var(--warning)', bg: 'var(--warning-light)' },
-            ...(pgCount > 0 ? [{ icon: <span style={{ fontWeight: 800 }}>PG</span>, label: 'Pilihan Ganda', value: `${pgCount} soal (otomatis)`, color: 'var(--accent)', bg: 'var(--accent-light)' }] : []),
-            ...(essayCount > 0 ? [{ icon: <BookOpen size={20} />, label: 'Essay', value: `${essayCount} soal (manual)`, color: 'var(--secondary)', bg: 'var(--secondary-light)' }] : []),
-          ].map((item, i) => (
-            <div key={i} style={{ ...styles.infoCard, borderLeft: `3px solid ${item.color}` }}>
-              <div style={{ color: item.color, marginBottom: 4, display: 'flex', alignItems: 'center' }}>{item.icon}</div>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{item.label}</div>
-              <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.95rem', marginTop: 2 }}>{item.value}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Instructions */}
-        <div style={styles.card}>
-          <h3 style={{ marginBottom: 'var(--sp-4)' }}>📋 Instruksi Ujian</h3>
-          <ul style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
-            {[
-              'Pastikan koneksi internet Anda stabil sebelum memulai.',
-              'Jawaban tersimpan otomatis setiap kali Anda menjawab.',
-              ...(exam.settings.timerMode === 'WHOLE_EXAM' ? [`Waktu ujian ${totalMins} menit. Ujian otomatis dikumpul saat waktu habis.`] : []),
-              ...(exam.settings.timerMode === 'PER_QUESTION' ? ['Setiap soal memiliki batas waktu. Saat waktu habis, sistem otomatis berpindah ke soal berikutnya atau mengumpulkan ujian di soal terakhir.'] : []),
-              ...(exam.settings.shuffleQuestions ? ['Urutan soal diacak — berbeda tiap peserta.'] : []),
-              ...(essayCount > 0 ? ['Soal essay dinilai oleh guru secara manual setelah ujian selesai.'] : []),
-              `Anda memiliki ${exam.settings.maxAttempts === 0 ? 'percobaan tidak terbatas' : `maksimal ${exam.settings.maxAttempts}x percobaan`}.`,
-              'Pastikan nama dan NIS Anda sudah benar sebelum mulai.',
-            ].map((inst, i) => (
-              <li key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                <ChevronRight size={15} style={{ color: 'var(--primary)', flexShrink: 0, marginTop: 2 }} />
-                {inst}
-              </li>
-            ))}
+        <section className="student-before-start" style={styles.card}>
+          <div className="student-section-heading"><div><span className="student-section-eyebrow">Sebelum mulai</span><h2>Siap mengerjakan?</h2></div><Check size={22} /></div>
+          <ul>
+            <li><Check size={17} /> Jawaban tersimpan otomatis setiap kali Anda menjawab.</li>
+            {exam.settings.timerMode !== 'NONE' && <li><Check size={17} /> Timer mulai setelah tombol mulai ditekan.</li>}
+            <li><Check size={17} /> Tetap di halaman ujian sampai selesai.</li>
+            {exam.settings.timerMode !== 'NONE' && <li><Check size={17} /> Ujian otomatis terkumpul saat waktu habis.</li>}
           </ul>
-        </div>
+          <button type="button" className="student-details-toggle" onClick={() => setShowDetails(v => !v)} aria-expanded={showDetails}>
+            Lihat aturan lengkap <ChevronDown size={16} className={showDetails ? 'is-open' : ''} />
+          </button>
+          {showDetails && <div className="student-extra-rules">
+            {exam.description && <p>{exam.description}</p>}
+            {exam.settings.shuffleQuestions && <p>Urutan soal diacak dan dapat berbeda dari peserta lain.</p>}
+            {essayCount > 0 && <p>Soal essay dinilai manual oleh guru. Nilai akhir mungkin belum tersedia langsung setelah dikumpulkan.</p>}
+            <p>{exam.settings.maxAttempts === 0 ? 'Percobaan tidak terbatas.' : `Maksimal ${exam.settings.maxAttempts}x percobaan.`}</p>
+            {exam.activeTo && <p><Calendar size={15} /> Batas waktu: {new Date(exam.activeTo).toLocaleString('id-ID')}</p>}
+            <p><AlertTriangle size={15} /> Pastikan nama dan identitas Anda sudah benar.</p>
+          </div>}
+        </section>
 
-        {/* Warning for essay */}
-        {essayCount > 0 && (
-          <div style={styles.warningBox}>
-            <AlertTriangle size={16} style={{ color: 'var(--warning)', flexShrink: 0 }} />
-            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-              Ujian ini memiliki soal <strong>essay</strong>. Nilai essay akan diberikan oleh guru secara manual — skor Anda mungkin belum lengkap langsung setelah submit.
-            </p>
-          </div>
-        )}
+        {essayCount > 0 && <div className="student-note"><BookOpen size={17} /><span>Ada {essayCount} soal essay. Guru akan menilai jawabannya setelah ujian.</span></div>}
 
-        {/* Start Button */}
-        <button className="btn btn-success btn-lg w-full" style={{ justifyContent: 'center', fontSize: '1.05rem' }}
-          onClick={handleStart} disabled={starting}>
-          {starting ? 'Memulai...' : <><Play size={18} /> Mulai Ujian Sekarang</>}
+        <button className="btn btn-success btn-lg student-start-button" style={{ justifyContent: 'center', fontSize: '1.05rem' }} onClick={handleStart} disabled={starting}>
+          {starting ? 'Memulai...' : <><Play size={18} /> Mulai Ujian</>}
         </button>
-
-        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-          Dengan memulai ujian, Anda menyatakan akan mengerjakan secara mandiri dan jujur.
-        </p>
+        <button type="button" className="student-back-link" onClick={() => navigate('/ujian')}>Kembali ke beranda</button>
       </div>
     </div>
   );

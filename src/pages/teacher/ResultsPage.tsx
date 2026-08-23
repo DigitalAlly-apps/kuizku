@@ -35,6 +35,7 @@ export default function ResultsPage() {
   const [quickIndex, setQuickIndex] = useState(0);
   const [quickScore, setQuickScore] = useState<number | null>(null);
   const [quickComment, setQuickComment] = useState('');
+  const quickRequested = searchParams.get('quick') === '1';
 
   const selectedExam = useMemo(() => myExams.find(e => e.id === selectedExamId), [myExams, selectedExamId]);
   const examSubs = useMemo(() => submissions.filter(s => s.examId === selectedExamId && s.isComplete), [submissions, selectedExamId]);
@@ -105,6 +106,10 @@ export default function ResultsPage() {
     setQuickIndex(firstPending >= 0 ? firstPending : 0);
     setQuickMode(true);
   };
+
+  useEffect(() => {
+    if (quickRequested && selectedExam && quickTargets.length > 0 && !quickMode) startQuickGrading();
+  }, [quickRequested, selectedExam, quickTargets.length]);
 
   const closeQuickGrading = () => {
     setQuickMode(false);
