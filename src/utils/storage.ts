@@ -38,6 +38,25 @@ export interface StudentExamLookupResult extends ExamLookupResult {
   attemptNumber?: number;
 }
 
+function describeStudentAccessDenial(reason?: string): ExamLookupResult['error'] {
+  switch (reason) {
+    case 'NOT_FOUND':
+      return { type: 'NOT_FOUND', message: 'Kode ujian tidak ditemukan.' };
+    case 'NOT_ACTIVE':
+      return { type: 'PERMISSION_ERROR', message: 'Ujian belum dibuka atau sudah tidak aktif.' };
+    case 'NOT_STARTED':
+      return { type: 'PERMISSION_ERROR', message: 'Ujian belum dimulai. Periksa jadwal dari guru.' };
+    case 'ENDED':
+      return { type: 'PERMISSION_ERROR', message: 'Waktu ujian sudah berakhir.' };
+    case 'STUDENT_NOT_REGISTERED':
+      return { type: 'PERMISSION_ERROR', message: 'Nama atau NIS/ID tidak ditemukan dalam daftar peserta. Periksa penulisan atau hubungi guru.' };
+    case 'MAX_ATTEMPTS':
+      return { type: 'PERMISSION_ERROR', message: 'Batas percobaan untuk peserta ini sudah habis.' };
+    default:
+      return { type: 'PERMISSION_ERROR', message: 'Akses ujian ditolak.' };
+  }
+}
+
 function classifyExamLookupError(error: { code?: string; message?: string; status?: number }): ExamLookupResult['error'] {
   const message = error.message?.toLowerCase() ?? '';
 
@@ -283,7 +302,7 @@ export const storage = {
   async getStudentExamByCode(code: string, name: string, identifier: string): Promise<StudentExamLookupResult> {
     const { data, error } = await supabase.rpc('get_student_exam', { p_code: code, p_name: name, p_identifier: identifier });
     if (error) return { exam: null, error: classifyExamLookupError(error) };
-    if (!data?.allowed) return { exam: null, error: { type: 'PERMISSION_ERROR', message: 'Akses ujian ditolak.' } };
+    if (!data?.allowed) return { exam: null, error: describeStudentAccessDenial(data?.reason) };
     return { exam: dbToExam(data.exam), attemptNumber: Number(data.next_attempt_number ?? 1) };
   },
 

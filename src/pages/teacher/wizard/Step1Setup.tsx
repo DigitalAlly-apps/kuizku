@@ -22,6 +22,7 @@ export default function Step1Setup({ initial, onNext }: Props) {
   const [settings, setSettings] = useState<ExamSettings>(initial.settings);
   const [examType, setExamType] = useState<ExamType>(initial.examType);
   const [studentList, setStudentList] = useState(initial.preloadedStudents.map(s => `${s.name}, ${s.nis}`).join('\n'));
+  const [accessMode, setAccessMode] = useState<'OPEN' | 'LIST'>(initial.preloadedStudents.length > 0 ? 'LIST' : 'OPEN');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const setSetting = <K extends keyof ExamSettings>(k: K, v: ExamSettings[K]) =>
@@ -32,14 +33,15 @@ export default function Step1Setup({ initial, onNext }: Props) {
     if (!title.trim()) e.title = 'Judul ujian wajib diisi';
     if (!subject) e.subject = 'Mata pelajaran wajib dipilih';
     const students = parseStudents(studentList);
-    if (students.duplicates.length > 0) e.students = `NIS/ID duplikat: ${students.duplicates.join(', ')}`;
+    if (accessMode === 'LIST' && students.students.length === 0) e.students = 'Tambahkan minimal satu peserta atau pilih akses terbuka.';
+    if (accessMode === 'LIST' && students.duplicates.length > 0) e.students = `NIS/ID duplikat: ${students.duplicates.join(', ')}`;
     return e;
   };
 
   const handleNext = () => {
     const e = validate();
     if (Object.keys(e).length) { setErrors(e); return; }
-    onNext({ title, description, subject, className, activeFrom, activeTo, settings, examType, preloadedStudents: parseStudents(studentList).students });
+    onNext({ title, description, subject, className, activeFrom, activeTo, settings, examType, preloadedStudents: accessMode === 'LIST' ? parseStudents(studentList).students : [] });
   };
 
   const parseStudents = (raw: string): { students: PreloadedStudent[]; duplicates: string[] } => {
@@ -112,13 +114,24 @@ export default function Step1Setup({ initial, onNext }: Props) {
         </div>
 
         <div className="form-group">
-          <label className="form-label" htmlFor="s1-students">Daftar Peserta (opsional)</label>
-          <textarea id="s1-students" className={`form-textarea ${errors.students ? 'error' : ''}`} rows={5}
-            placeholder={'Satu peserta per baris. Format: Nama, NIS\nContoh:\nAhmad Fauzi, 1001\nSiti Aminah, 1002'}
-            value={studentList}
-            onChange={e => { setStudentList(e.target.value); setErrors(er => ({ ...er, students: '' })); }} />
-          {errors.students && <span className="form-error">{errors.students}</span>}
-          <span className="form-hint">Jika diisi, hanya peserta dalam daftar ini yang bisa masuk ke ujian. Bisa paste dari CSV/Excel dengan kolom Nama dan NIS.</span>
+          <label className="form-label">Akses Peserta</label>
+          <div className="student-access-choice" role="radiogroup" aria-label="Akses peserta ujian">
+            <button type="button" role="radio" aria-checked={accessMode === 'OPEN'} className={accessMode === 'OPEN' ? 'is-active' : ''} onClick={() => { setAccessMode('OPEN'); setErrors(er => ({ ...er, students: '' })); }}>
+              <strong>Terbuka untuk semua</strong><span>Siapa pun yang punya kode dapat masuk.</span>
+            </button>
+            <button type="button" role="radio" aria-checked={accessMode === 'LIST'} className={accessMode === 'LIST' ? 'is-active' : ''} onClick={() => setAccessMode('LIST')}>
+              <strong>Hanya daftar peserta</strong><span>Nama atau NIS/ID harus cocok dengan daftar guru.</span>
+            </button>
+          </div>
+          {accessMode === 'LIST' && <>
+            <label className="form-label" htmlFor="s1-students" style={{ marginTop: 'var(--sp-3)' }}>Daftar Peserta</label>
+            <textarea id="s1-students" className={`form-textarea ${errors.students ? 'error' : ''}`} rows={5}
+              placeholder={'Satu peserta per baris. Format: Nama, NIS\nContoh:\nAhmad Fauzi, 1001\nSiti Aminah, 1002'}
+              value={studentList}
+              onChange={e => { setStudentList(e.target.value); setErrors(er => ({ ...er, students: '' })); }} />
+            {errors.students && <span className="form-error">{errors.students}</span>}
+            <span className="form-hint">Bisa paste dari CSV/Excel. Murid boleh masuk menggunakan nama yang cocok atau NIS/ID yang cocok.</span>
+          </>}
         </div>
         
         <div className="form-row form-row-2">

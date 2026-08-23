@@ -53,6 +53,7 @@ export default function ExamListPage() {
   const [editFrom, setEditFrom] = useState('');
   const [editTo, setEditTo] = useState('');
   const [editStudents, setEditStudents] = useState('');
+  const [editAccessMode, setEditAccessMode] = useState<'OPEN' | 'LIST'>('OPEN');
   const [editSaving, setEditSaving] = useState(false);
 
   useEffect(() => {
@@ -126,6 +127,7 @@ export default function ExamListPage() {
     setEditFrom(exam.activeFrom ? exam.activeFrom.slice(0, 16) : '');
     setEditTo(exam.activeTo ? exam.activeTo.slice(0, 16) : '');
     setEditStudents((exam.preloadedStudents || []).map(s => `${s.name}, ${s.nis}`).join('\n'));
+    setEditAccessMode((exam.preloadedStudents || []).length > 0 ? 'LIST' : 'OPEN');
     setOpenMenuId(null);
   };
 
@@ -138,6 +140,11 @@ export default function ExamListPage() {
       const [nameRaw, nisRaw] = line.split(/[,;\t]/).map(p => p.trim());
       return { name: nameRaw || '', nis: nisRaw || nameRaw || '' };
     }).filter(s => s.name);
+    if (editAccessMode === 'LIST' && parsedStudents.length === 0) {
+      addToast({ type: 'error', title: 'Daftar peserta masih kosong', message: 'Tambahkan peserta atau pilih akses terbuka.' });
+      setEditSaving(false);
+      return;
+    }
 
     const res = await updateExam(editExam.id, {
       title: editTitle.trim(),
@@ -147,7 +154,7 @@ export default function ExamListPage() {
       examType: editType,
       activeFrom: editFrom || undefined,
       activeTo: editTo || undefined,
-      preloadedStudents: parsedStudents,
+      preloadedStudents: editAccessMode === 'LIST' ? parsedStudents : [],
     });
     setEditSaving(false);
     if (res?.error) {
@@ -530,13 +537,23 @@ export default function ExamListPage() {
                 <input type="datetime-local" className="form-input" value={editTo} onChange={e => setEditTo(e.target.value)} />
               </div>
             </div>
-            {/* Daftar Peserta */}
+            {/* Akses Peserta */}
             <div className="form-group">
-              <label className="form-label">Daftar Peserta (opsional)</label>
-              <textarea className="form-textarea" rows={4}
-                placeholder={'Satu peserta per baris. Format: Nama, NIS\nKosongkan jika semua boleh masuk.'}
-                value={editStudents} onChange={e => setEditStudents(e.target.value)} />
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Jika diisi, hanya peserta dalam daftar ini yang bisa masuk.</span>
+              <label className="form-label">Akses Peserta</label>
+              <div className="student-access-choice" role="radiogroup" aria-label="Akses peserta ujian">
+                <button type="button" role="radio" aria-checked={editAccessMode === 'OPEN'} className={editAccessMode === 'OPEN' ? 'is-active' : ''} onClick={() => setEditAccessMode('OPEN')}>
+                  <strong>Terbuka untuk semua</strong><span>Siapa pun yang punya kode dapat masuk.</span>
+                </button>
+                <button type="button" role="radio" aria-checked={editAccessMode === 'LIST'} className={editAccessMode === 'LIST' ? 'is-active' : ''} onClick={() => setEditAccessMode('LIST')}>
+                  <strong>Hanya daftar peserta</strong><span>Nama atau NIS/ID harus cocok.</span>
+                </button>
+              </div>
+              {editAccessMode === 'LIST' && <>
+                <textarea className="form-textarea" rows={4} style={{ marginTop: 'var(--sp-3)' }}
+                  placeholder={'Satu peserta per baris. Format: Nama, NIS'}
+                  value={editStudents} onChange={e => setEditStudents(e.target.value)} />
+                <span className="form-hint">Satu peserta per baris. Contoh: Ahmad Fauzi, 1001</span>
+              </>}
             </div>
           </div>
         )}
