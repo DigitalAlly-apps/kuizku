@@ -184,6 +184,19 @@ export interface EssayGrade {
   comment?: string;
 }
 
+export type AiGradingSuggestionStatus = 'pending' | 'accepted' | 'rejected' | 'edited';
+
+export interface AiGradingSuggestion {
+  id: string;
+  questionId: string;
+  suggestedScore: number;
+  reason: string;
+  feedback: string;
+  model: string;
+  status: AiGradingSuggestionStatus;
+  createdAt: string;
+}
+
 export interface AntiCheatEvent {
   type: 'TAB_HIDDEN';
   timestamp: string;

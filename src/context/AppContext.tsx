@@ -3,7 +3,7 @@
 // ============================================================
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import type { Teacher, Exam, Submission, BankQuestion, QuestionCollection, ToastMessage } from '../types';
+import type { Teacher, Exam, Submission, BankQuestion, QuestionCollection, AiGradingSuggestion, AiGradingSuggestionStatus, ToastMessage } from '../types';
 import { storage, type MutationResult } from '../utils/storage';
 import { generateId, generateExamCode } from '../utils/helpers';
 import { v4 as uuidv4 } from 'uuid';
@@ -64,6 +64,8 @@ interface AppContextShape {
   saveSubmissionGrading: (submissionId: string, grades: Submission['essayScores'], feedback: string) => Promise<MutationResult>;
   returnSubmission: (submissionId: string) => Promise<MutationResult>;
   setTeacherFeedback: (submissionId: string, feedback: string) => Promise<MutationResult>;
+  requestAiEssaySuggestions: (submissionId: string) => Promise<{ suggestions?: AiGradingSuggestion[]; error?: string }>;
+  updateAiGradingSuggestionStatuses: (decisions: Array<{ id: string; status: AiGradingSuggestionStatus }>) => Promise<void>;
   refreshSubmissions: () => Promise<void>;
 
   // Toast notifications
@@ -358,6 +360,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return saveSubmissionGrading(submissionId, sub.essayScores, feedback);
   };
 
+  const requestAiEssaySuggestions = (submissionId: string) => storage.requestAiEssaySuggestions(submissionId);
+  const updateAiGradingSuggestionStatuses = (decisions: Array<{ id: string; status: AiGradingSuggestionStatus }>) => storage.updateAiGradingSuggestionStatuses(decisions);
+
   // ---- Toasts ----
   const addToast = useCallback((toast: Omit<ToastMessage, 'id'>) => {
     const id = uuidv4();
@@ -391,7 +396,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     exams, getExam, createExam, updateExam, deleteExam, duplicateExam,
     publishExam, archiveExam, endExam, refreshExams,
     bankQuestions, questionCollections, createQuestionCollection, copyExamQuestionsToBank, addToBankFromQuestion, deleteBankQuestion, updateBankQuestion, refreshBank,
-    submissions, getExamSubmissions, gradeEssay, saveSubmissionGrading, returnSubmission, setTeacherFeedback, refreshSubmissions,
+    submissions, getExamSubmissions, gradeEssay, saveSubmissionGrading, returnSubmission, setTeacherFeedback, requestAiEssaySuggestions, updateAiGradingSuggestionStatuses, refreshSubmissions,
     toasts, addToast, removeToast,
   };
 

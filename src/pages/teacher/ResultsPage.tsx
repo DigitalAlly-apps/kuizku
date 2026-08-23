@@ -1,11 +1,11 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Download, User, Edit2, BarChart2, RotateCcw, MessageSquare, RefreshCcw, Zap, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Download, User, Edit2, BarChart2, RotateCcw, MessageSquare, RefreshCcw, Zap, ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
 import { useApp, useToast } from '../../context/AppContext';
 import { EmptyState, FormatBadge, StatusBadge, SectionHeader, Modal } from '../../components/ui';
 import { calcMaxMCScore, calcMaxEssayScore, formatDateTime } from '../../utils/helpers';
 import * as XLSX from 'xlsx';
-import type { Question, Submission } from '../../types';
+import type { AiGradingSuggestion, Question, Submission } from '../../types';
 
 interface QuickEssayTarget {
   submission: Submission;
@@ -15,7 +15,7 @@ interface QuickEssayTarget {
 
 
 export default function ResultsPage() {
-  const { currentTeacher, exams, submissions, saveSubmissionGrading, returnSubmission, refreshSubmissions } = useApp();
+  const { currentTeacher, exams, submissions, saveSubmissionGrading, returnSubmission, requestAiEssaySuggestions, updateAiGradingSuggestionStatuses, refreshSubmissions } = useApp();
   const { addToast } = useToast();
   const [searchParams] = useSearchParams();
 
@@ -31,6 +31,8 @@ export default function ResultsPage() {
   const [gradingMode, setGradingMode] = useState(false);
   const [gradingScores, setGradingScores] = useState<Record<string, { score: number; comment: string }>>({});
   const [feedbackText, setFeedbackText] = useState('');
+  const [aiSuggestions, setAiSuggestions] = useState<Record<string, AiGradingSuggestion>>({});
+  const [aiLoading, setAiLoading] = useState(false);
   const [quickMode, setQuickMode] = useState(false);
   const [quickIndex, setQuickIndex] = useState(0);
   const [quickScore, setQuickScore] = useState<number | null>(null);
@@ -40,6 +42,7 @@ export default function ResultsPage() {
   const selectedExam = useMemo(() => myExams.find(e => e.id === selectedExamId), [myExams, selectedExamId]);
   const examSubs = useMemo(() => submissions.filter(s => s.examId === selectedExamId && s.isComplete), [submissions, selectedExamId]);
   const essayQuestionIds = useMemo(() => selectedExam?.questions.filter(q => q.type === 'ESSAY').map(q => q.id) ?? [], [selectedExam]);
+  const allEssayGuidesAvailable = useMemo(() => !!selectedExam && selectedExam.questions.filter(q => q.type === 'ESSAY').every(q => !!q.answerGuide?.trim()), [selectedExam]);
   const essayStatus = (sub: Submission): 'NONE' | 'PENDING' | 'PARTIAL' | 'FINAL' => {
     if (essayQuestionIds.length === 0) return 'NONE';
     const gradedIds = new Set(sub.essayScores.map(grade => grade.questionId));
@@ -97,7 +100,33 @@ export default function ResultsPage() {
     sub.essayScores.forEach(g => { init[g.questionId] = { score: g.score, comment: g.comment ?? '' }; });
     setGradingScores(init);
     setFeedbackText(sub.teacherFeedback ?? '');
+    setAiSuggestions({});
     setGradingMode(true);
+  };
+
+  const requestAiSuggestions = async () => {
+    if (!detailSub || !allEssayGuidesAvailable || aiLoading) return;
+    setAiLoading(true);
+    const result = await requestAiEssaySuggestions(detailSub.id);
+    setAiLoading(false);
+    if (!result.suggestions) {
+      addToast({ type: 'error', title: 'Saran AI belum tersedia', message: result.error });
+      return;
+    }
+    const nextSuggestions = Object.fromEntries(result.suggestions.map(suggestion => [suggestion.questionId, suggestion]));
+    setAiSuggestions(nextSuggestions);
+    setGradingScores(previous => {
+      const next = { ...previous };
+      result.suggestions!.forEach(suggestion => { next[suggestion.questionId] = { score: suggestion.suggestedScore, comment: suggestion.feedback }; });
+      return next;
+    });
+    addToast({ type: 'success', title: 'Saran AI siap ditinjau', message: 'Nilai belum disimpan. Periksa setiap saran sebelum menyimpan.' });
+  };
+
+  const discardAiSuggestions = async () => {
+    const suggestions = Object.values(aiSuggestions);
+    if (suggestions.length) await updateAiGradingSuggestionStatuses(suggestions.map(suggestion => ({ id: suggestion.id, status: 'rejected' })));
+    setAiSuggestions({});
   };
 
   const startQuickGrading = () => {
@@ -184,7 +213,14 @@ export default function ResultsPage() {
       addToast({ type: 'error', title: 'Nilai belum tersimpan', message: result.error });
       return;
     }
+    const decisions = Object.values(aiSuggestions).map(suggestion => {
+      const finalGrade = gradingScores[suggestion.questionId];
+      const accepted = finalGrade?.score === suggestion.suggestedScore && finalGrade?.comment.trim() === suggestion.feedback.trim();
+      return { id: suggestion.id, status: accepted ? 'accepted' as const : 'edited' as const };
+    });
+    if (decisions.length) await updateAiGradingSuggestionStatuses(decisions);
     addToast({ type: 'success', title: 'Nilai & feedback disimpan!' });
+    setAiSuggestions({});
     setGradingMode(false);
     setDetailSub(null);
   };
@@ -458,12 +494,15 @@ export default function ResultsPage() {
       )}
 
       {/* Detail / Grading Modal */}
-      <Modal open={!!detailSub} onClose={() => { setDetailSub(null); setGradingMode(false); }}
+      <Modal open={!!detailSub} onClose={() => { void discardAiSuggestions(); setDetailSub(null); setGradingMode(false); }}
         title={gradingMode ? `Nilai Essay — ${detailSub?.studentName}` : `Detail Jawaban — ${detailSub?.studentName}`}
         size="xl"
         footer={gradingMode ? (
           <>
-            <button className="btn btn-secondary" onClick={() => setGradingMode(false)}>Batal</button>
+            <button className="btn btn-secondary" onClick={() => { void discardAiSuggestions(); setGradingMode(false); }}>Batal</button>
+            <button className="btn btn-secondary" onClick={requestAiSuggestions} disabled={aiLoading || !allEssayGuidesAvailable} title={allEssayGuidesAvailable ? 'Buat saran nilai untuk seluruh essay siswa ini' : 'Lengkapi panduan jawaban pada setiap soal essay terlebih dahulu'}>
+              <Sparkles size={15} /> {aiLoading ? 'Meminta saran...' : 'Nilai dengan AI'}
+            </button>
             <button className="btn btn-danger btn-sm" onClick={() => detailSub && handleReturn(detailSub)}>
               <RotateCcw size={13} /> Kembalikan Revisi
             </button>
@@ -536,6 +575,13 @@ export default function ResultsPage() {
                             </div>
                           )}
                           {gradingMode && (
+                            <>
+                            {aiSuggestions[q.id] && (
+                              <div style={{ marginBottom: 'var(--sp-3)', padding: 'var(--sp-3)', background: 'var(--primary-light)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', fontSize: '0.8rem' }}>
+                                <strong style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--primary)' }}><Sparkles size={14} /> Saran AI: {aiSuggestions[q.id].suggestedScore}/{q.weight} poin</strong>
+                                <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)' }}>{aiSuggestions[q.id].reason}</p>
+                              </div>
+                            )}
                             <div className="grading-input-row" style={{ display: 'flex', gap: 'var(--sp-3)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
                               <div className="form-group" style={{ width: 120 }}>
                                 <label className="form-label">Nilai (maks. {q.weight})</label>
@@ -554,6 +600,7 @@ export default function ResultsPage() {
                                   onChange={e => setGradingScores(prev => ({ ...prev, [q.id]: { ...prev[q.id], comment: e.target.value } }))} />
                               </div>
                             </div>
+                            </>
                           )}
                           {!gradingMode && grade && 'score' in grade && (
                             <span style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: 'var(--r-full)', background: 'var(--secondary-light)', color: 'var(--secondary)', fontWeight: 600 }}>
@@ -574,6 +621,8 @@ export default function ResultsPage() {
               </div>
             )}
             {gradingMode && (
+              <>
+              {!allEssayGuidesAvailable && <p style={{ marginTop: 'var(--sp-4)', color: 'var(--warning)', fontSize: '.84rem' }}>Lengkapi panduan jawaban di setiap soal essay untuk memakai saran AI.</p>}
               <div className="form-group" style={{ marginTop: 'var(--sp-4)', padding: 'var(--sp-4)', background: 'var(--primary-light)', borderRadius: 'var(--r-md)', border: '1px solid rgba(37,99,235,0.15)' }}>
                 <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <MessageSquare size={14} /> Feedback / Komentar Umum untuk Murid
@@ -581,6 +630,8 @@ export default function ResultsPage() {
                 <textarea className="form-textarea" rows={2} placeholder="Komentar ini akan tampil di halaman hasil murid..."
                   value={feedbackText} onChange={e => setFeedbackText(e.target.value)} />
               </div>
+              <p style={{ marginTop: 'var(--sp-3)', fontSize: '.78rem', color: 'var(--text-muted)' }}>AI hanya memberi saran. Nilai baru tersimpan setelah Anda meninjau dan menekan Simpan Nilai.</p>
+              </>
             )}
           </div>
         )}

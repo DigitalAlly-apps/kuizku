@@ -4,7 +4,7 @@
 // ============================================================
 import { supabase } from '../lib/supabase';
 import { localDateTimeToIso } from './helpers';
-import type { Teacher, Exam, BankQuestion, QuestionCollection, Submission, StudentAnswer, BillingSnapshot, Subscription, Workspace, StudentRanking } from '../types';
+import type { Teacher, Exam, BankQuestion, QuestionCollection, Submission, StudentAnswer, BillingSnapshot, Subscription, Workspace, StudentRanking, AiGradingSuggestion, AiGradingSuggestionStatus } from '../types';
 
 const PENDING_SUBMISSION_QUEUE_KEY = 'kuizku_pending_submission_queue';
 
@@ -535,6 +535,19 @@ export const storage = {
       essayGradedCount: data?.essay_graded_count == null ? undefined : Number(data.essay_graded_count),
       essayCount: data?.essay_count == null ? undefined : Number(data.essay_count),
     };
+  },
+
+  async requestAiEssaySuggestions(submissionId: string): Promise<{ suggestions?: AiGradingSuggestion[]; error?: string }> {
+    const { data, error } = await supabase.functions.invoke('suggest-essay-grades', { body: { submissionId } });
+    if (error) return { error: 'Saran AI belum tersedia. Periksa konfigurasi Gemini atau coba lagi.' };
+    if (!Array.isArray(data?.suggestions)) return { error: 'Saran AI tidak valid. Nilai belum diubah.' };
+    return { suggestions: data.suggestions as AiGradingSuggestion[] };
+  },
+
+  async updateAiGradingSuggestionStatuses(decisions: Array<{ id: string; status: AiGradingSuggestionStatus }>): Promise<void> {
+    await Promise.all(decisions.map(({ id, status }) => supabase.from('ai_grading_suggestions')
+      .update({ status, decided_at: new Date().toISOString() })
+      .eq('id', id)));
   },
 
   async returnSubmission(submissionId: string): Promise<MutationResult> {
