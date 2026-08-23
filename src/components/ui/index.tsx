@@ -122,9 +122,9 @@ export function StatusBadge({ status, activeTo }: { status: import('../../types'
 
 export function ExamTypeBadge({ examType }: { examType?: import('../../types').ExamType }) {
   const config: Record<string, { label: string; color: string; bg: string }> = {
-    UJIAN:   { label: '📝 Ujian',   color: 'var(--danger)',  bg: 'var(--danger-light)' },
-    TUGAS:   { label: '📋 Tugas',   color: 'var(--warning)', bg: 'var(--warning-light)' },
-    LATIHAN: { label: '🎯 Latihan', color: 'var(--success)', bg: 'var(--success-light)' },
+    UJIAN:   { label: 'Ujian',   color: 'var(--danger)',  bg: 'var(--danger-light)' },
+    TUGAS:   { label: 'Tugas',   color: 'var(--warning)', bg: 'var(--warning-light)' },
+    LATIHAN: { label: 'Latihan', color: 'var(--success)', bg: 'var(--success-light)' },
   };
   const c = config[examType ?? 'UJIAN'] ?? config['UJIAN'];
   return (

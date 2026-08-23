@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Hash, User, CreditCard, ListOrdered, Search, AlertCircle, ArrowRight, Clock, FileText, Calendar, History, Trophy, Play } from 'lucide-react';
+import { Hash, User, CreditCard, ListOrdered, Search, AlertCircle, ArrowRight, Clock, FileText, Calendar, History, Trophy, Play, BookOpen, RotateCcw } from 'lucide-react';
 import { storage } from '../../utils/storage';
 import { loadSession } from '../../utils/examSession';
 import { formatDateTime, formatExamFormat, formatTimerMode } from '../../utils/helpers';
 import { Spinner } from '../../components/ui';
 import type { Exam } from '../../types';
-import { APP_CONFIG } from '../../lib/appConfig';
 
 type Step = 'code' | 'actions' | 'identity' | 'resume';
 
@@ -156,8 +155,8 @@ export default function JoinExamPage() {
       <div style={styles.container}>
         {/* Logo */}
         <div className="student-brand" style={styles.logo}>
-          <div style={styles.logoIcon}>{APP_CONFIG.icon}</div>
-          <span style={styles.logoText}>{APP_CONFIG.name}</span>
+          <div style={styles.logoIcon}><BookOpen size={19} strokeWidth={2.25} /></div>
+          <span style={styles.logoText}>Kuizku</span>
         </div>
 
         {/* Step: Enter Code */}
@@ -171,7 +170,7 @@ export default function JoinExamPage() {
               <div style={styles.codeInputWrap}>
                 <input
                   id="exam-code-input"
-                  className="form-input"
+                  className="form-input student-code-input"
                   value={code}
                   onChange={e => handleCodeInput(e.target.value)}
                   placeholder="ABC123"
@@ -263,9 +262,9 @@ export default function JoinExamPage() {
                 {/* Type badge */}
                 {(() => {
                   const typeConfig: Record<string, { label: string; color: string; bg: string }> = {
-                    UJIAN:   { label: '📝 Ujian',   color: 'var(--danger)',  bg: 'var(--danger-light)' },
-                    TUGAS:   { label: '📋 Tugas',   color: 'var(--warning)', bg: 'var(--warning-light)' },
-                    LATIHAN: { label: '🎯 Latihan', color: 'var(--success)', bg: 'var(--success-light)' },
+                    UJIAN:   { label: 'Ujian',   color: 'var(--danger)',  bg: 'var(--danger-light)' },
+                    TUGAS:   { label: 'Tugas',   color: 'var(--warning)', bg: 'var(--warning-light)' },
+                    LATIHAN: { label: 'Latihan', color: 'var(--success)', bg: 'var(--success-light)' },
                   };
                   const c = typeConfig[(foundExam as any).examType ?? 'UJIAN'] ?? typeConfig['UJIAN'];
                   return <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: 'var(--r-sm)', background: c.bg, color: c.color, fontWeight: 700 }}>{c.label}</span>;
@@ -388,7 +387,7 @@ export default function JoinExamPage() {
         {step === 'resume' && foundExam && (
           <div style={styles.card}>
             <div style={{ textAlign: 'center', marginBottom: 'var(--sp-6)' }}>
-              <div style={{ fontSize: '3rem', marginBottom: 'var(--sp-3)' }}>{APP_CONFIG.icon}</div>
+              <div style={styles.resumeIcon}><BookOpen size={28} strokeWidth={2} /></div>
               <h2>Ada Sesi Tersimpan</h2>
               <p style={{ color: 'var(--text-muted)', marginTop: 8 }}>
                 Anda pernah mengerjakan ujian <strong style={{ color: 'var(--text-primary)' }}>{foundExam.title}</strong> sebelumnya dan belum selesai. Ingin melanjutkan?
@@ -397,10 +396,10 @@ export default function JoinExamPage() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
               <button className="btn btn-primary btn-lg" style={{ justifyContent: 'center' }} onClick={handleResume}>
-                ▶ Lanjutkan dari Sesi Sebelumnya
+                <Play size={16} /> Lanjutkan dari Sesi Sebelumnya
               </button>
               <button className="btn btn-secondary" style={{ justifyContent: 'center' }} onClick={handleStartFresh}>
-                Mulai Ulang dari Awal
+                <RotateCcw size={16} /> Mulai Ulang dari Awal
               </button>
             </div>
           </div>
@@ -417,12 +416,12 @@ const iconStyle: React.CSSProperties = {
 
 const styles: Record<string, React.CSSProperties> = {
   page: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--sp-4)', position: 'relative', background: 'var(--bg)' },
-  bg: { position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 70% 50% at 50% 0%, rgba(79,110,247,0.12), transparent)', zIndex: 0 },
+  bg: { display: 'none' },
   container: { position: 'relative', zIndex: 1, width: '100%', maxWidth: 480, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--sp-6)' },
   logo: { display: 'flex', alignItems: 'center', gap: 10 },
-  logoIcon: { width: 36, height: 36, background: 'linear-gradient(135deg, var(--primary), var(--secondary))', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem' },
-  logoText: { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: '1.3rem', background: 'linear-gradient(135deg, var(--primary), var(--secondary))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' },
-  card: { background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 'var(--r-xl)', padding: 'var(--sp-8)', width: '100%', boxShadow: 'var(--shadow-lg)' },
+  logoIcon: { width: 36, height: 36, background: 'var(--primary-light)', color: 'var(--primary)', borderRadius: 'var(--r-md)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  logoText: { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: '1.3rem', color: 'var(--text)' },
+  card: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: 'var(--sp-7)', width: '100%', boxShadow: 'var(--shadow-sm)' },
   title: { textAlign: 'center', fontSize: '1.5rem', marginBottom: 4 },
   subtitle: { textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: 'var(--sp-6)' },
   codeInputWrap: { marginBottom: 'var(--sp-3)' },
@@ -432,6 +431,7 @@ const styles: Record<string, React.CSSProperties> = {
   examPreview: { padding: 'var(--sp-4)', background: 'var(--surface-2)', borderRadius: 'var(--r-lg)', marginBottom: 'var(--sp-5)', border: '1px solid var(--border)' },
   metaItem: { display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.78rem', color: 'var(--text-muted)' },
   toggleWrap: { display: 'flex', gap: 6, marginBottom: 4 },
-  toggleBtn: { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 14px', borderRadius: 'var(--r-md)', border: '1.5px solid var(--border-strong)', background: 'var(--surface-2)', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s ease' },
+  toggleBtn: { display: 'inline-flex', alignItems: 'center', gap: 5, minHeight: 40, padding: '6px 14px', borderRadius: 'var(--r-md)', border: '1.5px solid var(--border-strong)', background: 'var(--surface-2)', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s ease' },
   toggleBtnActive: { borderColor: 'var(--primary)', background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 600 },
+  resumeIcon: { width: 56, height: 56, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', background: 'var(--primary-light)', borderRadius: 'var(--r-lg)', marginBottom: 'var(--sp-3)' },
 };

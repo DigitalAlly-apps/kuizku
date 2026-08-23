@@ -3,6 +3,25 @@
    ============================================================ */
 
 /* ---- Sidebar ---- */
+.landing-shell { min-height: 100dvh; background: var(--bg); padding: 0 var(--sp-6); }
+.landing-header { width: min(1040px, 100%); min-height: 72px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+.landing-brand { display: inline-flex; align-items: center; gap: 10px; color: var(--text-primary); font-family: var(--font-heading); font-weight: 800; font-size: 1.1rem; }
+.landing-brand-mark { width: 36px; height: 36px; display: grid; place-items: center; color: var(--primary); background: var(--primary-light); border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border)); border-radius: var(--r-md); }
+.landing-main { width: min(760px, 100%); margin: 0 auto; padding: clamp(56px, 12vh, 128px) 0 var(--sp-12); }
+.landing-intro { max-width: 620px; margin-bottom: var(--sp-8); }
+.landing-kicker { display: block; margin-bottom: var(--sp-3); color: var(--primary); font-size: 0.72rem; font-weight: 800; letter-spacing: .08em; }
+.landing-intro h1 { max-width: 560px; font-size: clamp(2rem, 5vw, 3.25rem); letter-spacing: -.035em; margin-bottom: var(--sp-4); }
+.landing-intro p { max-width: 570px; font-size: 1rem; line-height: 1.7; }
+.landing-roles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border: 1px solid var(--border-strong); border-radius: var(--r-md); overflow: hidden; background: var(--surface); }
+.landing-role-card { min-height: 208px; padding: var(--sp-6); display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-5); color: var(--text-primary); border-right: 1px solid var(--border); transition: background var(--transition), color var(--transition); }
+.landing-role-card:last-child { border-right: 0; }
+.landing-role-card:hover { background: var(--surface-2); color: var(--primary); }
+.landing-role-icon { width: 48px; height: 48px; display: grid; place-items: center; color: var(--primary); background: var(--primary-light); border-radius: var(--r-md); }
+.landing-role-student .landing-role-icon { color: var(--accent); background: var(--accent-light); }
+.landing-role-content { display: grid; gap: 6px; flex: 1; }
+.landing-role-content strong { font-family: var(--font-heading); font-size: 1.2rem; }
+.landing-role-content small { color: var(--text-secondary); font-size: .875rem; line-height: 1.55; }
+.landing-note { display: flex; align-items: center; gap: 8px; margin-top: var(--sp-5); color: var(--text-muted); font-size: .82rem; }
 .sidebar {
   position: fixed;
   top: 0; left: 0;
@@ -271,6 +290,15 @@
 .exam-card-meta-item { display: flex; align-items: center; gap: 4px; }
 .exam-card-actions { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
 
+/* ---- Dashboard ---- */
+.dashboard-intro { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--sp-5); margin-bottom: var(--sp-8); }
+.dashboard-intro > div > span { display: block; color: var(--primary); font-size: .72rem; font-weight: 800; letter-spacing: .08em; margin-bottom: 6px; }
+.dashboard-intro h1 { font-size: 1.75rem; letter-spacing: -.025em; margin-bottom: 4px; }
+.dashboard-intro p { color: var(--text-muted); font-size: .92rem; }
+.dashboard-attention { margin-bottom: var(--sp-8); }
+.dashboard-attention .card { border-left: 3px solid var(--warning); }
+.dashboard-quick-actions { margin-bottom: var(--sp-8); }
+
 /* ---- Question List & Editor ---- */
 .question-list { display: flex; flex-direction: column; gap: var(--sp-3); }
 
@@ -409,7 +437,7 @@
   padding: var(--sp-4);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--r-lg);
+  border-radius: var(--r-md);
   margin-bottom: var(--sp-5);
 }
 
@@ -476,7 +504,7 @@
   padding: var(--sp-4) var(--sp-5);
   background: var(--surface-2);
   border: 1px solid var(--border-strong);
-  border-radius: var(--r-lg);
+  border-radius: var(--r-md);
 }
 .exam-code-text {
   font-family: 'Courier New', monospace;
@@ -489,6 +517,27 @@
 }
 
 @media (max-width: 768px) {
+  .landing-shell { padding: 0 var(--sp-4); }
+  .landing-header { min-height: 64px; }
+  .landing-main { padding: 64px 0 var(--sp-8); }
+  .landing-intro { margin-bottom: var(--sp-6); }
+  .landing-roles { grid-template-columns: 1fr; }
+  .landing-role-card { min-height: 152px; flex-direction: row; align-items: center; padding: var(--sp-5); border-right: 0; border-bottom: 1px solid var(--border); }
+  .landing-role-card:last-child { border-bottom: 0; }
+  .landing-role-icon { width: 44px; height: 44px; flex: 0 0 auto; }
+  .landing-role-card > svg { flex: 0 0 auto; }
+  .page-content { padding: var(--sp-5) var(--sp-4); }
+  .page-header { margin-bottom: var(--sp-6); }
+  .dashboard-intro { display: grid; align-items: stretch; gap: var(--sp-4); margin-bottom: var(--sp-6); }
+  .dashboard-intro h1 { font-size: 1.45rem; }
+  .dashboard-intro > .btn { width: 100%; }
+  .page-header h1, .section-header h1 { font-size: 1.5rem; }
+  .card { padding: var(--sp-4); }
+  .btn { min-height: 44px; }
+  .btn-sm { min-height: 36px; }
+  .btn-icon { min-width: 44px; min-height: 44px; }
+  .form-input, .form-select, .form-textarea { min-height: 44px; font-size: 1rem; }
+  .form-textarea { min-height: 112px; }
   .stats-grid { grid-template-columns: 1fr; }
   .radio-card-group-3 { grid-template-columns: 1fr; }
   .bank-grid { grid-template-columns: minmax(0, 1fr); }
@@ -504,7 +553,7 @@
   .filter-bar { flex-direction: column; align-items: stretch; }
   .search-input-wrap { width: 100%; }
   .filter-bar > * { max-width: 100%; }
-  .filter-bar .btn { flex: 0 0 auto; font-size: 0.72rem; padding: 6px 10px; }
+  .filter-bar .btn { flex: 0 0 auto; font-size: 0.78rem; min-height: 40px; padding: 8px 12px; }
   .filter-bar > div { overflow-x: auto; -webkit-overflow-scrolling: touch; flex-wrap: nowrap !important; }
   .group-by-filter { margin-left: 0; width: 100%; justify-content: flex-start; margin-top: var(--sp-2); }
   .tabs { overflow-x: auto; padding-bottom: 2px; white-space: nowrap; -webkit-overflow-scrolling: touch; }
@@ -567,6 +616,7 @@
 
   .exam-card {
     padding: var(--sp-4);
+    gap: var(--sp-3);
   }
 
   .exam-workspace-header { display: block; }
@@ -733,6 +783,65 @@
   box-shadow: 0 0 0 1px var(--primary);
 }
 
+.student-join-page .student-code-input {
+  min-height: 64px;
+}
+
+.student-join-page .student-history-link {
+  width: 100%;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: var(--sp-3);
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: .84rem;
+  cursor: pointer;
+}
+
+.student-join-page .student-history-link:hover { color: var(--primary); }
+
+.bank-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+
+.bank-page-heading { display: flex; align-items: center; gap: var(--sp-3); }
+.bank-page-heading-icon {
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--primary-light);
+  color: var(--primary);
+}
+.bank-page-actions { padding-top: 2px; }
+.bank-filter-toolbar { padding: var(--sp-3); border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); }
+.bank-question-grid .bank-card { border-color: var(--border); box-shadow: none; }
+.bank-question-grid .bank-card:hover { border-color: var(--primary); transform: none; box-shadow: var(--shadow-sm); }
+.bank-card-actions .btn-icon { width: 36px; height: 36px; }
+.bank-preview-title { display: flex; align-items: center; gap: 8px; font-weight: 750; margin-bottom: var(--sp-3); color: var(--text); }
+
 @media (max-width: 560px) {
   .student-access-choice { grid-template-columns: 1fr; }
+
+  .student-join-page .student-code-input {
+    font-size: 1.65rem !important;
+    letter-spacing: .18em !important;
+    padding-inline: 14px !important;
+  }
+
+  .bank-page-header { align-items: stretch; flex-direction: column; }
+  .bank-page-actions .btn { width: 100%; justify-content: center; }
+  .bank-filter-toolbar > div:last-child { width: 100%; margin-left: 0 !important; flex-wrap: wrap; }
 }

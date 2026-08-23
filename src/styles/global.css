@@ -6,45 +6,45 @@
 
 /* ---- CSS Variables ---- */
 :root {
-  /* Light Mode — warm, calm, and practical for daily teaching */
-  --primary: #2F6B5F;
-  --primary-hover: #25564D;
-  --primary-light: #E4F0EA;
-  --secondary: #A85E3B;
-  --secondary-light: #F8E9E1;
-  --accent: #B97732;
-  --accent-light: #F8EEDC;
+  /* Light Mode — restrained professional workspace */
+  --primary: #285EA8;
+  --primary-hover: #1F4C8A;
+  --primary-light: #EAF1FB;
+  --secondary: #53657A;
+  --secondary-light: #EEF2F6;
+  --accent: #0F766E;
+  --accent-light: #E4F5F2;
 
   /* Status Colors */
-  --success: #3C7A58;
-  --success-light: #E5F1E7;
-  --warning: #A66A20;
-  --warning-light: #FAEFD9;
-  --danger: #B64B45;
-  --danger-light: #F8E5E2;
+  --success: #18794E;
+  --success-light: #E7F5ED;
+  --warning: #A45C05;
+  --warning-light: #FFF3DF;
+  --danger: #B42318;
+  --danger-light: #FDECEA;
 
   /* Surfaces */
-  --bg: #F6F1E8;
-  --bg-secondary: #EEE6D9;
-  --surface: #FFFDF8;
-  --surface-2: #F8F3EA;
-  --surface-3: #E8DED0;
-  --border: #E5DACC;
-  --border-strong: #D4C4B2;
+  --bg: #F7F9FC;
+  --bg-secondary: #EEF2F7;
+  --surface: #FFFFFF;
+  --surface-2: #F7F9FC;
+  --surface-3: #E6EBF2;
+  --border: #E1E7EF;
+  --border-strong: #CAD4E0;
 
   /* Text */
-  --text-primary: #2C2925;
-  --text-secondary: #5D564E;
-  --text-muted: #7A7065;
+  --text-primary: #172033;
+  --text-secondary: #4B5B70;
+  --text-muted: #718096;
   --text-inverse: #FFFFFF;
 
   /* Format Badge Colors */
-  --badge-pg: #2F6B5F;
-  --badge-pg-bg: #E4F0EA;
-  --badge-essay: #A85E3B;
-  --badge-essay-bg: #F8E9E1;
-  --badge-combo: #A66A20;
-  --badge-combo-bg: #FAEFD9;
+  --badge-pg: #285EA8;
+  --badge-pg-bg: #EAF1FB;
+  --badge-essay: #6B4FA0;
+  --badge-essay-bg: #F0EBFA;
+  --badge-combo: #A45C05;
+  --badge-combo-bg: #FFF3DF;
 
   /* Status Badge */
   --badge-draft: #64748B;
@@ -77,8 +77,8 @@
 
   /* Shadow */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 3px 12px rgba(79, 60, 39, 0.08);
-  --shadow-lg: 0 8px 24px rgba(79, 60, 39, 0.12);
+  --shadow-md: 0 4px 14px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 12px 28px rgba(15, 23, 42, 0.12);
   --shadow-glow: 0 0 0 transparent;
 
   /* Typography */
@@ -96,38 +96,53 @@
 
 /* Dark Mode Theme */
 [data-theme="dark"] {
-  --primary: #3B82F6;
-  --primary-hover: #2563EB;
-  --primary-light: rgba(59, 130, 246, 0.15);
-  --secondary: #818CF8;
-  --secondary-light: rgba(129, 140, 248, 0.15);
-  --accent: #0EA5E9;
-  --accent-light: rgba(14, 165, 233, 0.15);
+  --primary: #7FB3FF;
+  --primary-hover: #A6C9FF;
+  --primary-light: #1B3559;
+  --secondary: #A9B8CC;
+  --secondary-light: #243246;
+  --accent: #58C7BD;
+  --accent-light: #153B3A;
 
-  --success: #10B981;
-  --success-light: rgba(16, 185, 129, 0.15);
-  --warning: #F59E0B;
-  --warning-light: rgba(245, 158, 11, 0.15);
-  --danger: #EF4444;
-  --danger-light: rgba(239, 68, 68, 0.15);
+  --success: #6FD6A3;
+  --success-light: #163B2B;
+  --warning: #F3BD67;
+  --warning-light: #493611;
+  --danger: #FF9B92;
+  --danger-light: #4B2425;
 
-  --bg: #0B0F19;
-  --bg-secondary: #111827;
-  --surface: #1E293B;
-  --surface-2: #334155;
-  --surface-3: #475569;
-  --border: #334155;
-  --border-strong: #475569;
+  --bg: #0F1724;
+  --bg-secondary: #121E2D;
+  --surface: #172332;
+  --surface-2: #1D2B3C;
+  --surface-3: #2A3A4E;
+  --border: #2A3A4E;
+  --border-strong: #3A4D65;
 
-  --text-primary: #F8FAFC;
-  --text-secondary: #94A3B8;
-  --text-muted: #64748B;
-  --text-inverse: #0F172A;
+  --text-primary: #F5F8FC;
+  --text-secondary: #C0CCDB;
+  --text-muted: #91A1B6;
+  --text-inverse: #102033;
+
+  --badge-pg: #9EC5FF;
+  --badge-pg-bg: #1B3559;
+  --badge-essay: #D2BCFF;
+  --badge-essay-bg: #382A57;
+  --badge-combo: #F3BD67;
+  --badge-combo-bg: #493611;
+  --badge-draft: #B6C2D0;
+  --badge-draft-bg: #2A3A4E;
+  --badge-active: #6FD6A3;
+  --badge-active-bg: #163B2B;
+  --badge-ended: #F3BD67;
+  --badge-ended-bg: #493611;
+  --badge-archived: #91A1B6;
+  --badge-archived-bg: #243246;
 
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 24px rgba(59, 130, 246, 0.25);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.24);
+  --shadow-lg: 0 14px 32px rgba(0, 0, 0, 0.34);
+  --shadow-glow: 0 0 0 transparent;
 }
 
 /* ---- Reset & Base ---- */
@@ -283,13 +298,13 @@ p {
 }
 
 .card-glass {
-  background: rgba(22, 25, 41, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: var(--surface);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   border: 1px solid var(--border-strong);
   border-radius: var(--r-lg);
   padding: var(--sp-6);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  box-shadow: none;
 }
 
 /* ---- Buttons ---- */
@@ -323,16 +338,17 @@ p {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  background: var(--primary);
   color: white;
-  box-shadow: 0 4px 14px 0 rgba(79, 110, 247, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+  border: 1px solid var(--primary);
 }
 
 .btn-primary:hover:not(:disabled) {
-  box-shadow: 0 6px 20px rgba(79, 110, 247, 0.4);
-  transform: translateY(-2px);
-  filter: brightness(1.1);
+  background: var(--primary-hover);
+  box-shadow: none;
+  transform: none;
+  filter: none;
 }
 
 .btn-secondary {
@@ -343,7 +359,7 @@ p {
 
 .btn-secondary:hover:not(:disabled) {
   background: var(--surface-3);
-  transform: translateY(-1px);
+  transform: none;
 }
 
 .btn-ghost {
@@ -439,7 +455,7 @@ p {
 .form-textarea:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(79, 110, 247, 0.15);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent);
 }
 
 .form-input.error,
@@ -469,6 +485,19 @@ p {
 
 .form-row-3 {
   grid-template-columns: 1fr 1fr 1fr;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 60%, white);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }
 
 /* ---- Badges ---- */

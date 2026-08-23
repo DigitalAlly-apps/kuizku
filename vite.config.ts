@@ -16,8 +16,8 @@ export default defineConfig(({ mode }) => ({
         short_name: 'Kuizku',
         description: 'Platform ujian dan kuis online untuk guru dan murid Indonesia',
         lang: 'id',
-        theme_color: '#4F6EF7',
-        background_color: '#0C0E1A',
+        theme_color: '#285EA8',
+        background_color: '#F7F9FC',
         display: 'standalone',
         icons: [
           { src: 'pwa-kuizku-v2-192.png', sizes: '192x192', type: 'image/png' },

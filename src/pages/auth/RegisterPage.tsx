@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { User, Mail, Lock, Eye, EyeOff, AlertCircle, BookOpen } from 'lucide-react';
 import { useAuth } from '../../context/AppContext';
 import { Spinner } from '../../components/ui';
-import { APP_CONFIG } from '../../lib/appConfig';
 
 export default function RegisterPage() {
   const { register } = useAuth();
@@ -34,8 +33,8 @@ export default function RegisterPage() {
       <div style={styles.bg} />
       <div style={styles.card}>
         <div style={styles.logo}>
-          <div style={styles.logoIcon}>{APP_CONFIG.icon}</div>
-          <span style={styles.logoText}>{APP_CONFIG.name}</span>
+          <div style={styles.logoIcon}><BookOpen size={21} strokeWidth={2.25} /></div>
+          <span style={styles.logoText}>Kuizku</span>
         </div>
         <h1 style={{ textAlign: 'center', fontSize: '1.3rem', marginBottom: 4 }}>Daftar Akun Guru</h1>
         <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: 'var(--sp-6)' }}>
@@ -72,7 +71,7 @@ export default function RegisterPage() {
               <input id="reg-password" type={showPass ? 'text' : 'password'} className="form-input"
                 placeholder="Min. 8 karakter" style={{ paddingLeft: 40, paddingRight: 40 }}
                 value={form.password} onChange={e => set('password', e.target.value)} />
-              <button type="button" style={styles.eyeBtn} onClick={() => setShowPass(!showPass)} tabIndex={-1}>
+              <button type="button" style={styles.eyeBtn} onClick={() => setShowPass(!showPass)} aria-label={showPass ? 'Sembunyikan password' : 'Tampilkan password'}>
                 {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
@@ -106,12 +105,12 @@ export default function RegisterPage() {
 const iconStyle: React.CSSProperties = { position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' };
 
 const styles: Record<string, React.CSSProperties> = {
-  page: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--sp-4)', position: 'relative', overflow: 'hidden' },
-  bg: { position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 80% 60% at 50% -10%, rgba(79,110,247,0.15), transparent)', zIndex: 0 },
-  card: { position: 'relative', zIndex: 1, background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 'var(--r-xl)', padding: 'var(--sp-10)', width: '100%', maxWidth: 520, boxShadow: 'var(--shadow-lg)', margin: 'var(--sp-6) auto' },
+  page: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--sp-4)', position: 'relative', background: 'var(--bg)' },
+  bg: { display: 'none' },
+  card: { position: 'relative', zIndex: 1, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: 'var(--sp-8)', width: '100%', maxWidth: 520, boxShadow: 'var(--shadow-sm)', margin: 'var(--sp-6) auto' },
   logo: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 'var(--sp-6)', justifyContent: 'center' },
-  logoIcon: { width: 40, height: 40, background: 'linear-gradient(135deg, var(--primary), var(--secondary))', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' },
-  logoText: { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: '1.4rem', background: 'linear-gradient(135deg, var(--primary), var(--secondary))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' },
+  logoIcon: { width: 40, height: 40, background: 'var(--primary-light)', color: 'var(--primary)', borderRadius: 'var(--r-md)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  logoText: { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: '1.4rem', color: 'var(--text)' },
   errorBox: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'var(--danger-light)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 'var(--r-md)', color: 'var(--danger)', fontSize: '0.875rem', marginBottom: 'var(--sp-5)' },
-  eyeBtn: { position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex' },
+  eyeBtn: { position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', width: 40, height: 40, alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', borderRadius: 'var(--r-sm)' },
 };

@@ -58,13 +58,9 @@ export default function DashboardPage() {
   return (
     <div className="page-content">
       {/* Header */}
-      <div style={{ marginBottom: 'var(--sp-8)' }}>
-        <h1 style={{ fontSize: '1.6rem', marginBottom: 4 }}>
-          {greeting}, {currentTeacher?.name.split(' ')[0]} 👋
-        </h1>
-        <p style={{ color: 'var(--text-muted)' }}>
-          Kelola ujian dan pantau performa murid dari sini.
-        </p>
+      <div className="dashboard-intro">
+        <div><span>RINGKASAN HARI INI</span><h1>{greeting}, {currentTeacher?.name.split(' ')[0]}</h1><p>Kelola ujian dan pantau aktivitas murid dari satu tempat.</p></div>
+        <button className="btn btn-primary" onClick={() => navigate('/guru/ujian/baru')}><Plus size={16} /> Buat Ujian</button>
       </div>
 
       {/* Stats */}
@@ -79,7 +75,7 @@ export default function DashboardPage() {
           color="var(--warning)" bg="var(--warning-light)" />
       </div>
 
-      <div style={{ marginBottom: 'var(--sp-8)' }}>
+      <div className="dashboard-attention">
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <MessageSquareWarning size={18} style={{ color: 'var(--warning)' }} />
@@ -92,7 +88,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <div style={{ marginBottom: 'var(--sp-8)' }}>
+      <div className="dashboard-quick-actions">
         <SectionHeader title="Aksi Cepat" />
         <div style={{ display: 'flex', gap: 'var(--sp-3)', flexWrap: 'wrap' }}>
           <button className="btn btn-primary" onClick={() => navigate('/guru/ujian/baru')}>

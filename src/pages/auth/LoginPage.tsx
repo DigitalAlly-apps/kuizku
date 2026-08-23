@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, AlertCircle, ArrowLeft, CheckCircle2, Chrome } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, AlertCircle, ArrowLeft, CheckCircle2, Chrome, BookOpen } from 'lucide-react';
 import { useAuth } from '../../context/AppContext';
 import { Spinner } from '../../components/ui';
-import { APP_CONFIG } from '../../lib/appConfig';
 import { storage } from '../../utils/storage';
 import { supabase } from '../../lib/supabase';
 
@@ -115,8 +114,8 @@ export default function LoginPage() {
       <div style={styles.bg} />
       <div style={styles.card}>
         <div style={styles.logo}>
-          <div style={styles.logoIcon}>{APP_CONFIG.icon}</div>
-          <span style={styles.logoText}>{APP_CONFIG.name}</span>
+          <div style={styles.logoIcon}><BookOpen size={21} strokeWidth={2.25} /></div>
+          <span style={styles.logoText}>Kuizku</span>
         </div>
 
         {mode === 'login' && (
@@ -154,7 +153,7 @@ export default function LoginPage() {
                   <input id="login-password" type={showPass ? 'text' : 'password'} className="form-input"
                     placeholder="••••••••" style={{ paddingLeft: 40, paddingRight: 40 }}
                     value={password} onChange={e => setPassword(e.target.value)} />
-                  <button type="button" style={styles.eyeBtn} onClick={() => setShowPass(!showPass)} tabIndex={-1}>
+                  <button type="button" style={styles.eyeBtn} onClick={() => setShowPass(!showPass)} aria-label={showPass ? 'Sembunyikan password' : 'Tampilkan password'}>
                     {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
@@ -261,7 +260,7 @@ export default function LoginPage() {
                     <input id="new-password" type={showNewPass ? 'text' : 'password'} className="form-input"
                       placeholder="•••••••• (min 6 karakter)" style={{ paddingLeft: 40, paddingRight: 40 }}
                       value={newPassword} onChange={e => setNewPassword(e.target.value)} required />
-                    <button type="button" style={styles.eyeBtn} onClick={() => setShowNewPass(!showNewPass)} tabIndex={-1}>
+                    <button type="button" style={styles.eyeBtn} onClick={() => setShowNewPass(!showNewPass)} aria-label={showNewPass ? 'Sembunyikan password baru' : 'Tampilkan password baru'}>
                       {showNewPass ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
@@ -274,7 +273,7 @@ export default function LoginPage() {
                     <input id="confirm-password" type={showConfirmPass ? 'text' : 'password'} className="form-input"
                       placeholder="••••••••" style={{ paddingLeft: 40, paddingRight: 40 }}
                       value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required />
-                    <button type="button" style={styles.eyeBtn} onClick={() => setShowConfirmPass(!showConfirmPass)} tabIndex={-1}>
+                    <button type="button" style={styles.eyeBtn} onClick={() => setShowConfirmPass(!showConfirmPass)} aria-label={showConfirmPass ? 'Sembunyikan konfirmasi password' : 'Tampilkan konfirmasi password'}>
                       {showConfirmPass ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
@@ -300,41 +299,33 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
     padding: 'var(--sp-4)',
-    position: 'relative',
-    overflow: 'hidden',
+    background: 'var(--bg)',
   },
-  bg: {
-    position: 'absolute', inset: 0,
-    background: 'radial-gradient(ellipse 80% 60% at 50% -10%, rgba(79,110,247,0.15), transparent), radial-gradient(ellipse 60% 50% at 80% 80%, rgba(124,58,237,0.1), transparent)',
-    zIndex: 0,
-  },
+  bg: { display: 'none' },
   card: {
     position: 'relative',
     zIndex: 1,
     background: 'var(--surface)',
-    border: '1px solid var(--border-strong)',
-    borderRadius: 'var(--r-xl)',
-    padding: 'var(--sp-10)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--r-lg)',
+    padding: 'var(--sp-8)',
     width: '100%',
     maxWidth: 440,
-    boxShadow: 'var(--shadow-lg)',
+    boxShadow: 'var(--shadow-sm)',
   },
   logo: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 'var(--sp-8)', justifyContent: 'center' },
   logoIcon: {
     width: 40, height: 40,
-    background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
-    borderRadius: 10,
+    background: 'var(--primary-light)',
+    color: 'var(--primary)',
+    borderRadius: 'var(--r-md)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: '1.2rem',
   },
   logoText: {
     fontFamily: 'var(--font-heading)',
     fontWeight: 800,
     fontSize: '1.4rem',
-    background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-    backgroundClip: 'text',
+    color: 'var(--text)',
   },
   title: { textAlign: 'center', fontSize: '1.4rem', marginBottom: 4 },
   subtitle: { textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: 'var(--sp-6)' },
@@ -350,5 +341,5 @@ const styles: Record<string, React.CSSProperties> = {
   },
   form: { display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' },
   inputIcon: { position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' },
-  eyeBtn: { position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex' },
+  eyeBtn: { position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', width: 40, height: 40, alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', borderRadius: 'var(--r-sm)' },
 };

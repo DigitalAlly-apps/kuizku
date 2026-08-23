@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Search, BookOpen, Trash2, Edit2, ChevronDown, ChevronRight, Share2, Download } from 'lucide-react';
+import { Search, BookOpen, Trash2, Edit2, ChevronDown, ChevronRight, Share2, Download, LibraryBig } from 'lucide-react';
 import { useApp, useToast } from '../../context/AppContext';
 import { EmptyState, ConfirmDialog, Modal } from '../../components/ui';
 import QuestionEditor from '../../components/exam/QuestionEditor';
@@ -168,10 +168,15 @@ export default function QuestionBankPage() {
 
   return (
     <div className="page-content">
-      <div className="page-header">
-        <h1>Bank Soal</h1>
-        <p>Repositori soal pribadi Anda — {myBank.length} soal tersimpan.</p>
-        <div style={{ marginTop: 'var(--sp-3)' }}>
+      <div className="page-header bank-page-header">
+        <div className="bank-page-heading">
+          <div className="bank-page-heading-icon"><LibraryBig size={21} /></div>
+          <div>
+            <h1>Bank Soal</h1>
+            <p>Repositori soal pribadi Anda · {myBank.length} soal tersimpan.</p>
+          </div>
+        </div>
+        <div className="bank-page-actions">
           <button className="btn btn-secondary btn-sm" onClick={() => setShareOpen(true)}>
             <Download size={14} /> Import Soal Bersama
           </button>
@@ -179,7 +184,7 @@ export default function QuestionBankPage() {
       </div>
 
       {/* Filter Bar */}
-      <div className="filter-bar" style={{ flexWrap: 'wrap', gap: 'var(--sp-3)' }}>
+      <div className="filter-bar bank-filter-toolbar" style={{ flexWrap: 'wrap', gap: 'var(--sp-3)' }}>
         <div className="search-input-wrap" style={{ flex: '1 1 200px' }}>
           <Search size={15} />
           <input id="bank-page-search" className="form-input search-input" placeholder="Cari soal, mapel, atau kelas..."
@@ -255,7 +260,7 @@ export default function QuestionBankPage() {
                             Menampilkan {filtered.length} dari {myBank.length} soal
                           </div>
                         )}
-                        <div className="bank-grid">
+                        <div className="bank-grid bank-question-grid">
                           {questions.map(bq => (
                             <div key={bq.id} className={`bank-card ${preview?.id === bq.id ? 'selected' : ''}`}
                               onClick={() => setPreview(bq)}>
@@ -272,7 +277,7 @@ export default function QuestionBankPage() {
                                 {' '}· Bobot: {bq.weight} · Dipakai: {bq.usedInExamIds.length}x
                               </div>
                               {/* Actions */}
-                              <div style={{ display: 'flex', gap: 4, marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 8 }}
+                              <div className="bank-card-actions" style={{ display: 'flex', gap: 4, marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 8 }}
                                 onClick={e => e.stopPropagation()}>
                                 <button className="btn btn-ghost btn-sm btn-icon" title="Edit" onClick={() => setEditQ(bq)}>
                                   <Edit2 size={13} />
@@ -298,14 +303,14 @@ export default function QuestionBankPage() {
 
         {/* Preview Panel */}
         {preview && (
-          <div className="bank-preview-panel" style={{ width: 300, flexShrink: 0, background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 'var(--r-lg)', padding: 'var(--sp-5)', height: 'fit-content', position: 'sticky', top: 100 }}>
-            <div style={{ fontWeight: 700, marginBottom: 'var(--sp-3)' }}>Preview Soal</div>
+          <div className="bank-preview-panel" style={{ width: 300, flexShrink: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: 'var(--sp-5)', height: 'fit-content', position: 'sticky', top: 100 }}>
+            <div className="bank-preview-title"><BookOpen size={16} /> Preview Soal</div>
             <span className={`badge ${preview.type === 'MULTIPLE_CHOICE' || preview.type === 'SHORT_ANSWER' ? 'badge-pg' : 'badge-essay'}`} style={{ marginBottom: 'var(--sp-3)', display: 'inline-flex' }}>
               {preview.type === 'MULTIPLE_CHOICE' ? 'Pilihan Ganda' : preview.type === 'SHORT_ANSWER' ? 'Jawaban Singkat' : 'Essay'}
             </span>
             {preview.className && (
               <div style={{ fontSize: '0.72rem', color: 'var(--primary)', fontWeight: 600, marginBottom: 4 }}>
-                📚 {preview.className} · {preview.subject}
+                {preview.className} · {preview.subject}
               </div>
             )}
             <p style={{ fontSize: '0.875rem', color: 'var(--text-primary)', lineHeight: 1.6, marginBottom: 'var(--sp-3)' }}>{preview.text}</p>

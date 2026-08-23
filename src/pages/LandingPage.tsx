@@ -1,112 +1,37 @@
 import { Link } from 'react-router-dom';
-import { GraduationCap, BookOpen, ArrowRight } from 'lucide-react';
+import { ArrowRight, BookOpen, GraduationCap, ShieldCheck } from 'lucide-react';
 import { APP_CONFIG } from '../lib/appConfig';
 
 export default function LandingPage() {
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: 'var(--sp-6)',
-      background: 'radial-gradient(circle at top, var(--surface-3) 0%, var(--bg) 100%)'
-    }}>
-      <div style={{ maxWidth: 800, width: '100%', animation: 'slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1)' }}>
-        
-        <div style={{ textAlign: 'center', marginBottom: 'var(--sp-12)' }}>
-          <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: 'var(--sp-2)', background: 'linear-gradient(135deg, #F0F2FF, #9AA3C2)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            {APP_CONFIG.name}
-          </h1>
-          <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', maxWidth: 500, margin: '0 auto' }}>
-            {APP_CONFIG.tagline}. Silakan pilih peran Anda untuk melanjutkan.
-          </p>
+    <main className="landing-shell">
+      <header className="landing-header">
+        <Link to="/" className="landing-brand" aria-label="Kuizku beranda">
+          <span className="landing-brand-mark"><BookOpen size={20} aria-hidden="true" /></span>
+          <span>{APP_CONFIG.name}</span>
+        </Link>
+        <Link to="/login" className="btn btn-ghost btn-sm">Masuk Guru</Link>
+      </header>
+      <section className="landing-main">
+        <div className="landing-intro">
+          <span className="landing-kicker">UJIAN DAN KUIS UNTUK KELAS</span>
+          <h1>Masuk sesuai kebutuhan Anda.</h1>
+          <p>Kuizku membantu guru menyiapkan ujian dan murid mengerjakannya dengan alur yang jelas.</p>
         </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--sp-6)' }}>
-          
-          {/* Student Card */}
-          <Link to="/ujian" style={{ textDecoration: 'none' }}>
-            <div className="card" style={{
-              height: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              padding: 'var(--sp-8)',
-              border: '2px solid var(--border-strong)',
-              cursor: 'pointer',
-              background: 'var(--surface)',
-              transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
-              position: 'relative',
-              overflow: 'hidden'
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.borderColor = 'var(--secondary)';
-              e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = '0 12px 30px rgba(124, 58, 237, 0.15)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.borderColor = 'var(--border-strong)';
-              e.currentTarget.style.transform = 'none';
-              e.currentTarget.style.boxShadow = 'none';
-            }}>
-              <div style={{
-                width: 60, height: 60, borderRadius: 'var(--r-xl)', background: 'var(--secondary-light)',
-                color: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                marginBottom: 'var(--sp-6)'
-              }}>
-                <GraduationCap size={32} />
-              </div>
-              <h2 style={{ fontSize: '1.5rem', marginBottom: 'var(--sp-2)' }}>Saya Murid</h2>
-              <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--sp-8)', flex: 1 }}>
-                Punya kode ujian dari guru Anda? Masuk ke sini untuk mulai mengerjakan ujian.
-              </p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--secondary)', fontWeight: 600 }}>
-                Mulai Ujian <ArrowRight size={16} />
-              </div>
-            </div>
+        <div className="landing-roles">
+          <Link to="/ujian" className="landing-role-card landing-role-student">
+            <span className="landing-role-icon"><GraduationCap size={28} aria-hidden="true" /></span>
+            <span className="landing-role-content"><strong>Saya Murid</strong><small>Masukkan kode dari guru untuk mulai ujian atau melihat ranking.</small></span>
+            <ArrowRight size={20} aria-hidden="true" />
           </Link>
-
-          {/* Teacher Card */}
-          <Link to="/login" style={{ textDecoration: 'none' }}>
-            <div className="card" style={{
-              height: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              padding: 'var(--sp-8)',
-              border: '2px solid var(--border-strong)',
-              cursor: 'pointer',
-              background: 'var(--surface)',
-              transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)'
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.borderColor = 'var(--primary)';
-              e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = '0 12px 30px rgba(79, 110, 247, 0.15)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.borderColor = 'var(--border-strong)';
-              e.currentTarget.style.transform = 'none';
-              e.currentTarget.style.boxShadow = 'none';
-            }}>
-              <div style={{
-                width: 60, height: 60, borderRadius: 'var(--r-xl)', background: 'var(--primary-light)',
-                color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                marginBottom: 'var(--sp-6)'
-              }}>
-                <BookOpen size={32} />
-              </div>
-              <h2 style={{ fontSize: '1.5rem', marginBottom: 'var(--sp-2)' }}>Saya Guru</h2>
-              <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--sp-8)', flex: 1 }}>
-                Masuk ke dashboard untuk membuat soal, mengatur ujian, dan melihat rekap nilai.
-              </p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--primary)', fontWeight: 600 }}>
-                Masuk Dashboard <ArrowRight size={16} />
-              </div>
-            </div>
+          <Link to="/login" className="landing-role-card">
+            <span className="landing-role-icon"><BookOpen size={28} aria-hidden="true" /></span>
+            <span className="landing-role-content"><strong>Saya Guru</strong><small>Buat ujian, kelola soal, dan pantau hasil peserta.</small></span>
+            <ArrowRight size={20} aria-hidden="true" />
           </Link>
-
         </div>
-      </div>
-    </div>
+        <p className="landing-note"><ShieldCheck size={15} aria-hidden="true" /> Guru masuk dengan akun. Murid cukup menggunakan kode ujian.</p>
+      </section>
+    </main>
   );
 }
