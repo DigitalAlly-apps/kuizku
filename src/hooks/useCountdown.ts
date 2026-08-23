@@ -13,21 +13,29 @@ export function useCountdown({ initialSeconds, onExpire, autoStart = true }: Tim
   const [remaining, setRemaining] = useState(initialSeconds);
   const [running, setRunning] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const deadlineRef = useRef<number | null>(null);
   const expiredRef = useRef(false);
   const onExpireRef = useRef(onExpire);
   onExpireRef.current = onExpire;
 
   // Start saat autoStart true dan initialSeconds > 0
   useEffect(() => {
-    if (autoStart && initialSeconds > 0) {
-      setRunning(true);
-      setRemaining(initialSeconds);
-      expiredRef.current = false;
+    if (!autoStart) return;
+    const seconds = Math.max(0, Math.floor(initialSeconds));
+    expiredRef.current = false;
+    setRemaining(seconds);
+    deadlineRef.current = Date.now() + seconds * 1000;
+    if (seconds > 0) setRunning(true);
+    else {
+      setRunning(false);
+      expiredRef.current = true;
+      setTimeout(() => onExpireRef.current(), 0);
     }
   }, [autoStart]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const stop = useCallback(() => {
     setRunning(false);
+    deadlineRef.current = null;
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
@@ -40,27 +48,36 @@ export function useCountdown({ initialSeconds, onExpire, autoStart = true }: Tim
       intervalRef.current = null;
     }
     expiredRef.current = false;
-    setRemaining(seconds);
-    setRunning(true);
+    const normalized = Math.max(0, Math.floor(seconds));
+    setRemaining(normalized);
+    deadlineRef.current = Date.now() + normalized * 1000;
+    setRunning(normalized > 0);
+    if (normalized === 0) {
+      expiredRef.current = true;
+      setTimeout(() => onExpireRef.current(), 0);
+    }
   }, []);
 
   useEffect(() => {
-    if (!running || remaining <= 0) return;
+    if (!running) return;
 
     intervalRef.current = setInterval(() => {
-      setRemaining(prev => {
-        if (prev <= 1) {
-          clearInterval(intervalRef.current!);
+      const deadline = deadlineRef.current;
+      if (deadline === null) return;
+      const next = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      setRemaining(previous => previous === next ? previous : next);
+      if (next === 0) {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
           intervalRef.current = null;
-          if (!expiredRef.current) {
-            expiredRef.current = true;
-            setTimeout(() => onExpireRef.current(), 0);
-          }
-          return 0;
         }
-        return prev - 1;
-      });
-    }, 1000);
+        setRunning(false);
+        if (!expiredRef.current) {
+          expiredRef.current = true;
+          setTimeout(() => onExpireRef.current(), 0);
+        }
+      }
+    }, 250);
 
     return () => {
       if (intervalRef.current) {

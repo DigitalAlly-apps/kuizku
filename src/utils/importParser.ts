@@ -5,7 +5,7 @@
 
 import * as XLSX from 'xlsx';
 import type { Question, QuestionType, ImportResult, ImportRow } from '../types';
-import { generateId } from './helpers';
+import { formatDateTime, generateId } from './helpers';
 
 // ---- Word (.docx) Parser ----
 // Format yang didukung dalam file Word:
@@ -417,7 +417,7 @@ export function exportResultsToExcel(
       s.studentName,
       s.nis,
       s.attemptNumber,
-      s.submittedAt ? new Date(s.submittedAt).toLocaleString('id-ID') : '-',
+      s.submittedAt ? formatDateTime(s.submittedAt) : '-',
       s.mcScore,
       essayTotal,
       total,

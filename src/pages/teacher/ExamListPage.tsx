@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, Search, Copy, Edit2, Trash2, BarChart2, Archive, Play, MoreVertical, FileText, Users, ChevronDown, ChevronRight, CheckCircle2, Clock, X, Save, Loader2, Calendar, Share2, QrCode } from 'lucide-react';
 import { useApp, useToast } from '../../context/AppContext';
 import { FormatBadge, StatusBadge, ExamTypeBadge, EmptyState, ConfirmDialog, Modal } from '../../components/ui';
-import { formatRelative } from '../../utils/helpers';
+import { formatDateTime, formatRelative, isoToLocalDateTimeInput } from '../../utils/helpers';
 import type { Exam, ExamStatus, ExamType } from '../../types';
 
 const STATUS_FILTERS: { label: string; value: ExamStatus | 'ALL' }[] = [
@@ -22,9 +22,7 @@ const TYPE_FILTERS: { label: string; value: ExamType | 'ALL' }[] = [
 ];
 
 function formatDeadline(iso?: string): string {
-  if (!iso) return '';
-  const d = new Date(iso);
-  return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return iso ? formatDateTime(iso) : '';
 }
 
 export default function ExamListPage() {
@@ -124,8 +122,8 @@ export default function ExamListPage() {
     setEditSubject(exam.subject);
     setEditClass(exam.className || '');
     setEditType(exam.examType ?? 'UJIAN');
-    setEditFrom(exam.activeFrom ? exam.activeFrom.slice(0, 16) : '');
-    setEditTo(exam.activeTo ? exam.activeTo.slice(0, 16) : '');
+    setEditFrom(isoToLocalDateTimeInput(exam.activeFrom));
+    setEditTo(isoToLocalDateTimeInput(exam.activeTo));
     setEditStudents((exam.preloadedStudents || []).map(s => `${s.name}, ${s.nis}`).join('\n'));
     setEditAccessMode((exam.preloadedStudents || []).length > 0 ? 'LIST' : 'OPEN');
     setOpenMenuId(null);

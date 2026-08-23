@@ -123,10 +123,29 @@ export function formatDateTime(iso: string): string {
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+      hour12: false,
+      hourCycle: 'h23',
     });
   } catch {
     return iso;
   }
+}
+
+/** Convert a datetime-local value (browser local time) to an absolute UTC ISO timestamp. */
+export function localDateTimeToIso(value?: string | null): string | null {
+  const normalized = value?.trim();
+  if (!normalized) return null;
+  const parsed = new Date(normalized);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
+/** Convert an absolute timestamp to the user's local value expected by datetime-local inputs. */
+export function isoToLocalDateTimeInput(value?: string | null): string {
+  if (!value) return '';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '';
+  const local = new Date(parsed.getTime() - parsed.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
 }
 
 export function formatRelative(iso: string): string {

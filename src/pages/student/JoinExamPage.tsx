@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Hash, User, CreditCard, ListOrdered, Search, AlertCircle, ArrowRight, Clock, FileText, Calendar, History } from 'lucide-react';
 import { storage } from '../../utils/storage';
 import { loadSession } from '../../utils/examSession';
-import { formatExamFormat, formatTimerMode } from '../../utils/helpers';
+import { formatDateTime, formatExamFormat, formatTimerMode } from '../../utils/helpers';
 import { Spinner } from '../../components/ui';
 import type { Exam } from '../../types';
 import { APP_CONFIG } from '../../lib/appConfig';
@@ -82,7 +82,16 @@ export default function JoinExamPage() {
     const access = await storage.getStudentExamByCode(foundExam.code, name.trim(), identifier);
     setLoading(false);
 
-    if (!access.exam) { setError(access.error?.message ?? 'Akses ditolak'); return; }
+    if (!access.exam) {
+      let message = access.error?.message ?? 'Akses ditolak';
+      if (message.includes('belum dimulai') && foundExam.activeFrom) {
+        message = `Ujian belum dimulai. Jadwal mulai: ${formatDateTime(foundExam.activeFrom)}.`;
+      } else if (message.includes('sudah berakhir') && foundExam.activeTo) {
+        message = `Waktu ujian sudah berakhir. Batas waktu: ${formatDateTime(foundExam.activeTo)}.`;
+      }
+      setError(message);
+      return;
+    }
     setNextAttemptNumber(access.attemptNumber ?? 1);
 
     if (loadSession(foundExam.code, identifier)) {
@@ -223,7 +232,7 @@ export default function JoinExamPage() {
                     <Calendar size={13} />
                     {new Date(foundExam.activeTo) < new Date()
                       ? 'Batas waktu lewat'
-                      : `Deadline: ${new Date(foundExam.activeTo).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
+                      : `Deadline: ${formatDateTime(foundExam.activeTo)}`}
                   </span>
                 )}
               </div>

@@ -2,7 +2,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Clock, FileText, BookOpen, AlertTriangle, Play, ChevronDown, Check, Calendar } from 'lucide-react';
 import { storage } from '../../utils/storage';
-import { formatExamFormat } from '../../utils/helpers';
+import { formatDateTime, formatExamFormat } from '../../utils/helpers';
 import { createSession } from '../../utils/examSession';
 import type { Exam } from '../../types';
 
@@ -91,7 +91,7 @@ export default function InstructionsPage() {
             {exam.settings.shuffleQuestions && <p>Urutan soal diacak dan dapat berbeda dari peserta lain.</p>}
             {essayCount > 0 && <p>Soal essay dinilai manual oleh guru. Nilai akhir mungkin belum tersedia langsung setelah dikumpulkan.</p>}
             <p>{exam.settings.maxAttempts === 0 ? 'Percobaan tidak terbatas.' : `Maksimal ${exam.settings.maxAttempts}x percobaan.`}</p>
-            {exam.activeTo && <p><Calendar size={15} /> Batas waktu: {new Date(exam.activeTo).toLocaleString('id-ID')}</p>}
+            {exam.activeTo && <p><Calendar size={15} /> Batas waktu: {formatDateTime(exam.activeTo)}</p>}
             <p><AlertTriangle size={15} /> Pastikan nama dan identitas Anda sudah benar.</p>
           </div>}
         </section>

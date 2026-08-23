@@ -195,22 +195,31 @@ export default function ExamTakingPage() {
 
   // ---- Whole-exam timer ----
   const wholeTimerEnabled = exam?.settings.timerMode === 'WHOLE_EXAM';
-  const initialWholeSeconds = session?.remainingSeconds ?? (exam?.settings.wholExamTimerSeconds ?? 3600);
+  const wholeDurationSeconds = exam?.settings.wholExamTimerSeconds ?? 3600;
+  const elapsedWholeSeconds = session
+    ? Math.max(0, Math.floor((Date.now() - new Date(session.startedAt).getTime()) / 1000))
+    : 0;
+  const remainingFromStart = Math.max(0, wholeDurationSeconds - elapsedWholeSeconds);
+  const initialWholeSeconds = session
+    ? Math.min(session.remainingSeconds ?? wholeDurationSeconds, remainingFromStart)
+    : wholeDurationSeconds;
 
   const wholeTimer = useCountdown({
     initialSeconds: initialWholeSeconds,
     autoStart: wholeTimerEnabled && !!session && !submitted,
     onExpire: useCallback(() => handleSubmit(true), [handleSubmit]),
   });
+  const wholeRemainingRef = useRef(wholeTimer.remaining);
+  wholeRemainingRef.current = wholeTimer.remaining;
 
   // Persist remaining time every 5 seconds
   useEffect(() => {
     if (!wholeTimerEnabled || !session) return;
     const id = setInterval(() => {
-      if (session) setSession(s => s ? updateTimer(s, wholeTimer.remaining) : s);
+      setSession(current => current ? updateTimer(current, wholeRemainingRef.current) : current);
     }, 5000);
     return () => clearInterval(id);
-  }, [wholeTimerEnabled, wholeTimer.remaining, session]);
+  }, [wholeTimerEnabled, !!session]);
 
   // Stop whole timer on submit
   useEffect(() => {
@@ -239,6 +248,8 @@ export default function ExamTakingPage() {
       else handleSubmit(true);
     }, [currentIdx, questions.length, goNext, handleSubmit]),
   });
+  const perQCurrentRemainingRef = useRef(perQTimer.remaining);
+  perQCurrentRemainingRef.current = perQTimer.remaining;
   const perQProgressPct = perQEnabled && perQSeconds > 0
     ? Math.max(0, Math.min(100, Math.round((perQTimer.remaining / perQSeconds) * 100)))
     : undefined;
@@ -248,7 +259,7 @@ export default function ExamTakingPage() {
     if (!perQEnabled) return;
     // Simpan remaining soal sebelumnya (via ref, bukan state, agar tidak trigger re-render)
     return () => {
-      perQRemainingRef.current[currentIdx] = perQTimer.remaining;
+      perQRemainingRef.current[currentIdx] = perQCurrentRemainingRef.current;
     };
   }, [currentIdx, perQEnabled]);
 

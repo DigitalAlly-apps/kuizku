@@ -3,6 +3,7 @@
 // Replaces old localStorage implementation
 // ============================================================
 import { supabase } from '../lib/supabase';
+import { localDateTimeToIso } from './helpers';
 import type { Teacher, Exam, BankQuestion, Submission, StudentAnswer, BillingSnapshot, Subscription, Workspace, StudentRanking } from '../types';
 
 const PENDING_SUBMISSION_QUEUE_KEY = 'kuizku_pending_submission_queue';
@@ -307,8 +308,8 @@ export const storage = {
   },
 
   async saveExam(exam: Exam): Promise<{ error?: string }> {
-    const activeFrom = exam.activeFrom && exam.activeFrom.trim() !== '' ? exam.activeFrom : null;
-    const activeTo = exam.activeTo && exam.activeTo.trim() !== '' ? exam.activeTo : null;
+    const activeFrom = localDateTimeToIso(exam.activeFrom);
+    const activeTo = localDateTimeToIso(exam.activeTo);
 
     const examPayload = {
       id: exam.id,
@@ -376,8 +377,8 @@ export const storage = {
     if (data.subject !== undefined) payload.subject = data.subject;
     if (data.className !== undefined) payload.class_name = data.className || null;
     if (data.examType !== undefined) payload.exam_type = data.examType;
-    if (data.activeFrom !== undefined) payload.active_from = data.activeFrom || null;
-    if (data.activeTo !== undefined) payload.active_to = data.activeTo || null;
+    if (data.activeFrom !== undefined) payload.active_from = localDateTimeToIso(data.activeFrom);
+    if (data.activeTo !== undefined) payload.active_to = localDateTimeToIso(data.activeTo);
     if (data.status !== undefined) payload.status = data.status;
     if (data.settings !== undefined) payload.settings = data.settings;
 

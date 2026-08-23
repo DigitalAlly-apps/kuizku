@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock, FileText, Award, BookOpen, History, ArrowRight, Trash2, RotateCcw, Search } from 'lucide-react';
 import { storage } from '../../utils/storage';
-import { calcMaxMCScore } from '../../utils/helpers';
+import { calcMaxMCScore, formatDateTime } from '../../utils/helpers';
 import { APP_CONFIG } from '../../lib/appConfig';
 
 interface HistoryEntry {
@@ -23,11 +23,7 @@ interface HistoryEntry {
 const HISTORY_KEY = 'kuizku_student_history';
 
 function formatDate(iso?: string) {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('id-ID', {
-    day: '2-digit', month: 'short', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
+  return iso ? formatDateTime(iso) : '—';
 }
 
 function getScoreColor(score: number, max: number) {
