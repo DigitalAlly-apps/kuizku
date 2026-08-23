@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Hash, User, CreditCard, ListOrdered, Search, AlertCircle, ArrowRight, Clock, FileText, Calendar, History } from 'lucide-react';
+import { Hash, User, CreditCard, ListOrdered, Search, AlertCircle, ArrowRight, Clock, FileText, Calendar, History, Trophy, Play } from 'lucide-react';
 import { storage } from '../../utils/storage';
 import { loadSession } from '../../utils/examSession';
 import { formatDateTime, formatExamFormat, formatTimerMode } from '../../utils/helpers';
@@ -8,7 +8,7 @@ import { Spinner } from '../../components/ui';
 import type { Exam } from '../../types';
 import { APP_CONFIG } from '../../lib/appConfig';
 
-type Step = 'code' | 'identity' | 'resume';
+type Step = 'code' | 'actions' | 'identity' | 'resume';
 
 export default function JoinExamPage() {
   const navigate = useNavigate();
@@ -44,15 +44,14 @@ export default function JoinExamPage() {
       return;
     }
     const exam = lookup.exam;
-    if (exam.status !== 'ACTIVE') {
-      const msg = exam.status === 'DRAFT' ? 'Ujian ini belum dipublikasikan.' :
-                  exam.status === 'ENDED' ? 'Ujian ini sudah ditutup.' : 'Ujian ini sudah diarsipkan.';
+    if (exam.status === 'DRAFT' || exam.status === 'ARCHIVED') {
+      const msg = exam.status === 'DRAFT' ? 'Ujian ini belum dipublikasikan.' : 'Ujian ini sudah diarsipkan.';
       setError(msg);
       return;
     }
 
     setFoundExam(exam);
-    setStep('identity');
+    setStep('actions');
   };
 
   const handleFindExam = async (e: React.FormEvent) => {
@@ -104,6 +103,25 @@ export default function JoinExamPage() {
     }
   };
 
+  const handleStartExam = () => {
+    if (!foundExam) return;
+    const now = Date.now();
+    if (foundExam.status !== 'ACTIVE') {
+      setError('Ujian sudah ditutup dan tidak dapat dikerjakan. Anda masih dapat melihat ranking bila sudah dirilis.');
+      return;
+    }
+    if (foundExam.activeFrom && new Date(foundExam.activeFrom).getTime() > now) {
+      setError(`Ujian belum dimulai. Jadwal mulai: ${formatDateTime(foundExam.activeFrom)}.`);
+      return;
+    }
+    if (foundExam.activeTo && new Date(foundExam.activeTo).getTime() < now) {
+      setError(`Waktu ujian sudah berakhir. Batas waktu: ${formatDateTime(foundExam.activeTo)}.`);
+      return;
+    }
+    setError('');
+    setStep('identity');
+  };
+
   const handleResume = () => {
     // Fix #5: Validasi exam masih aktif sebelum resume
     if (!foundExam || foundExam.status !== 'ACTIVE') {
@@ -126,6 +144,10 @@ export default function JoinExamPage() {
 
   const totalQ = foundExam?.questions.length ?? 0;
   const totalPts = foundExam?.questions.reduce((s, q) => s + q.weight, 0) ?? 0;
+  const now = Date.now();
+  const canStart = !!foundExam && foundExam.status === 'ACTIVE'
+    && (!foundExam.activeFrom || new Date(foundExam.activeFrom).getTime() <= now)
+    && (!foundExam.activeTo || new Date(foundExam.activeTo).getTime() >= now);
 
   return (
     <div className="student-join-page" style={styles.page}>
@@ -200,6 +222,37 @@ export default function JoinExamPage() {
           </div>
         )}
 
+        {/* Step: Pilih tujuan setelah kode ditemukan. Ranking tidak membuat sesi ujian. */}
+        {step === 'actions' && foundExam && (
+          <div style={styles.card}>
+            <div style={styles.examPreview}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                <span style={{ fontFamily: 'monospace', fontWeight: 800, color: 'var(--primary)', fontSize: '0.9rem' }}>#{foundExam.code}</span>
+                <span className={`badge ${foundExam.format === 'PG_ONLY' ? 'badge-pg' : foundExam.format === 'ESSAY_ONLY' ? 'badge-essay' : 'badge-combo'}`}>{formatExamFormat(foundExam.format)}</span>
+              </div>
+              <h1 style={{ fontSize: '1.35rem', marginBottom: 4 }}>{foundExam.title}</h1>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>{foundExam.subject}</p>
+              <div style={{ display: 'flex', gap: 'var(--sp-4)', marginTop: 10, flexWrap: 'wrap' }}>
+                <span style={styles.metaItem}><Clock size={13} /> {formatTimerMode(foundExam.settings.timerMode)}</span>
+                {foundExam.activeFrom && <span style={styles.metaItem}><Calendar size={13} /> Mulai: {formatDateTime(foundExam.activeFrom)}</span>}
+                {foundExam.activeTo && <span style={styles.metaItem}><Calendar size={13} /> Batas: {formatDateTime(foundExam.activeTo)}</span>}
+              </div>
+            </div>
+
+            <h2 style={{ fontSize: '1.08rem', marginBottom: 4 }}>Apa yang ingin Anda lakukan?</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 'var(--sp-4)' }}>Pilih satu tujuan. Membuka ranking tidak akan memulai ujian.</p>
+
+            {error && <div style={styles.errorBox}><AlertCircle size={15} style={{ flexShrink: 0 }} />{error}</div>}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)', marginTop: error ? 'var(--sp-4)' : 0 }}>
+              {canStart ? <button type="button" className="btn btn-primary btn-lg w-full" style={{ justifyContent: 'center' }} onClick={handleStartExam}><Play size={17} /> Mulai Ujian</button> : <div style={{ padding: 'var(--sp-3)', borderRadius: 'var(--r-md)', background: 'var(--surface-2)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>{foundExam.status === 'ENDED' ? 'Ujian sudah ditutup. Pengerjaan tidak tersedia.' : foundExam.activeFrom && new Date(foundExam.activeFrom).getTime() > now ? `Ujian dapat dimulai ${formatDateTime(foundExam.activeFrom)}.` : 'Pengerjaan ujian tidak tersedia saat ini.'}</div>}
+              <button type="button" className="btn btn-secondary w-full" style={{ justifyContent: 'center' }} onClick={() => navigate(`/ujian/${foundExam.code}/ranking`)}><Trophy size={16} /> Lihat Ranking</button>
+              <button type="button" className="btn btn-ghost w-full" style={{ justifyContent: 'center' }} onClick={() => navigate('/riwayat')}><History size={16} /> Riwayat Saya</button>
+              <button type="button" className="btn btn-ghost btn-sm" style={{ justifyContent: 'center' }} onClick={() => { setStep('code'); setError(''); }}>Gunakan kode ujian lain</button>
+            </div>
+          </div>
+        )}
+
         {/* Step: Identity */}
         {step === 'identity' && foundExam && (
           <div style={styles.card}>
@@ -238,8 +291,8 @@ export default function JoinExamPage() {
               </div>
             </div>
 
-            <h2 style={{ marginBottom: 4, fontSize: '1.2rem' }}>Data Diri</h2>
-            <p style={styles.subtitle}>Isi nama Anda. Identitas nomor bersifat opsional.</p>
+            <h2 style={{ marginBottom: 4, fontSize: '1.2rem' }}>Data Diri untuk Mengerjakan</h2>
+            <p style={styles.subtitle}>Data ini dipakai untuk memverifikasi akses dan menyimpan jawaban Anda.</p>
 
             <form onSubmit={handleIdentitySubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
               <div className="form-group">
@@ -322,9 +375,9 @@ export default function JoinExamPage() {
               )}
 
               <div style={{ display: 'flex', gap: 'var(--sp-3)' }}>
-                <button type="button" className="btn btn-secondary" onClick={() => { setStep('code'); setError(''); }}>← Kembali</button>
+                <button type="button" className="btn btn-secondary" onClick={() => { setStep('actions'); setError(''); }}>← Kembali</button>
                 <button type="submit" className="btn btn-primary btn-lg" style={{ flex: 1, justifyContent: 'center' }} disabled={loading}>
-                  {loading ? <Spinner /> : <><ArrowRight size={16} /> Lihat Instruksi</>}
+                  {loading ? <Spinner /> : <><ArrowRight size={16} /> Lanjut ke Instruksi</>}
                 </button>
               </div>
             </form>

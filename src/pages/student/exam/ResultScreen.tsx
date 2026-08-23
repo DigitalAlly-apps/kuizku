@@ -40,24 +40,10 @@ export default function ResultScreen({ exam, submission, studentName }: Props) {
     };
   }, [exam.code, submission.id, submission.nis, showScore]);
 
-  // ---- Save to Supabase student_history + localStorage fallback ----
+  // ---- Save local student history ----
   useEffect(() => {
-    const entry = {
-      examCode: exam.code,
-      examTitle: exam.title,
-      studentName,
-      nis: submission.nis,
-      mcScore: submission.mcScore,
-      totalScore: submission.totalScore,
-      maxScore: maxMC,
-      submittedAt: submission.submittedAt ?? new Date().toISOString(),
-      showScore: exam.settings.showScoreAfterSubmit,
-    };
-
-    // Simpan ke Supabase (tidak perlu auth)
-    void storage.saveStudentHistory(entry);
-
-    // Tetap simpan ke localStorage sebagai fallback offline
+    // Riwayat murid adalah data perangkat ini. Submission dan nilai tetap
+    // tersimpan aman di server melalui alur submit, bukan tabel riwayat publik.
     try {
       const existing = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
       const localEntry = {

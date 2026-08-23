@@ -26,6 +26,7 @@ const JoinExamPage        = lazy(() => import('./pages/student/JoinExamPage'));
 const InstructionsPage    = lazy(() => import('./pages/student/InstructionsPage'));
 const ExamTakingPage      = lazy(() => import('./pages/student/ExamTakingPage'));
 const StudentHistoryPage  = lazy(() => import('./pages/student/StudentHistoryPage'));
+const StudentRankingPage  = lazy(() => import('./pages/student/StudentRankingPage'));
 
 function App() {
   return (
@@ -47,6 +48,7 @@ function App() {
             <Route path="/ujian/:code/instruksi"    element={<InstructionsPage />} />
             <Route path="/ujian/:code/siap"         element={<InstructionsPage />} />
             <Route path="/ujian/:code/kerjakan"     element={<ExamTakingPage />} />
+            <Route path="/ujian/:code/ranking"      element={<StudentRankingPage />} />
             <Route path="/riwayat"                  element={<StudentHistoryPage />} />
 
             {/* Teacher (protected by TeacherLayout) */}

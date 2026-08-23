@@ -472,6 +472,32 @@ export const storage = {
     };
   },
 
+  async getStudentRankingVisitor(examCode: string, name = '', identifier = ''): Promise<StudentRanking> {
+    const { data, error } = await supabase.rpc('get_student_exam_ranking_visitor', {
+      p_exam_code: examCode,
+      p_name: name,
+      p_identifier: identifier,
+    });
+    if (error) {
+      console.error('Error loading visitor student ranking:', error);
+      return { available: false, entries: [], reason: 'UNAVAILABLE' };
+    }
+    if (!data?.available) return { available: false, entries: [], reason: data?.reason ?? 'NOT_RELEASED' };
+    return {
+      available: true,
+      entries: Array.isArray(data.entries) ? data.entries.map((entry: { rank: number; studentName: string; score: number; maxScore: number; isCurrent?: boolean }) => ({
+        rank: Number(entry.rank),
+        studentName: String(entry.studentName),
+        score: Number(entry.score),
+        maxScore: Number(entry.maxScore),
+        isCurrent: entry.isCurrent === true,
+      })) : [],
+      currentRank: data.currentRank == null ? undefined : Number(data.currentRank),
+      totalParticipants: data.totalParticipants == null ? undefined : Number(data.totalParticipants),
+      maxScore: data.maxScore == null ? undefined : Number(data.maxScore),
+    };
+  },
+
   async saveSubmission(sub: Submission): Promise<SaveSubmissionResult> {
     const { data, error } = await supabase.rpc('save_student_submission', {
       p_submission: {
@@ -603,63 +629,6 @@ export const storage = {
     return {};
   },
 
-  // ---- Student History ----
-  async saveStudentHistory(entry: {
-    examCode: string;
-    examTitle: string;
-    studentName: string;
-    nis: string;
-    mcScore: number;
-    totalScore?: number;
-    maxScore: number;
-    submittedAt: string;
-    showScore: boolean;
-  }): Promise<void> {
-    await supabase.from('student_history').insert({
-      exam_code: entry.examCode,
-      exam_title: entry.examTitle,
-      student_name: entry.studentName,
-      nis: entry.nis,
-      mc_score: entry.mcScore,
-      total_score: entry.totalScore ?? null,
-      max_score: entry.maxScore,
-      submitted_at: entry.submittedAt,
-      show_score: entry.showScore,
-    });
-  },
-
-  async getStudentHistory(nis: string): Promise<Array<{
-    id: string;
-    examCode: string;
-    examTitle: string;
-    studentName: string;
-    nis: string;
-    mcScore: number;
-    totalScore?: number;
-    maxScore: number;
-    submittedAt: string;
-    showScore: boolean;
-  }>> {
-    const { data, error } = await supabase
-      .from('student_history')
-      .select('*')
-      .eq('nis', nis)
-      .order('submitted_at', { ascending: false })
-      .limit(100);
-    if (error || !data) return [];
-    return data.map(r => ({
-      id: r.id,
-      examCode: r.exam_code,
-      examTitle: r.exam_title,
-      studentName: r.student_name,
-      nis: r.nis,
-      mcScore: r.mc_score,
-      totalScore: r.total_score ?? undefined,
-      maxScore: r.max_score,
-      submittedAt: r.submitted_at,
-      showScore: r.show_score,
-    }));
-  },
 };
 
 // --- Parsers ---
