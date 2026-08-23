@@ -6,45 +6,45 @@
 
 /* ---- CSS Variables ---- */
 :root {
-  /* Light Mode (Professional & Sleek) */
-  --primary: #2563EB;
-  --primary-hover: #1D4ED8;
-  --primary-light: rgba(37, 99, 235, 0.1);
-  --secondary: #6366F1;
-  --secondary-light: rgba(99, 102, 241, 0.1);
-  --accent: #0284C7;
-  --accent-light: rgba(2, 132, 199, 0.1);
+  /* Light Mode — warm, calm, and practical for daily teaching */
+  --primary: #2F6B5F;
+  --primary-hover: #25564D;
+  --primary-light: #E4F0EA;
+  --secondary: #A85E3B;
+  --secondary-light: #F8E9E1;
+  --accent: #B97732;
+  --accent-light: #F8EEDC;
 
   /* Status Colors */
-  --success: #16A34A;
-  --success-light: rgba(22, 163, 74, 0.1);
-  --warning: #D97706;
-  --warning-light: rgba(217, 119, 6, 0.1);
-  --danger: #DC2626;
-  --danger-light: rgba(220, 38, 38, 0.1);
+  --success: #3C7A58;
+  --success-light: #E5F1E7;
+  --warning: #A66A20;
+  --warning-light: #FAEFD9;
+  --danger: #B64B45;
+  --danger-light: #F8E5E2;
 
   /* Surfaces */
-  --bg: #F8FAFC;
-  --bg-secondary: #F1F5F9;
-  --surface: #FFFFFF;
-  --surface-2: #F8FAFC;
-  --surface-3: #E2E8F0;
-  --border: #E2E8F0;
-  --border-strong: #CBD5E1;
+  --bg: #F6F1E8;
+  --bg-secondary: #EEE6D9;
+  --surface: #FFFDF8;
+  --surface-2: #F8F3EA;
+  --surface-3: #E8DED0;
+  --border: #E5DACC;
+  --border-strong: #D4C4B2;
 
   /* Text */
-  --text-primary: #0F172A;
-  --text-secondary: #475569;
-  --text-muted: #64748B;
+  --text-primary: #2C2925;
+  --text-secondary: #5D564E;
+  --text-muted: #7A7065;
   --text-inverse: #FFFFFF;
 
   /* Format Badge Colors */
-  --badge-pg: #2563EB;
-  --badge-pg-bg: rgba(37, 99, 235, 0.15);
-  --badge-essay: #7C3AED;
-  --badge-essay-bg: rgba(124, 58, 237, 0.15);
-  --badge-combo: #D97706;
-  --badge-combo-bg: rgba(217, 119, 6, 0.15);
+  --badge-pg: #2F6B5F;
+  --badge-pg-bg: #E4F0EA;
+  --badge-essay: #A85E3B;
+  --badge-essay-bg: #F8E9E1;
+  --badge-combo: #A66A20;
+  --badge-combo-bg: #FAEFD9;
 
   /* Status Badge */
   --badge-draft: #64748B;
@@ -77,9 +77,9 @@
 
   /* Shadow */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
-  --shadow-glow: 0 0 24px rgba(37, 99, 235, 0.25);
+  --shadow-md: 0 3px 12px rgba(79, 60, 39, 0.08);
+  --shadow-lg: 0 8px 24px rgba(79, 60, 39, 0.12);
+  --shadow-glow: 0 0 0 transparent;
 
   /* Typography */
   --font-heading: 'Plus Jakarta Sans', sans-serif;
@@ -271,15 +271,15 @@ p {
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--r-lg);
+  border-radius: var(--r-md);
   padding: var(--sp-6);
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .card:hover {
-  border-color: rgba(79, 110, 247, 0.3);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  border-color: var(--border-strong);
+  transform: none;
+  box-shadow: none;
 }
 
 .card-glass {

@@ -2,16 +2,19 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, Search, Copy, Edit2, Trash2, BarChart2, Archive, Play, MoreVertical, FileText, Users, ChevronDown, ChevronRight, CheckCircle2, Clock, X, Save, Loader2, Calendar, Share2, QrCode } from 'lucide-react';
 import { useApp, useToast } from '../../context/AppContext';
-import { FormatBadge, StatusBadge, ExamTypeBadge, EmptyState, ConfirmDialog, Modal } from '../../components/ui';
+import { FormatBadge, ExamTypeBadge, EmptyState, ConfirmDialog, Modal } from '../../components/ui';
 import DateTime24Input from '../../components/ui/DateTime24Input';
 import { formatDateTime, formatRelative, isoToLocalDateTimeInput } from '../../utils/helpers';
-import type { Exam, ExamStatus, ExamType } from '../../types';
+import type { Exam, ExamType } from '../../types';
 
-const STATUS_FILTERS: { label: string; value: ExamStatus | 'ALL' }[] = [
+type ExamAvailability = 'DRAFT' | 'UPCOMING' | 'ACTIVE' | 'FINISHED' | 'ARCHIVED';
+
+const STATUS_FILTERS: { label: string; value: ExamAvailability | 'ALL' }[] = [
   { label: 'Semua', value: 'ALL' },
   { label: 'Draft', value: 'DRAFT' },
+  { label: 'Akan Datang', value: 'UPCOMING' },
   { label: 'Aktif', value: 'ACTIVE' },
-  { label: 'Selesai', value: 'ENDED' },
+  { label: 'Selesai', value: 'FINISHED' },
   { label: 'Diarsipkan', value: 'ARCHIVED' },
 ];
 
@@ -22,8 +25,24 @@ const TYPE_FILTERS: { label: string; value: ExamType | 'ALL' }[] = [
   { label: '🎯 Latihan', value: 'LATIHAN' },
 ];
 
-function formatDeadline(iso?: string): string {
-  return iso ? formatDateTime(iso) : '';
+function getAvailability(exam: Exam, now = Date.now()): ExamAvailability {
+  if (exam.status === 'DRAFT') return 'DRAFT';
+  if (exam.status === 'ARCHIVED') return 'ARCHIVED';
+  if (exam.status === 'ENDED') return 'FINISHED';
+  if (exam.activeTo && new Date(exam.activeTo).getTime() < now) return 'FINISHED';
+  if (exam.activeFrom && new Date(exam.activeFrom).getTime() > now) return 'UPCOMING';
+  return 'ACTIVE';
+}
+
+function formatSchedule(exam: Exam): string {
+  if (!exam.activeFrom && !exam.activeTo) return 'Mulai setelah dipublikasikan • tanpa batas waktu';
+  if (!exam.activeFrom) return `Mulai setelah dipublikasikan • berakhir ${formatDateTime(exam.activeTo!)}`;
+  if (!exam.activeTo) return `Mulai ${formatDateTime(exam.activeFrom!)} • tanpa batas waktu`;
+  const from = new Date(exam.activeFrom);
+  const to = new Date(exam.activeTo);
+  const sameDay = from.toDateString() === to.toDateString();
+  if (sameDay) return `${from.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} • ${from.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false })}–${to.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
+  return `${formatDateTime(exam.activeFrom)} → ${formatDateTime(exam.activeTo)}`;
 }
 
 export default function ExamListPage() {
@@ -33,7 +52,7 @@ export default function ExamListPage() {
   const [searchParams] = useSearchParams();
 
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<ExamStatus | 'ALL'>((searchParams.get('status') as ExamStatus) ?? 'ALL');
+  const [statusFilter, setStatusFilter] = useState<ExamAvailability | 'ALL'>((searchParams.get('status') as ExamAvailability) ?? 'ALL');
   const [typeFilter, setTypeFilter] = useState<ExamType | 'ALL'>('ALL');
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -80,7 +99,7 @@ export default function ExamListPage() {
 
   const filtered = useMemo(() => {
     let list = myExams;
-    if (statusFilter !== 'ALL') list = list.filter(e => e.status === statusFilter);
+    if (statusFilter !== 'ALL') list = list.filter(e => getAvailability(e) === statusFilter);
     if (typeFilter !== 'ALL') list = list.filter(e => (e.examType ?? 'UJIAN') === typeFilter);
     if (search.trim()) list = list.filter(e =>
       e.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -88,7 +107,8 @@ export default function ExamListPage() {
       (e.className || '').toLowerCase().includes(search.toLowerCase()) ||
       e.code.includes(search.toUpperCase())
     );
-    return [...list].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    const priority: Record<ExamAvailability, number> = { ACTIVE: 0, UPCOMING: 1, DRAFT: 2, FINISHED: 3, ARCHIVED: 4 };
+    return [...list].sort((a, b) => priority[getAvailability(a)] - priority[getAvailability(b)] || new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }, [myExams, statusFilter, typeFilter, search]);
 
   const grouped = useMemo(() => {
@@ -255,8 +275,16 @@ export default function ExamListPage() {
     const preloadedCount = exam.preloadedStudents?.length ?? 0;
     const submittedCount = examSubs.length;
     const notSubmitted = preloadedCount > 0 ? preloadedCount - submittedCount : null;
-    const hasDeadline = !!exam.activeTo;
-    const isPastDeadline = hasDeadline && new Date(exam.activeTo!) < new Date();
+    const availability = getAvailability(exam);
+    const isDraftPastStart = availability === 'DRAFT' && !!exam.activeFrom && new Date(exam.activeFrom).getTime() < Date.now();
+    const availabilityStyle: Record<ExamAvailability, { label: string; color: string; bg: string }> = {
+      DRAFT: { label: 'DRAFT', color: 'var(--text-muted)', bg: 'var(--surface-2)' },
+      UPCOMING: { label: 'BELUM DIMULAI', color: 'var(--warning)', bg: 'var(--warning-light)' },
+      ACTIVE: { label: 'AKTIF', color: 'var(--success)', bg: 'var(--success-light)' },
+      FINISHED: { label: 'SELESAI', color: 'var(--danger)', bg: 'var(--danger-light)' },
+      ARCHIVED: { label: 'ARSIP', color: 'var(--text-muted)', bg: 'var(--surface-2)' },
+    };
+    const status = availabilityStyle[availability];
 
     return (
       <div key={exam.id} className="exam-card" style={{ position: 'relative', zIndex: openMenuId === exam.id ? 10 : undefined }}
@@ -265,7 +293,7 @@ export default function ExamListPage() {
           <div className="exam-card-badges">
             <ExamTypeBadge examType={exam.examType} />
             <FormatBadge format={exam.format} />
-            <StatusBadge status={exam.status} activeTo={exam.activeTo} />
+            <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: 'var(--r-sm)', color: status.color, background: status.bg, fontWeight: 800 }}>{status.label}</span>
             {exam.className && (
               <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: 'var(--r-sm)', background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 600 }}>
                 {exam.className}
@@ -363,13 +391,16 @@ export default function ExamListPage() {
               <CheckCircle2 size={13} /> Semua selesai
             </span>
           )}
-          {hasDeadline && (
-            <span className="exam-card-meta-item" style={{ color: isPastDeadline ? 'var(--danger)' : 'var(--text-muted)' }}>
-              <Calendar size={13} /> {formatDeadline(exam.activeTo)}
-            </span>
-          )}
+          <span className="exam-card-meta-item"><Calendar size={13} /> {formatSchedule(exam)}</span>
           <span className="exam-card-meta-item" style={{ fontFamily: 'monospace', color: 'var(--primary)', fontWeight: 700 }}>#{exam.code}</span>
           <span className="exam-card-meta-item" style={{ marginLeft: 'auto' }}>{formatRelative(exam.updatedAt)}</span>
+        </div>
+        {isDraftPastStart && <div style={{ marginTop: 8, fontSize: '0.8rem', color: 'var(--warning)', fontWeight: 600 }}>Jadwal mulai sudah lewat. Ujian tetap belum dapat diakses karena belum dipublikasikan.</div>}
+        <div style={{ display: 'flex', gap: 8, marginTop: 'var(--sp-3)', flexWrap: 'wrap' }} onClick={event => event.stopPropagation()}>
+          {availability === 'DRAFT' && <button className="btn btn-primary btn-sm" onClick={() => handlePublish(exam.id)}><Play size={14} /> {isDraftPastStart ? 'Publikasikan Sekarang' : 'Publikasikan'}</button>}
+          {availability === 'ACTIVE' && <><button className="btn btn-primary btn-sm" onClick={() => navigate(`/guru/ujian/${exam.id}`)}>Buka Ujian</button><button className="btn btn-secondary btn-sm" onClick={() => shareWhatsApp(exam.code, exam.title)}><Share2 size={14} /> Bagikan</button></>}
+          {availability === 'UPCOMING' && <button className="btn btn-secondary btn-sm" onClick={() => copyLink(exam.code)}><Share2 size={14} /> Bagikan</button>}
+          {availability === 'FINISHED' && <button className="btn btn-primary btn-sm" onClick={() => navigate(`/guru/hasil?exam=${exam.id}`)}><BarChart2 size={14} /> Lihat Hasil</button>}
         </div>
       </div>
     );
@@ -525,14 +556,18 @@ export default function ExamListPage() {
               <label className="form-label">Deskripsi</label>
               <textarea className="form-textarea" rows={2} value={editDesc} onChange={e => setEditDesc(e.target.value)} />
             </div>
-            {/* Deadline */}
+            {/* Jadwal akses */}
+            <div>
+              <div className="form-label" style={{ marginBottom: 4 }}>Jadwal Akses</div>
+              <p className="form-hint" style={{ margin: 0 }}>Murid hanya dapat mengakses ujian selama periode ini setelah ujian dipublikasikan.</p>
+            </div>
             <div className="exam-edit-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-3)' }}>
               <div className="form-group">
-                <label className="form-label">Aktif Mulai</label>
+                <label className="form-label">Mulai</label>
                 <DateTime24Input id="edit-active-from" value={editFrom} onChange={setEditFrom} />
               </div>
               <div className="form-group">
-                <label className="form-label">Deadline / Aktif Hingga</label>
+                <label className="form-label">Berakhir</label>
                 <DateTime24Input id="edit-active-to" value={editTo} onChange={setEditTo} />
               </div>
             </div>

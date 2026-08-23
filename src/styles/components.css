@@ -58,7 +58,8 @@
 
 .sidebar-logo-icon {
   width: 36px; height: 36px;
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  background: var(--primary-light);
+  border: 1px solid rgba(47, 107, 95, 0.2);
   border-radius: var(--r-md);
   display: flex; align-items: center; justify-content: center;
   font-size: 1.1rem;
@@ -69,10 +70,7 @@
   font-family: var(--font-heading);
   font-weight: 800;
   font-size: 1.2rem;
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--text-primary);
 }
 
 .sidebar-nav {
@@ -134,7 +132,7 @@
 .sidebar-avatar {
   width: 36px; height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  background: var(--primary);
   display: flex; align-items: center; justify-content: center;
   font-size: 0.875rem;
   font-weight: 700;
@@ -150,8 +148,8 @@
 .header {
   position: sticky; top: 0;
   height: var(--header-height);
-  background: rgba(12, 14, 26, 0.85);
-  backdrop-filter: blur(12px);
+  background: rgba(255, 253, 248, 0.94);
+  backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -219,8 +217,8 @@
 
 .exam-card:hover {
   border-color: var(--border-strong);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  transform: none;
+  box-shadow: none;
 }
 
 /* ---- Exam workspace ---- */
