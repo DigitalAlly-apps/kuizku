@@ -697,6 +697,17 @@
   gap: var(--sp-3);
 }
 
+.datetime-24-input { display: flex; gap: var(--sp-2); align-items: center; }
+.datetime-24-input > input { min-width: 0; flex: 1; }
+.datetime-24-time { display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto; font-weight: 800; }
+.datetime-24-time select { width: 62px; min-height: 42px; padding: 0 6px; text-align: center; }
+
+@media (max-width: 520px) {
+  .datetime-24-input { align-items: stretch; flex-direction: column; }
+  .datetime-24-time { width: 100%; }
+  .datetime-24-time select { flex: 1; width: auto; }
+}
+
 .student-access-choice button {
   display: flex;
   min-height: 76px;

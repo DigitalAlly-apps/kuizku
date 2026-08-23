@@ -1,6 +1,7 @@
 // Step 1 — General Settings
 import { useState } from 'react';
 import { Toggle } from '../../../components/ui';
+import DateTime24Input from '../../../components/ui/DateTime24Input';
 import type { ExamSettings, ExamType, PreloadedStudent } from '../../../types';
 
 interface Props {
@@ -137,11 +138,13 @@ export default function Step1Setup({ initial, onNext }: Props) {
         <div className="form-row form-row-2">
           <div className="form-group">
             <label className="form-label" htmlFor="s1-from">Aktif Mulai (opsional)</label>
-            <input id="s1-from" type="datetime-local" className="form-input" value={activeFrom} onChange={e => setActiveFrom(e.target.value)} />
+            <DateTime24Input id="s1-from" value={activeFrom} onChange={setActiveFrom} />
+            <span className="form-hint">Gunakan format 24 jam, misalnya 16:30.</span>
           </div>
           <div className="form-group">
             <label className="form-label" htmlFor="s1-to">Aktif Hingga (opsional)</label>
-            <input id="s1-to" type="datetime-local" className="form-input" value={activeTo} onChange={e => setActiveTo(e.target.value)} />
+            <DateTime24Input id="s1-to" value={activeTo} onChange={setActiveTo} />
+            <span className="form-hint">Gunakan format 24 jam, misalnya 16:30.</span>
           </div>
         </div>
 

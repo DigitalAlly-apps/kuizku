@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, Search, Copy, Edit2, Trash2, BarChart2, Archive, Play, MoreVertical, FileText, Users, ChevronDown, ChevronRight, CheckCircle2, Clock, X, Save, Loader2, Calendar, Share2, QrCode } from 'lucide-react';
 import { useApp, useToast } from '../../context/AppContext';
 import { FormatBadge, StatusBadge, ExamTypeBadge, EmptyState, ConfirmDialog, Modal } from '../../components/ui';
+import DateTime24Input from '../../components/ui/DateTime24Input';
 import { formatDateTime, formatRelative, isoToLocalDateTimeInput } from '../../utils/helpers';
 import type { Exam, ExamStatus, ExamType } from '../../types';
 
@@ -528,11 +529,11 @@ export default function ExamListPage() {
             <div className="exam-edit-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-3)' }}>
               <div className="form-group">
                 <label className="form-label">Aktif Mulai</label>
-                <input type="datetime-local" className="form-input" value={editFrom} onChange={e => setEditFrom(e.target.value)} />
+                <DateTime24Input id="edit-active-from" value={editFrom} onChange={setEditFrom} />
               </div>
               <div className="form-group">
                 <label className="form-label">Deadline / Aktif Hingga</label>
-                <input type="datetime-local" className="form-input" value={editTo} onChange={e => setEditTo(e.target.value)} />
+                <DateTime24Input id="edit-active-to" value={editTo} onChange={setEditTo} />
               </div>
             </div>
             {/* Akses Peserta */}
