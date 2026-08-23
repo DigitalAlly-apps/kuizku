@@ -1,4 +1,6 @@
-// QuestionNav — sidebar panel of numbered question buttons
+// QuestionNav — sidebar desktop and bottom sheet mobile
+import { useEffect } from 'react';
+import { X } from 'lucide-react';
 import type { Question } from '../../../types';
 
 interface Props {
@@ -7,111 +9,72 @@ interface Props {
   answeredIds: Set<string>;
   onGoTo: (idx: number) => void;
   onReview: () => void;
+  mobileOpen: boolean;
+  onCloseMobile: () => void;
 }
 
-export default function QuestionNav({ questions, currentIdx, answeredIds, onGoTo, onReview }: Props) {
+function QuestionGrid({ questions, currentIdx, answeredIds, onGoTo, onPick }: {
+  questions: Question[]; currentIdx: number; answeredIds: Set<string>;
+  onGoTo: (idx: number) => void; onPick?: () => void;
+}) {
+  return <div className="question-nav-grid">
+    {questions.map((q, idx) => {
+      const isAnswered = answeredIds.has(q.id);
+      const isCurrent = idx === currentIdx;
+      return <button key={q.id} type="button" onClick={() => { onGoTo(idx); onPick?.(); }}
+        title={`Soal ${idx + 1}${isAnswered ? ' (sudah dijawab)' : ' (belum dijawab)'}`}
+        aria-label={`Soal ${idx + 1}, ${isCurrent ? 'sedang dibuka' : isAnswered ? 'sudah dijawab' : 'belum dijawab'}`}
+        className={`question-nav-number ${isCurrent ? 'is-current' : ''} ${isAnswered ? 'is-answered' : ''}`}>
+        <span>{idx + 1}</span>
+        {isAnswered && <span aria-hidden="true" className="question-nav-check">✓</span>}
+        {isCurrent && <span aria-hidden="true" className="question-nav-current-dot" />}
+      </button>;
+    })}
+  </div>;
+}
+
+function QuestionNavContent({ questions, currentIdx, answeredIds, onGoTo, onPick, onReview }: Props & { onPick?: () => void }) {
   const answered = answeredIds.size;
   const unanswered = questions.length - answered;
+  return <>
+    <div className="question-nav-heading">Navigasi Soal</div>
+    <div className="question-nav-legend">
+      <span><i className="legend-dot answered" /> Dijawab</span>
+      <span><i className="legend-dot unanswered" /> Belum</span>
+      <span><i className="legend-dot current" /> Aktif</span>
+    </div>
+    <QuestionGrid questions={questions} currentIdx={currentIdx} answeredIds={answeredIds} onGoTo={onGoTo} onPick={onPick} />
+    <div className="question-nav-summary">
+      <div><span>Dijawab</span><strong className="answered-text">{answered}</strong></div>
+      <div><span>Belum</span><strong className={unanswered > 0 ? 'unanswered-text' : 'answered-text'}>{unanswered}</strong></div>
+    </div>
+    {currentIdx === questions.length - 1 && <button type="button" className="btn btn-secondary btn-sm question-nav-submit" onClick={onReview}>
+      Selesai &amp; Periksa Jawaban
+    </button>}
+  </>;
+}
 
-  return (
-    <aside className="question-nav-panel" style={{
-      width: 220, flexShrink: 0,
-      background: 'var(--surface)',
-      borderLeft: '1px solid var(--border)',
-      display: 'flex', flexDirection: 'column',
-      padding: 'var(--sp-4)',
-      overflowY: 'auto',
-    }}>
-      <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--sp-3)' }}>
-        Navigasi Soal
-      </div>
+export default function QuestionNav(props: Props) {
+  const { mobileOpen, onCloseMobile } = props;
 
-      {/* Legend */}
-      <div style={{ display: 'flex', gap: 'var(--sp-3)', marginBottom: 'var(--sp-4)', flexWrap: 'wrap' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-          <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--success)', display: 'inline-block' }} />
-          Dijawab
-        </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-          <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--border-strong)', display: 'inline-block' }} />
-          Belum
-        </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-          <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--primary)', display: 'inline-block' }} />
-          Aktif
-        </span>
-      </div>
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') onCloseMobile(); };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [mobileOpen, onCloseMobile]);
 
-      {/* Number grid */}
-      <div className="question-nav-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--sp-2)', marginBottom: 'var(--sp-5)' }}>
-        {questions.map((q, idx) => {
-          const isAnswered = answeredIds.has(q.id);
-          const isCurrent = idx === currentIdx;
-          return (
-              <button
-                key={q.id}
-                onClick={() => onGoTo(idx)}
-                title={`Soal ${idx + 1}${isAnswered ? ' (sudah dijawab)' : ' (belum dijawab)'}`}
-                aria-label={`Soal ${idx + 1}, ${isCurrent ? 'sedang dibuka' : isAnswered ? 'sudah dijawab' : 'belum dijawab'}`}
-                style={{
-                  position: 'relative',
-                  width: '100%', aspectRatio: '1',
-                  borderRadius: 'var(--r-sm)',
-                  border: `2px solid ${isCurrent ? 'var(--primary)' : isAnswered ? 'var(--success)' : 'var(--border-strong)'}`,
-                background: isCurrent ? 'var(--primary)' : isAnswered ? 'var(--success-light)' : 'var(--surface-2)',
-                color: isCurrent ? 'white' : isAnswered ? 'var(--success)' : 'var(--text-muted)',
-                fontWeight: isCurrent || isAnswered ? 700 : 400,
-                fontSize: '0.8rem',
-                cursor: 'pointer',
-                  transition: 'all 0.12s ease',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  boxShadow: isCurrent ? '0 0 0 2px var(--primary-light)' : 'none',
-                }}
-              >
-                <span>{idx + 1}</span>
-                {isAnswered && (
-                  <span aria-hidden="true" style={{
-                    position: 'absolute', right: 2, bottom: 1,
-                    fontSize: '0.58rem', lineHeight: 1, fontWeight: 900,
-                    color: isCurrent ? 'white' : 'var(--success)',
-                  }}>✓</span>
-                )}
-                {isCurrent && (
-                  <span aria-hidden="true" style={{
-                    position: 'absolute', left: 3, top: 3,
-                    width: 5, height: 5, borderRadius: '50%',
-                    background: 'currentColor', opacity: 0.9,
-                  }} />
-                )}
-              </button>
-            );
-          })}
-      </div>
-
-      {/* Summary */}
-      <div style={{ padding: 'var(--sp-3)', background: 'var(--surface-2)', borderRadius: 'var(--r-md)', marginBottom: 'var(--sp-4)', fontSize: '0.78rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-          <span style={{ color: 'var(--text-muted)' }}>Dijawab</span>
-          <span style={{ color: 'var(--success)', fontWeight: 700 }}>{answered}</span>
+  return <>
+    <aside className="question-nav-panel"><QuestionNavContent {...props} /></aside>
+    {mobileOpen && <div className="question-nav-mobile-overlay" role="presentation"
+      onClick={event => { if (event.target === event.currentTarget) onCloseMobile(); }}>
+      <section className="question-nav-mobile-sheet" role="dialog" aria-modal="true" aria-label="Daftar soal">
+        <div className="question-nav-mobile-header">
+          <div><strong>Daftar Soal</strong><span>Pilih soal yang ingin dibuka</span></div>
+          <button type="button" className="btn btn-ghost btn-icon" onClick={onCloseMobile} aria-label="Tutup daftar soal"><X size={20} /></button>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span style={{ color: 'var(--text-muted)' }}>Belum</span>
-          <span style={{ color: unanswered > 0 ? 'var(--warning)' : 'var(--success)', fontWeight: 700 }}>{unanswered}</span>
-        </div>
-      </div>
-
-      {/* The final action only appears after the last question, so it cannot be
-          mistaken for the primary "Berikutnya" navigation action. */}
-      {currentIdx === questions.length - 1 && (
-        <button
-          type="button"
-          className="btn btn-secondary btn-sm w-full question-nav-submit"
-          style={{ justifyContent: 'center', marginTop: 'auto' }}
-          onClick={onReview}
-        >
-          Selesai &amp; Periksa Jawaban
-        </button>
-      )}
-    </aside>
-  );
+        <QuestionNavContent {...props} onPick={onCloseMobile} />
+      </section>
+    </div>}
+  </>;
 }

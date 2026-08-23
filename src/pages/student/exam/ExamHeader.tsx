@@ -15,11 +15,13 @@ interface Props {
   perQRemaining?: number;
   perQUrgency?: string;
   perQProgressPct?: number;
+  onOpenQuestionList?: () => void;
 }
 
 export default function ExamHeader({
   examTitle, studentName, currentIdx, total, answeredCount,
   timerMode, wholeRemaining, wholeUrgency, perQRemaining, perQUrgency, perQProgressPct,
+  onOpenQuestionList,
 }: Props) {
   const urgencyColor = (u?: string) =>
     u === 'critical' ? 'var(--danger)' : u === 'warning' ? 'var(--warning)' : 'var(--text-primary)';
@@ -66,6 +68,12 @@ export default function ExamHeader({
               {formatTimer(wholeRemaining)}
             </span>
           </div>
+        )}
+
+        {onOpenQuestionList && (
+          <button type="button" className="exam-question-list-trigger" onClick={onOpenQuestionList} aria-label="Buka daftar soal">
+            Daftar Soal
+          </button>
         )}
 
         {/* Question counter */}

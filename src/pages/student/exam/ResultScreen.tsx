@@ -1,9 +1,9 @@
 // ResultScreen — shown after student submits
-import { useEffect } from 'react';
-import { CheckCircle, Clock, BookOpen, Home, History } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { CheckCircle, Clock, BookOpen, Home, History, Trophy } from 'lucide-react';
 import { formatDateTime, calcMaxMCScore } from '../../../utils/helpers';
 import { storage } from '../../../utils/storage';
-import type { Exam, Submission } from '../../../types';
+import type { Exam, Submission, StudentRanking } from '../../../types';
 
 interface Props {
   exam: Exam;
@@ -20,6 +20,24 @@ export default function ResultScreen({ exam, submission, studentName }: Props) {
   const showAnswerKey = exam.settings.showAnswerKeyAfterSubmit && exam.status === 'ENDED';
   const maxMC         = calcMaxMCScore(exam);
   const mcPct         = maxMC > 0 ? Math.round((submission.mcScore / maxMC) * 100) : 0;
+  const [ranking, setRanking] = useState<StudentRanking | null>(null);
+
+  useEffect(() => {
+    if (!showScore) return;
+    let cancelled = false;
+    const loadRanking = () => storage.getStudentRanking(exam.code, submission.id, submission.nis).then(result => {
+      if (!cancelled) setRanking(result);
+    });
+
+    // Essay scores may be completed after this page is opened. Refresh the
+    // small ranking payload periodically without exposing it while grading is pending.
+    void loadRanking();
+    const refreshId = window.setInterval(() => { void loadRanking(); }, 10000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(refreshId);
+    };
+  }, [exam.code, submission.id, submission.nis, showScore]);
 
   // ---- Save to Supabase student_history + localStorage fallback ----
   useEffect(() => {
@@ -122,6 +140,45 @@ export default function ResultScreen({ exam, submission, studentName }: Props) {
             </div>
           )}
         </div>
+
+        {showScore && ranking?.available && (
+          <div className="student-ranking-card">
+            <div className="student-ranking-header">
+              <div>
+                <div className="student-ranking-eyebrow"><Trophy size={15} /> Ranking Kelas</div>
+                <h2>Posisi Anda #{ranking.currentRank ?? '—'}</h2>
+                <p>{ranking.totalParticipants ?? 0} peserta • skor terbaik per murid</p>
+              </div>
+              <div className="student-ranking-medal">🏆</div>
+            </div>
+            <div className="student-ranking-list">
+              {ranking.entries.slice(0, 10).map(entry => (
+                <div key={`${entry.rank}-${entry.studentName}`} className={`student-ranking-row ${entry.isCurrent ? 'is-you' : ''}`}>
+                  <span className="student-ranking-rank">{entry.rank}</span>
+                  <span className="student-ranking-name">{entry.studentName}{entry.isCurrent && ' (Anda)'}</span>
+                  <strong>{entry.score}/{entry.maxScore}</strong>
+                </div>
+              ))}
+              {ranking.currentRank != null && ranking.currentRank > 10 && (() => {
+                const current = ranking.entries.find(entry => entry.isCurrent);
+                return current ? <>
+                  <div className="student-ranking-more">•••</div>
+                  <div className="student-ranking-row is-you">
+                    <span className="student-ranking-rank">{current.rank}</span>
+                    <span className="student-ranking-name">{current.studentName} (Anda)</span>
+                    <strong>{current.score}/{current.maxScore}</strong>
+                  </div>
+                </> : null;
+              })()}
+            </div>
+          </div>
+        )}
+
+        {showScore && ranking && !ranking.available && (
+          <div className="student-ranking-unavailable">
+            <Trophy size={18} /> Ranking belum tersedia untuk ujian ini.
+          </div>
+        )}
 
         {/* ---- Answer Review ---- */}
         {showAnswerKey && (

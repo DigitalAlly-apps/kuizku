@@ -3,7 +3,7 @@
 // Replaces old localStorage implementation
 // ============================================================
 import { supabase } from '../lib/supabase';
-import type { Teacher, Exam, BankQuestion, Submission, StudentAnswer, BillingSnapshot, Subscription, Workspace } from '../types';
+import type { Teacher, Exam, BankQuestion, Submission, StudentAnswer, BillingSnapshot, Subscription, Workspace, StudentRanking } from '../types';
 
 const PENDING_SUBMISSION_QUEUE_KEY = 'kuizku_pending_submission_queue';
 
@@ -369,9 +369,15 @@ export const storage = {
   },
 
   async deleteExam(id: string): Promise<MutationResult> {
-    const { data, error } = await supabase.from('exams').delete().eq('id', id).select('id').maybeSingle();
-    if (error) return { success: false, error: error.message };
-    if (!data) return { success: false, error: 'Ujian tidak ditemukan atau Anda tidak memiliki izin untuk menghapusnya.' };
+    const { data, error } = await supabase.rpc('delete_teacher_exam', { p_exam_id: id });
+    if (error) {
+      console.error('Error deleting exam:', error);
+      if (error.code === '42501' || error.message.toLowerCase().includes('not authorized')) {
+        return { success: false, error: 'Anda tidak memiliki izin untuk menghapus ujian ini.' };
+      }
+      return { success: false, error: 'Gagal menghapus ujian. Data ujian belum dihapus. Silakan coba lagi.' };
+    }
+    if (!data?.success) return { success: false, error: 'Ujian tidak ditemukan atau Anda tidak memiliki izin untuk menghapusnya.' };
     return { success: true };
   },
 
@@ -408,6 +414,34 @@ export const storage = {
     if (error) throw new Error(`Gagal memuat riwayat murid: ${error.message}`);
     if (!data) return [];
     return data.map(dbToSubmission);
+  },
+
+  async getStudentRanking(examCode: string, submissionId: string, nis: string): Promise<StudentRanking> {
+    const { data, error } = await supabase.rpc('get_student_exam_ranking', {
+      p_exam_code: examCode,
+      p_submission_id: submissionId,
+      p_identifier: nis,
+    });
+    if (error) {
+      console.error('Error loading student ranking:', error);
+      return { available: false, entries: [], reason: 'UNAVAILABLE' };
+    }
+    if (!data?.available) {
+      return { available: false, entries: [], reason: data?.reason ?? 'NOT_RELEASED' };
+    }
+    return {
+      available: true,
+      entries: Array.isArray(data.entries) ? data.entries.map((entry: { rank: number; studentName: string; score: number; maxScore: number; isCurrent?: boolean }) => ({
+        rank: Number(entry.rank),
+        studentName: String(entry.studentName),
+        score: Number(entry.score),
+        maxScore: Number(entry.maxScore),
+        isCurrent: entry.isCurrent === true,
+      })) : [],
+      currentRank: data.currentRank == null ? undefined : Number(data.currentRank),
+      totalParticipants: data.totalParticipants == null ? undefined : Number(data.totalParticipants),
+      maxScore: data.maxScore == null ? undefined : Number(data.maxScore),
+    };
   },
 
   async saveSubmission(sub: Submission): Promise<SaveSubmissionResult> {

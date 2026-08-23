@@ -40,6 +40,7 @@ export default function ExamTakingPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [showSubmit, setShowSubmit] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitPending, setSubmitPending] = useState(false);
   const [submittedData, setSubmittedData] = useState<ReturnType<typeof buildSubmission> | null>(null);
@@ -345,6 +346,7 @@ export default function ExamTakingPage() {
         perQRemaining={perQEnabled ? perQTimer.remaining : undefined}
         perQUrgency={perQTimer.urgency}
         perQProgressPct={perQProgressPct}
+        onOpenQuestionList={() => setMobileNavOpen(true)}
       />
 
       {/* Anti-cheat warning banner */}
@@ -369,7 +371,7 @@ export default function ExamTakingPage() {
             />
 
             {/* Navigation buttons */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--sp-6)', gap: 'var(--sp-3)' }}>
+            <div className="exam-inline-navigation" style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--sp-6)', gap: 'var(--sp-3)' }}>
               <button className="btn btn-secondary" onClick={goPrev} disabled={currentIdx === 0}>
                 ← Sebelumnya
               </button>
@@ -393,7 +395,24 @@ export default function ExamTakingPage() {
           answeredIds={answeredIds}
           onGoTo={goTo}
           onReview={() => setShowSubmit(true)}
+          mobileOpen={mobileNavOpen}
+          onCloseMobile={() => setMobileNavOpen(false)}
         />
+      </div>
+
+      <div className="exam-mobile-navigation">
+        <button type="button" className="btn btn-secondary" onClick={goPrev} disabled={currentIdx === 0}>
+          ← Sebelumnya
+        </button>
+        {currentIdx < questions.length - 1 ? (
+          <button type="button" className="btn btn-primary" onClick={goNextBtn}>
+            Berikutnya →
+          </button>
+        ) : (
+          <button type="button" className="btn btn-secondary" onClick={() => setShowSubmit(true)}>
+            Periksa Jawaban →
+          </button>
+        )}
       </div>
 
       {/* Submit confirmation dialog */}
