@@ -1,7 +1,9 @@
 
 [functions.suggest-essay-grades]
 enabled = true
-verify_jwt = true
+# Auth tetap diverifikasi oleh withSupabase({ auth: "user" }) di dalam function.
+# Gateway legacy dimatikan agar access token dengan signing key baru tidak ditolak sebelum handler berjalan.
+verify_jwt = false
 import_map = "./functions/suggest-essay-grades/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx

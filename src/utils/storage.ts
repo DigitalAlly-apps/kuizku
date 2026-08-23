@@ -3,6 +3,7 @@
 // Replaces old localStorage implementation
 // ============================================================
 import { supabase } from '../lib/supabase';
+import { FunctionsFetchError, FunctionsHttpError, FunctionsRelayError } from '@supabase/supabase-js';
 import { localDateTimeToIso } from './helpers';
 import type { Teacher, Exam, BankQuestion, QuestionCollection, Submission, StudentAnswer, BillingSnapshot, Subscription, Workspace, StudentRanking, AiGradingSuggestion, AiGradingSuggestionStatus } from '../types';
 
@@ -33,6 +34,40 @@ export interface MutationResult {
   totalScore?: number;
   essayGradedCount?: number;
   essayCount?: number;
+}
+
+const AI_GRADING_ERROR_MESSAGES: Record<string, string> = {
+  unauthorized: 'Sesi guru sudah berakhir. Silakan login ulang lalu coba lagi.',
+  forbidden: 'Ujian ini tidak dapat dinilai oleh akun guru yang sedang login.',
+  submission_not_available: 'Jawaban murid belum final, sudah dikembalikan, atau tidak ditemukan.',
+  no_essay_questions: 'Submission ini tidak memiliki soal essay.',
+  answer_guide_required: 'Lengkapi panduan jawaban pada semua soal essay terlebih dahulu.',
+  gemini_not_configured: 'Secret GEMINI_API_KEY belum terbaca oleh Edge Function.',
+  gemini_auth_failed: 'API key Gemini tidak valid, diblokir, atau tidak memiliki akses. Buat key baru di Google AI Studio.',
+  gemini_rate_limited: 'Kuota Gemini sedang habis atau terkena batas permintaan. Coba lagi beberapa saat.',
+  gemini_timeout: 'Gemini terlalu lama merespons. Coba lagi.',
+  gemini_unavailable: 'Layanan Gemini tidak dapat dijangkau. Coba lagi.',
+  gemini_provider_error: 'Gemini menolak permintaan. Periksa model dan akses API key.',
+  gemini_invalid_schema: 'Format penilaian dari Gemini tidak sesuai. Nilai belum diubah.',
+  gemini_invalid_response: 'Respons Gemini tidak dapat dibaca. Nilai belum diubah.',
+  audit_save_failed: 'Saran diterima, tetapi audit penilaian gagal disimpan. Nilai belum diubah.',
+  database_error: 'Data penilaian tidak dapat dibaca dari server.',
+};
+
+async function describeAiFunctionError(error: unknown): Promise<string> {
+  if (error instanceof FunctionsHttpError) {
+    try {
+      const body = await (error.context as Response).json() as { error?: string };
+      if (body.error && AI_GRADING_ERROR_MESSAGES[body.error]) return AI_GRADING_ERROR_MESSAGES[body.error];
+    } catch {
+      // Response non-JSON ditangani dengan pesan status di bawah.
+    }
+    const status = (error.context as Response | undefined)?.status;
+    return status ? `Server penilaian AI mengembalikan error ${status}. Coba login ulang lalu ulangi.` : 'Server penilaian AI menolak permintaan.';
+  }
+  if (error instanceof FunctionsFetchError) return 'Browser gagal terhubung ke Edge Function. Periksa koneksi lalu muat ulang aplikasi.';
+  if (error instanceof FunctionsRelayError) return 'Edge Function sedang tidak tersedia. Coba lagi beberapa saat.';
+  return error instanceof Error ? error.message : 'Saran AI belum tersedia. Coba lagi.';
 }
 
 export interface StudentExamLookupResult extends ExamLookupResult {
@@ -538,8 +573,16 @@ export const storage = {
   },
 
   async requestAiEssaySuggestions(submissionId: string): Promise<{ suggestions?: AiGradingSuggestion[]; error?: string }> {
-    const { data, error } = await supabase.functions.invoke('suggest-essay-grades', { body: { submissionId } });
-    if (error) return { error: 'Saran AI belum tersedia. Periksa konfigurasi Gemini atau coba lagi.' };
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !sessionData.session?.access_token) {
+      return { error: 'Sesi guru tidak ditemukan. Silakan login ulang lalu coba lagi.' };
+    }
+    const { data, error } = await supabase.functions.invoke('suggest-essay-grades', {
+      body: { submissionId },
+      headers: { Authorization: `Bearer ${sessionData.session.access_token}` },
+      timeout: 55_000,
+    });
+    if (error) return { error: await describeAiFunctionError(error) };
     if (!Array.isArray(data?.suggestions)) return { error: 'Saran AI tidak valid. Nilai belum diubah.' };
     return { suggestions: data.suggestions as AiGradingSuggestion[] };
   },
