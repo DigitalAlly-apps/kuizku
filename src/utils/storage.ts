@@ -313,9 +313,12 @@ export const storage = {
       type: q.type,
       text: q.text,
       image_url: q.imageUrl || null,
-      options: q.options || null,
-      correct_option_id: q.correctOptionId || null,
-      accepted_answers: q.acceptedAnswers || [],
+      // The database constraint requires non-MC questions to use NULL for
+      // options/correct_option_id. Empty arrays are not equivalent to NULL
+      // in PostgreSQL and used to make Essay saves fail.
+      options: q.type === 'MULTIPLE_CHOICE' ? (q.options || []) : null,
+      correct_option_id: q.type === 'MULTIPLE_CHOICE' ? (q.correctOptionId || null) : null,
+      accepted_answers: q.type === 'SHORT_ANSWER' ? (q.acceptedAnswers || []) : [],
       answer_guide: q.answerGuide || null,
       weight: q.weight,
       timer_seconds: q.timerSeconds ?? null,
