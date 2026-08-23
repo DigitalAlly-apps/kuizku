@@ -863,7 +863,7 @@
   background: var(--primary-light);
   color: var(--primary);
 }
-.bank-page-actions { padding-top: 2px; }
+.bank-page-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); padding-top: 2px; }
 .bank-filter-toolbar { display: grid; gap: var(--sp-4); padding: var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); }
 .bank-filter-search-row { display: flex; align-items: center; gap: var(--sp-3); }
 .bank-filter-search-row .search-input-wrap { max-width: 560px; }

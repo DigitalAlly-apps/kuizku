@@ -147,9 +147,22 @@ export interface Exam {
 // ---- Bank Question (extends Question with cross-exam meta) ----
 export interface BankQuestion extends Question {
   teacherId: string;
+  collectionId?: string;
   subject: string;
   className?: string; // Added for grouping by class
   usedInExamIds: string[]; // track reuse
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface QuestionCollection {
+  id: string;
+  teacherId: string;
+  name: string;
+  description?: string;
+  subject: string;
+  className?: string;
+  tags: string[];
   createdAt: string;
   updatedAt: string;
 }

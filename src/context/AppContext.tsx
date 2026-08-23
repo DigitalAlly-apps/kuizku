@@ -3,7 +3,7 @@
 // ============================================================
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import type { Teacher, Exam, Submission, BankQuestion, ToastMessage } from '../types';
+import type { Teacher, Exam, Submission, BankQuestion, QuestionCollection, ToastMessage } from '../types';
 import { storage, type MutationResult } from '../utils/storage';
 import { generateId, generateExamCode } from '../utils/helpers';
 import { v4 as uuidv4 } from 'uuid';
@@ -49,6 +49,9 @@ interface AppContextShape {
 
   // Question Bank
   bankQuestions: BankQuestion[];
+  questionCollections: QuestionCollection[];
+  createQuestionCollection: (name: string) => Promise<MutationResult & { collection?: QuestionCollection }>;
+  copyExamQuestionsToBank: (exam: Exam, collectionId: string) => Promise<MutationResult & { count?: number }>;
   addToBankFromQuestion: (q: import('../types').Question, subject: string) => Promise<MutationResult>;
   deleteBankQuestion: (id: string) => Promise<{ error?: string }>;
   updateBankQuestion: (id: string, data: Partial<BankQuestion>) => Promise<MutationResult>;
@@ -75,6 +78,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [currentTeacher, setCurrentTeacher] = useState<Teacher | null>(null);
   const [exams, setExamsState] = useState<Exam[]>([]);
   const [bankQuestions, setBankState] = useState<BankQuestion[]>([]);
+  const [questionCollections, setQuestionCollections] = useState<QuestionCollection[]>([]);
   const [submissions, setSubmissionsState] = useState<Submission[]>([]);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -83,13 +87,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const loadTeacherData = async (teacher: Teacher) => {
     setIsLoading(true);
     try {
-      const [exs, bqs, subs] = await Promise.all([
+      const [exs, bqs, collections, subs] = await Promise.all([
         storage.getExamsByTeacher(teacher.id),
         storage.getBankQuestions(teacher.id),
+        storage.getQuestionCollections(teacher.id),
         storage.getSubmissionsByTeacher(teacher.id),
       ]);
       setExamsState(exs);
       setBankState(bqs);
+      setQuestionCollections(collections);
       setSubmissionsState(subs);
     } catch (e) {
       console.error('Failed to load teacher data:', e);
@@ -115,7 +121,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (currentTeacher) setExamsState(await storage.getExamsByTeacher(currentTeacher.id));
   };
   const refreshBank = async () => {
-    if (currentTeacher) setBankState(await storage.getBankQuestions(currentTeacher.id));
+    if (!currentTeacher) return;
+    const [questions, collections] = await Promise.all([
+      storage.getBankQuestions(currentTeacher.id),
+      storage.getQuestionCollections(currentTeacher.id),
+    ]);
+    setBankState(questions);
+    setQuestionCollections(collections);
   };
   const refreshSubmissions = async () => {
     if (currentTeacher) setSubmissionsState(await storage.getSubmissionsByTeacher(currentTeacher.id));
@@ -241,14 +253,48 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (existing) {
       const updated = { ...existing, ...q, updatedAt: new Date().toISOString() };
       const result = await storage.saveBankQuestion(updated);
-      if (result.success) setBankState(prev => prev.map(b => b.id === q.id ? updated : b));
+      if (result.success) await refreshBank();
       return result;
     }
     const now = new Date().toISOString();
     const bq: BankQuestion = { ...q, id: generateId(), teacherId: currentTeacher?.id ?? '', subject, usedInExamIds: [], createdAt: now, updatedAt: now };
     const result = await storage.saveBankQuestion(bq);
-    if (result.success) setBankState(prev => [bq, ...prev]);
+    if (result.success) await refreshBank();
     return result;
+  };
+
+  const createQuestionCollection = async (name: string): Promise<MutationResult & { collection?: QuestionCollection }> => {
+    if (!currentTeacher) return { success: false, error: 'Sesi guru tidak ditemukan.' };
+    const cleanName = name.trim();
+    if (!cleanName) return { success: false, error: 'Nama kategori wajib diisi.' };
+    const result = await storage.createQuestionCollection({ teacherId: currentTeacher.id, name: cleanName, subject: '', tags: [] });
+    if (!result.collection) return { success: false, error: result.error || 'Kategori gagal dibuat.' };
+    setQuestionCollections(prev => [...prev, result.collection!]);
+    return { success: true, collection: result.collection };
+  };
+
+  const copyExamQuestionsToBank = async (exam: Exam, collectionId: string): Promise<MutationResult & { count?: number }> => {
+    if (!currentTeacher) return { success: false, error: 'Sesi guru tidak ditemukan.' };
+    if (!collectionId) return { success: false, error: 'Pilih kategori tujuan terlebih dahulu.' };
+    if (exam.questions.length === 0) return { success: false, error: 'Ujian ini belum memiliki soal.' };
+
+    const now = new Date().toISOString();
+    for (const question of exam.questions) {
+      const result = await storage.saveBankQuestion({
+        ...question,
+        id: generateId(),
+        teacherId: currentTeacher.id,
+        collectionId,
+        subject: exam.subject,
+        className: exam.className,
+        usedInExamIds: [exam.id],
+        createdAt: now,
+        updatedAt: now,
+      });
+      if (!result.success) return { success: false, error: result.error || 'Sebagian soal belum tersalin.' };
+    }
+    await refreshBank();
+    return { success: true, count: exam.questions.length };
   };
 
   const deleteBankQuestion = async (id: string): Promise<{ error?: string }> => {
@@ -344,7 +390,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     featureAccess,
     exams, getExam, createExam, updateExam, deleteExam, duplicateExam,
     publishExam, archiveExam, endExam, refreshExams,
-    bankQuestions, addToBankFromQuestion, deleteBankQuestion, updateBankQuestion, refreshBank,
+    bankQuestions, questionCollections, createQuestionCollection, copyExamQuestionsToBank, addToBankFromQuestion, deleteBankQuestion, updateBankQuestion, refreshBank,
     submissions, getExamSubmissions, gradeEssay, saveSubmissionGrading, returnSubmission, setTeacherFeedback, refreshSubmissions,
     toasts, addToast, removeToast,
   };
@@ -369,8 +415,8 @@ export const useExams = () => {
 };
 
 export const useBank = () => {
-  const { bankQuestions, addToBankFromQuestion, deleteBankQuestion, updateBankQuestion, refreshBank } = useApp();
-  return { bankQuestions, addToBankFromQuestion, deleteBankQuestion, updateBankQuestion, refreshBank };
+  const { bankQuestions, questionCollections, addToBankFromQuestion, deleteBankQuestion, updateBankQuestion, refreshBank } = useApp();
+  return { bankQuestions, questionCollections, addToBankFromQuestion, deleteBankQuestion, updateBankQuestion, refreshBank };
 };
 
 export const useToast = () => {

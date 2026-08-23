@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Search, BookOpen, Trash2, Edit2, ChevronDown, ChevronRight, Share2, Download, LibraryBig } from 'lucide-react';
+import { Search, BookOpen, Trash2, Edit2, ChevronDown, ChevronRight, Share2, Download, LibraryBig, FolderPlus } from 'lucide-react';
 import { useApp, useToast } from '../../context/AppContext';
 import { EmptyState, ConfirmDialog, Modal } from '../../components/ui';
 import QuestionEditor from '../../components/exam/QuestionEditor';
@@ -9,11 +9,15 @@ import { storage } from '../../utils/storage';
 const optLetters = 'ABCDEF';
 
 export default function QuestionBankPage() {
-  const { currentTeacher, bankQuestions, deleteBankQuestion, updateBankQuestion, exams, refreshExams } = useApp();
+  const { currentTeacher, bankQuestions, questionCollections, createQuestionCollection, deleteBankQuestion, updateBankQuestion, exams, refreshExams } = useApp();
   const { addToast } = useToast();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'MULTIPLE_CHOICE' | 'SHORT_ANSWER' | 'ESSAY'>('ALL');
   const [tagFilter, setTagFilter] = useState('');
+  const [collectionFilter, setCollectionFilter] = useState('ALL');
+  const [newCollectionName, setNewCollectionName] = useState('');
+  const [collectionModalOpen, setCollectionModalOpen] = useState(false);
+  const [savingCollection, setSavingCollection] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editQ, setEditQ] = useState<BankQuestion | null>(null);
   const [preview, setPreview] = useState<BankQuestion | null>(null);
@@ -31,6 +35,7 @@ export default function QuestionBankPage() {
   const filtered = useMemo(() => {
     return myBank.filter(bq => {
       if (typeFilter !== 'ALL' && bq.type !== typeFilter) return false;
+      if (collectionFilter !== 'ALL' && bq.collectionId !== collectionFilter) return false;
       if (tagFilter && !bq.tags.includes(tagFilter)) return false;
       if (search.trim()) {
         const s = search.toLowerCase();
@@ -40,7 +45,23 @@ export default function QuestionBankPage() {
       }
       return true;
     });
-  }, [myBank, typeFilter, tagFilter, search]);
+  }, [myBank, typeFilter, tagFilter, collectionFilter, search]);
+
+  const collectionNames = useMemo(() => new Map(questionCollections.map(c => [c.id, c.name])), [questionCollections]);
+
+  const handleCreateCollection = async () => {
+    setSavingCollection(true);
+    const result = await createQuestionCollection(newCollectionName);
+    setSavingCollection(false);
+    if (!result.success || !result.collection) {
+      addToast({ type: 'error', title: 'Kategori belum dibuat', message: result.error });
+      return;
+    }
+    setCollectionFilter(result.collection.id);
+    setNewCollectionName('');
+    setCollectionModalOpen(false);
+    addToast({ type: 'success', title: 'Kategori dibuat', message: result.collection.name });
+  };
 
   // Grouping
   const grouped = useMemo(() => {
@@ -177,6 +198,9 @@ export default function QuestionBankPage() {
           </div>
         </div>
         <div className="bank-page-actions">
+          <button className="btn btn-primary btn-sm" onClick={() => setCollectionModalOpen(true)}>
+            <FolderPlus size={14} /> Buat Kategori
+          </button>
           <button className="btn btn-secondary btn-sm" onClick={() => setShareOpen(true)}>
             <Download size={14} /> Import Soal Bersama
           </button>
@@ -203,6 +227,13 @@ export default function QuestionBankPage() {
               <option value="ESSAY">Essay</option>
             </select>
           </label>
+          <label>
+            <span>Kategori</span>
+            <select className="form-select" value={collectionFilter} onChange={e => setCollectionFilter(e.target.value)}>
+              <option value="ALL">Semua kategori</option>
+              {questionCollections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </label>
           {allTags.length > 0 && (
             <label>
               <span>Tag</span>
@@ -220,8 +251,8 @@ export default function QuestionBankPage() {
               <option value="none">Tanpa kelompok</option>
             </select>
           </label>
-          {(search || typeFilter !== 'ALL' || tagFilter || groupBy !== 'kelas') && (
-            <button className="btn btn-ghost btn-sm bank-filter-reset" onClick={() => { setSearch(''); setTypeFilter('ALL'); setTagFilter(''); setGroupBy('kelas'); }}>
+          {(search || typeFilter !== 'ALL' || collectionFilter !== 'ALL' || tagFilter || groupBy !== 'kelas') && (
+            <button className="btn btn-ghost btn-sm bank-filter-reset" onClick={() => { setSearch(''); setTypeFilter('ALL'); setCollectionFilter('ALL'); setTagFilter(''); setGroupBy('kelas'); }}>
               Reset filter
             </button>
           )}
@@ -283,6 +314,8 @@ export default function QuestionBankPage() {
                               </div>
                               <div className="bank-card-text">{bq.text}</div>
                               <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 6 }}>
+                                {bq.collectionId && <span>{collectionNames.get(bq.collectionId) || 'Kategori'}</span>}
+                                {bq.collectionId && ' · '}
                                 {bq.subject}
                                 {bq.className && <span> · <span style={{ color: 'var(--primary)', fontWeight: 600 }}>{bq.className}</span></span>}
                                 {' '}· Bobot: {bq.weight} · Dipakai: {bq.usedInExamIds.length}x
@@ -387,6 +420,20 @@ export default function QuestionBankPage() {
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--sp-3)' }}>
             <button className="btn btn-secondary" onClick={() => setShareOpen(false)}>Batal</button>
             <button className="btn btn-primary" onClick={handleImportShared}>Import</button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal open={collectionModalOpen} onClose={() => setCollectionModalOpen(false)} title="Buat Kategori Bank Soal">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '.88rem' }}>Gunakan kategori untuk mengelompokkan soal, misalnya “Akidah Kelas 7” atau “PTS Semester 1”.</p>
+          <div className="form-group">
+            <label className="form-label" htmlFor="collection-name">Nama kategori</label>
+            <input id="collection-name" className="form-input" value={newCollectionName} onChange={e => setNewCollectionName(e.target.value)} autoFocus placeholder="Contoh: Akidah Kelas 7" />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--sp-3)' }}>
+            <button className="btn btn-secondary" onClick={() => setCollectionModalOpen(false)}>Batal</button>
+            <button className="btn btn-primary" onClick={handleCreateCollection} disabled={savingCollection || !newCollectionName.trim()}>{savingCollection ? 'Membuat...' : 'Buat Kategori'}</button>
           </div>
         </div>
       </Modal>

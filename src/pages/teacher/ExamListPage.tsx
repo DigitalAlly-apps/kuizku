@@ -46,7 +46,7 @@ function formatSchedule(exam: Exam): string {
 }
 
 export default function ExamListPage() {
-  const { currentTeacher, exams, updateExam, deleteExam, duplicateExam, publishExam, archiveExam, endExam, submissions } = useApp();
+  const { currentTeacher, exams, questionCollections, copyExamQuestionsToBank, updateExam, deleteExam, duplicateExam, publishExam, archiveExam, endExam, submissions } = useApp();
   const { addToast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -60,6 +60,9 @@ export default function ExamListPage() {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [groupBy, setGroupBy] = useState<'kelas' | 'mapel' | 'tipe' | 'none'>('kelas');
   const [qrExam, setQrExam] = useState<{ code: string; title: string } | null>(null);
+  const [copyExam, setCopyExam] = useState<Exam | null>(null);
+  const [copyCollectionId, setCopyCollectionId] = useState('');
+  const [copyingToBank, setCopyingToBank] = useState(false);
 
   // Edit modal state
   const [editExam, setEditExam] = useState<Exam | null>(null);
@@ -212,6 +215,25 @@ export default function ExamListPage() {
     setOpenMenuId(null);
   };
 
+  const openCopyToBank = (exam: Exam) => {
+    setCopyExam(exam);
+    setCopyCollectionId(questionCollections[0]?.id ?? '');
+    setOpenMenuId(null);
+  };
+
+  const handleCopyToBank = async () => {
+    if (!copyExam) return;
+    setCopyingToBank(true);
+    const result = await copyExamQuestionsToBank(copyExam, copyCollectionId);
+    setCopyingToBank(false);
+    if (!result.success) {
+      addToast({ type: 'error', title: 'Soal belum disalin', message: result.error });
+      return;
+    }
+    setCopyExam(null);
+    addToast({ type: 'success', title: 'Soal disalin ke Bank Soal', message: `${result.count} soal dari “${copyExam.title}” tersimpan sebagai salinan.` });
+  };
+
   const getPublishError = (exam: Exam): string | null => {
     if (exam.questions.length === 0) return 'Tambahkan minimal 1 soal sebelum publish.';
     if (exam.activeTo && new Date(exam.activeTo).getTime() <= Date.now()) return 'Deadline ujian sudah lewat. Perbarui "Aktif Hingga" sebelum publish.';
@@ -356,6 +378,9 @@ export default function ExamListPage() {
                     </button>
                     <button style={menuItemStyle} onClick={() => handleDuplicate(exam.id)}>
                       <FileText size={14} /> Duplikasi
+                    </button>
+                    <button style={menuItemStyle} onClick={() => openCopyToBank(exam)}>
+                      <Copy size={14} /> Simpan soal ke Bank Soal
                     </button>
                     {exam.status !== 'DRAFT' && (
                       <button style={menuItemStyle} onClick={() => handleArchive(exam.id)}>
@@ -598,6 +623,25 @@ export default function ExamListPage() {
                 <span className="form-hint">Satu peserta per baris. Contoh: Ahmad Fauzi, 1001</span>
               </>}
             </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal open={!!copyExam} onClose={() => !copyingToBank && setCopyExam(null)} title="Simpan Soal ke Bank Soal"
+        subtitle={copyExam ? `${copyExam.questions.length} soal dari “${copyExam.title}” akan disalin.` : undefined}
+        footer={<>
+          <button className="btn btn-secondary" onClick={() => setCopyExam(null)} disabled={copyingToBank}>Batal</button>
+          <button className="btn btn-primary" onClick={handleCopyToBank} disabled={!copyCollectionId || copyingToBank}>{copyingToBank ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> Menyimpan...</> : <><Copy size={15} /> Simpan Salinan</>}</button>
+        </>}>
+        {questionCollections.length === 0 ? (
+          <p style={{ color: 'var(--text-muted)' }}>Belum ada kategori. Buat kategori terlebih dahulu dari halaman Bank Soal.</p>
+        ) : (
+          <div className="form-group">
+            <label className="form-label" htmlFor="copy-to-collection">Simpan ke kategori</label>
+            <select id="copy-to-collection" className="form-select" value={copyCollectionId} onChange={e => setCopyCollectionId(e.target.value)}>
+              {questionCollections.map(collection => <option key={collection.id} value={collection.id}>{collection.name}</option>)}
+            </select>
+            <span className="form-hint">Soal disimpan sebagai salinan. Mengubahnya di Bank Soal tidak akan mengubah ujian ini.</span>
           </div>
         )}
       </Modal>

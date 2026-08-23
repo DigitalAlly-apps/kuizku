@@ -4,7 +4,7 @@
 // ============================================================
 import { supabase } from '../lib/supabase';
 import { localDateTimeToIso } from './helpers';
-import type { Teacher, Exam, BankQuestion, Submission, StudentAnswer, BillingSnapshot, Subscription, Workspace, StudentRanking } from '../types';
+import type { Teacher, Exam, BankQuestion, QuestionCollection, Submission, StudentAnswer, BillingSnapshot, Subscription, Workspace, StudentRanking } from '../types';
 
 const PENDING_SUBMISSION_QUEUE_KEY = 'kuizku_pending_submission_queue';
 
@@ -564,6 +564,28 @@ export const storage = {
   },
 
   // ---- Question Bank ----
+  async getQuestionCollections(teacherId: string): Promise<QuestionCollection[]> {
+    const { data, error } = await supabase.from('question_collections').select('*').eq('teacher_id', teacherId).order('created_at', { ascending: true });
+    if (error) throw new Error(`Gagal memuat kategori bank soal: ${error.message}`);
+    return (data ?? []).map(c => ({ id: c.id, teacherId: c.teacher_id, name: c.name, description: c.description || undefined, subject: c.subject || '', className: c.class_name || undefined, tags: c.tags || [], createdAt: c.created_at, updatedAt: c.updated_at }));
+  },
+
+  async createQuestionCollection(collection: Omit<QuestionCollection, 'id' | 'createdAt' | 'updatedAt'>): Promise<{ collection?: QuestionCollection; error?: string }> {
+    const { data, error } = await supabase.from('question_collections').insert({
+      teacher_id: collection.teacherId, name: collection.name.trim(), description: collection.description || null,
+      subject: collection.subject || '', class_name: collection.className || null, tags: collection.tags || [],
+    }).select('*').single();
+    if (error) return { error: error.message };
+    return { collection: { id: data.id, teacherId: data.teacher_id, name: data.name, description: data.description || undefined, subject: data.subject || '', className: data.class_name || undefined, tags: data.tags || [], createdAt: data.created_at, updatedAt: data.updated_at } };
+  },
+
+  async getOrCreateDefaultQuestionCollection(teacherId: string): Promise<{ collection?: QuestionCollection; error?: string }> {
+    const { data, error } = await supabase.from('question_collections').select('*').eq('teacher_id', teacherId).eq('name', 'Belum Dikelompokkan').maybeSingle();
+    if (error) return { error: error.message };
+    if (data) return { collection: { id: data.id, teacherId: data.teacher_id, name: data.name, description: data.description || undefined, subject: data.subject || '', className: data.class_name || undefined, tags: data.tags || [], createdAt: data.created_at, updatedAt: data.updated_at } };
+    return this.createQuestionCollection({ teacherId, name: 'Belum Dikelompokkan', subject: '', tags: [] });
+  },
+
   async getBankQuestions(teacherId: string): Promise<BankQuestion[]> {
     const { data, error } = await supabase.from('bank_questions').select('*').eq('teacher_id', teacherId).order('created_at', { ascending: false });
     if (error) throw new Error(`Gagal memuat bank soal: ${error.message}`);
@@ -571,6 +593,7 @@ export const storage = {
     return data.map(q => ({
       id: q.id,
       teacherId: q.teacher_id,
+      collectionId: q.collection_id,
       subject: q.subject,
       className: q.class_name,
       usedInExamIds: q.used_in_exam_ids || [],
@@ -590,9 +613,16 @@ export const storage = {
   },
 
   async saveBankQuestion(bq: BankQuestion): Promise<MutationResult> {
+    let collectionId = bq.collectionId;
+    if (!collectionId) {
+      const collectionResult = await this.getOrCreateDefaultQuestionCollection(bq.teacherId);
+      if (!collectionResult.collection) return { success: false, error: collectionResult.error || 'Kategori bank soal tidak tersedia.' };
+      collectionId = collectionResult.collection.id;
+    }
     const { data, error } = await supabase.from('bank_questions').upsert({
       id: bq.id,
       teacher_id: bq.teacherId,
+      collection_id: collectionId,
       subject: bq.subject,
       class_name: bq.className || null,
       used_in_exam_ids: bq.usedInExamIds,

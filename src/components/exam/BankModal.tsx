@@ -16,10 +16,11 @@ interface Props {
 }
 
 export default function BankModal({ open, format, onAdd, onClose }: Props) {
-  const { bankQuestions } = useBank();
+  const { bankQuestions, questionCollections } = useBank();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'MULTIPLE_CHOICE' | 'SHORT_ANSWER' | 'ESSAY'>('ALL');
   const [difficultyFilter, setDifficultyFilter] = useState<'ALL' | 'easy' | 'medium' | 'hard'>('ALL');
+  const [collectionFilter, setCollectionFilter] = useState('ALL');
   const [randomCount, setRandomCount] = useState(5);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [preview, setPreview] = useState<BankQuestion | null>(null);
@@ -35,6 +36,7 @@ export default function BankModal({ open, format, onAdd, onClose }: Props) {
   const filtered = useMemo(() => {
     return eligible.filter(bq => {
       if (typeFilter !== 'ALL' && bq.type !== typeFilter) return false;
+      if (collectionFilter !== 'ALL' && bq.collectionId !== collectionFilter) return false;
       if (difficultyFilter !== 'ALL' && !bq.tags.includes(`difficulty:${difficultyFilter}`)) return false;
       if (search.trim()) {
         const s = search.toLowerCase();
@@ -42,7 +44,7 @@ export default function BankModal({ open, format, onAdd, onClose }: Props) {
       }
       return true;
     });
-  }, [eligible, typeFilter, difficultyFilter, search]);
+  }, [eligible, typeFilter, difficultyFilter, collectionFilter, search]);
 
   const selectRandom = () => {
     const shuffled = [...filtered].sort(() => Math.random() - 0.5).slice(0, Math.max(1, randomCount));
@@ -110,6 +112,11 @@ export default function BankModal({ open, format, onAdd, onClose }: Props) {
               <option value="easy">Mudah</option>
               <option value="medium">Sedang</option>
               <option value="hard">Sulit</option>
+            </select>
+            <select className="form-select" style={{ width: 160, fontSize: '0.8rem' }} value={collectionFilter}
+              onChange={e => setCollectionFilter(e.target.value)} aria-label="Filter kategori bank soal">
+              <option value="ALL">Semua Kategori</option>
+              {questionCollections.map(collection => <option key={collection.id} value={collection.id}>{collection.name}</option>)}
             </select>
           </div>
 
