@@ -617,6 +617,13 @@ export const storage = {
     return { success: true };
   },
 
+  async deleteTeacherSubmission(submissionId: string): Promise<MutationResult> {
+    const { data, error } = await supabase.rpc('delete_teacher_submission', { p_submission_id: submissionId });
+    if (error) return { success: false, error: error.message };
+    if (data?.deleted !== true) return { success: false, error: 'Jawaban tidak dapat dihapus.' };
+    return { success: true };
+  },
+
   getPendingSubmissionQueueCount(): number {
     return readPendingSubmissionQueue().length;
   },

@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Download, User, Edit2, BarChart2, RotateCcw, MessageSquare, RefreshCcw, Zap, ArrowLeft, ArrowRight, Sparkles, CheckCircle2, XCircle } from 'lucide-react';
+import { Download, User, Edit2, BarChart2, RotateCcw, MessageSquare, RefreshCcw, Zap, ArrowLeft, ArrowRight, Sparkles, CheckCircle2, XCircle, Trash2 } from 'lucide-react';
 import { useApp, useToast } from '../../context/AppContext';
 import { EmptyState, FormatBadge, StatusBadge, SectionHeader, Modal } from '../../components/ui';
 import { calcMaxMCScore, calcMaxEssayScore, formatDateTime } from '../../utils/helpers';
@@ -47,7 +47,7 @@ function getEmptyAnalysisMessage(filter: AnalysisFilter): string {
 
 
 export default function ResultsPage() {
-  const { currentTeacher, exams, submissions, saveSubmissionGrading, returnSubmission, requestAiEssaySuggestions, updateAiGradingSuggestionStatuses, refreshSubmissions } = useApp();
+  const { currentTeacher, exams, submissions, saveSubmissionGrading, returnSubmission, deleteSubmission, requestAiEssaySuggestions, updateAiGradingSuggestionStatuses, refreshSubmissions } = useApp();
   const { addToast } = useToast();
   const [searchParams] = useSearchParams();
 
@@ -70,7 +70,22 @@ export default function ResultsPage() {
   const [quickScore, setQuickScore] = useState<number | null>(null);
   const [quickComment, setQuickComment] = useState('');
   const [analysisFilter, setAnalysisFilter] = useState<AnalysisFilter>('ALL');
+  const [deletingSubmissionId, setDeletingSubmissionId] = useState<string | null>(null);
   const quickRequested = searchParams.get('quick') === '1';
+
+  const handleDeleteSubmission = async (submission: Submission) => {
+    const confirmed = window.confirm(`Hapus submission ${submission.studentName} (percobaan ke-${submission.attemptNumber})? Jawaban dan nilai submission ini akan dihapus permanen.`);
+    if (!confirmed) return;
+    setDeletingSubmissionId(submission.id);
+    const result = await deleteSubmission(submission.id);
+    setDeletingSubmissionId(null);
+    if (!result.success) {
+      addToast({ type: 'error', title: 'Submission gagal dihapus', message: result.error });
+      return;
+    }
+    if (detailSub?.id === submission.id) setDetailSub(null);
+    addToast({ type: 'success', title: 'Submission dihapus', message: `Jawaban ${submission.studentName} telah dihapus.` });
+  };
 
   const selectedExam = useMemo(() => myExams.find(e => e.id === selectedExamId), [myExams, selectedExamId]);
   const examSubs = useMemo(() => submissions.filter(s => s.examId === selectedExamId && s.isComplete), [submissions, selectedExamId]);
@@ -567,6 +582,17 @@ export default function ResultsPage() {
                                 <Edit2 size={14} aria-hidden="true" />
                               </button>
                             )}
+                            <button
+                              className="btn btn-ghost btn-sm btn-icon"
+                              type="button"
+                              aria-label={`Hapus submission ${sub.studentName}`}
+                              title="Hapus submission"
+                              onClick={() => void handleDeleteSubmission(sub)}
+                              disabled={deletingSubmissionId === sub.id}
+                              style={{ color: 'var(--danger)' }}
+                            >
+                              <Trash2 size={14} aria-hidden="true" />
+                            </button>
                           </div>
                         </td>
                       </tr>

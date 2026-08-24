@@ -64,6 +64,7 @@ interface AppContextShape {
   gradeEssay: (submissionId: string, questionId: string, score: number, comment?: string) => Promise<MutationResult>;
   saveSubmissionGrading: (submissionId: string, grades: Submission['essayScores'], feedback: string) => Promise<MutationResult>;
   returnSubmission: (submissionId: string) => Promise<MutationResult>;
+  deleteSubmission: (submissionId: string) => Promise<MutationResult>;
   setTeacherFeedback: (submissionId: string, feedback: string) => Promise<MutationResult>;
   requestAiEssaySuggestions: (submissionId: string) => Promise<{ suggestions?: AiGradingSuggestion[]; error?: string }>;
   updateAiGradingSuggestionStatuses: (decisions: Array<{ id: string; status: AiGradingSuggestionStatus }>) => Promise<void>;
@@ -394,6 +395,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return result;
   };
 
+  const deleteSubmission = async (submissionId: string): Promise<MutationResult> => {
+    const result = await storage.deleteTeacherSubmission(submissionId);
+    if (!result.success) return result;
+    clearSessionBySubmissionId(submissionId);
+    setSubmissionsState(prev => prev.filter(submission => submission.id !== submissionId));
+    return result;
+  };
+
   const setTeacherFeedback = async (submissionId: string, feedback: string): Promise<MutationResult> => {
     const sub = submissions.find(s => s.id === submissionId);
     if (!sub) return { success: false, error: 'Jawaban tidak ditemukan.' };
@@ -436,7 +445,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     exams, getExam, createExam, updateExam, deleteExam, duplicateExam,
     publishExam, archiveExam, endExam, refreshExams,
     bankQuestions, questionCollections, createQuestionCollection, copyExamQuestionsToBank, addToBankFromQuestion, deleteBankQuestion, updateBankQuestion, refreshBank,
-    submissions, getExamSubmissions, gradeEssay, saveSubmissionGrading, returnSubmission, setTeacherFeedback, requestAiEssaySuggestions, updateAiGradingSuggestionStatuses, refreshSubmissions,
+    submissions, getExamSubmissions, gradeEssay, saveSubmissionGrading, returnSubmission, deleteSubmission, setTeacherFeedback, requestAiEssaySuggestions, updateAiGradingSuggestionStatuses, refreshSubmissions,
     toasts, addToast, removeToast,
   };
 
