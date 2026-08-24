@@ -466,9 +466,24 @@ export default function ResultsPage() {
                             }
                           </td>
                         )}
-                        <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--success)', fontSize: '1rem' }}>
-                          {needsGrading || total == null || sub.isReturned ? <span style={{ fontSize: '0.78rem', color: sub.isReturned ? 'var(--danger)' : 'var(--warning)' }}>{sub.isReturned ? 'Dikembalikan' : 'Belum final'}</span> : <>{total}<span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '0.8rem' }}>/{maxTotal}</span></>}
+                        <td style={{ textAlign: 'center' }}>
+                          {isFinal && total != null ? (
+                            <>
+                              <div style={{ fontWeight: 800, fontSize: '1.15rem', color: 'var(--success)', lineHeight: 1.1 }}>
+                                {toPercent(total)}<span style={{ fontSize: '0.72rem', fontWeight: 500, color: 'var(--text-muted)' }}>/100</span>
+                              </div>
+                              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{total}/{maxTotal} poin</div>
+                            </>
+                          ) : (
+                            <>
+                              <div style={{ fontSize: '0.78rem', fontWeight: 600, color: sub.isReturned ? 'var(--danger)' : 'var(--warning)' }}>
+                                {sub.isReturned ? 'Dikembalikan' : 'Belum final'}
+                              </div>
+                              {!sub.isReturned && needsGrading && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>sementara {provisional}/{maxTotal} poin</div>}
+                            </>
+                          )}
                         </td>
+
                         <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                           {sub.submittedAt ? formatDateTime(sub.submittedAt) : '—'}
                           {(sub.antiCheatEvents?.length ?? 0) > 0 && <div style={{ color: 'var(--danger)', marginTop: 3 }}>{sub.antiCheatEvents!.length} pelanggaran</div>}
