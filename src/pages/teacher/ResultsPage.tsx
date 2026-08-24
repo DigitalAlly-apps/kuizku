@@ -37,6 +37,7 @@ export default function ResultsPage() {
   const [quickIndex, setQuickIndex] = useState(0);
   const [quickScore, setQuickScore] = useState<number | null>(null);
   const [quickComment, setQuickComment] = useState('');
+  const [analysisFilter, setAnalysisFilter] = useState<'ALL' | 'WRONG' | 'CORRECT' | 'ESSAY'>('ALL');
   const quickRequested = searchParams.get('quick') === '1';
 
   const selectedExam = useMemo(() => myExams.find(e => e.id === selectedExamId), [myExams, selectedExamId]);
