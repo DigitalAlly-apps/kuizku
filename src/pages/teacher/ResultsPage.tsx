@@ -283,11 +283,11 @@ export default function ResultsPage() {
         const comment = q.type === 'ESSAY' ? grade?.comment ?? '' : '';
         return [`${qIdx + 1}. ${answerText}`, score, comment];
       });
-      return [i + 1, s.studentName, s.nis, s.attemptNumber, s.submittedAt ? formatDateTime(s.submittedAt) : '-', s.mcScore, essayTotal || '', isFinal ? s.totalScore : '', isFinal ? 'FINAL' : gradingStatus === 'PARTIAL' ? 'DINILAI SEBAGIAN' : 'MENUNGGU PENILAIAN', maxMC, maxEssay, maxTotal, s.antiCheatEvents?.length ?? 0, ...details];
+      return [i + 1, s.studentName, s.nis, s.attemptNumber, s.submittedAt ? formatDateTime(s.submittedAt) : '-', s.mcScore, essayTotal || '', isFinal ? s.totalScore : '', isFinal && s.totalScore != null ? toPercent(s.totalScore) : '', isFinal ? 'FINAL' : gradingStatus === 'PARTIAL' ? 'DINILAI SEBAGIAN' : 'MENUNGGU PENILAIAN', maxMC, maxEssay, maxTotal, s.antiCheatEvents?.length ?? 0, ...details];
     });
     const detailHeaders = selectedExam.questions.flatMap((_, i) => [`S${i + 1} Jawaban`, `S${i + 1} Skor`, `S${i + 1} Komentar`]);
     const ws = XLSX.utils.aoa_to_sheet([
-      ['No','Nama','NIS','Percobaan','Waktu Submit','Skor PG','Skor Essay','Total','Status Nilai','Maks PG','Maks Essay','Maks Total','Pelanggaran Anti-cheat', ...detailHeaders],
+      ['No','Nama','NIS','Percobaan','Waktu Submit','Skor PG','Skor Essay','Total','Nilai (0-100)','Status Nilai','Maks PG','Maks Essay','Maks Total','Pelanggaran Anti-cheat', ...detailHeaders],
       ...rows,
     ]);
     const wb = XLSX.utils.book_new();
