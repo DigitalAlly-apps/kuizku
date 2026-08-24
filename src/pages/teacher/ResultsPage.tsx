@@ -1,15 +1,47 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Download, User, Edit2, BarChart2, RotateCcw, MessageSquare, RefreshCcw, Zap, ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
+import { Download, User, Edit2, BarChart2, RotateCcw, MessageSquare, RefreshCcw, Zap, ArrowLeft, ArrowRight, Sparkles, CheckCircle2, XCircle } from 'lucide-react';
 import { useApp, useToast } from '../../context/AppContext';
 import { EmptyState, FormatBadge, StatusBadge, SectionHeader, Modal } from '../../components/ui';
 import { calcMaxMCScore, calcMaxEssayScore, formatDateTime } from '../../utils/helpers';
 import * as XLSX from 'xlsx';
-import type { AiGradingSuggestion, Question, Submission } from '../../types';
+import type { AiGradingSuggestion, Question, StudentAnswer, Submission } from '../../types';
 
 interface QuickEssayTarget {
   submission: Submission;
   question: Question;
+}
+
+type AnalysisFilter = 'ALL' | 'WRONG' | 'CORRECT' | 'ESSAY';
+
+interface QuestionAnalysisItem {
+  question: Question;
+  questionNumber: number;
+  answer?: StudentAnswer;
+  isCorrect: boolean | null;
+}
+
+const ANALYSIS_FILTERS: Array<{ value: AnalysisFilter; label: string }> = [
+  { value: 'ALL', label: 'Semua' },
+  { value: 'WRONG', label: 'Salah' },
+  { value: 'CORRECT', label: 'Benar' },
+  { value: 'ESSAY', label: 'Essay' },
+];
+
+const normalizeAnswer = (value: string) => value.trim().toLowerCase().replace(/\s+/g, ' ');
+
+function getQuestionCorrectness(question: Question, answer?: StudentAnswer): boolean | null {
+  if (question.type === 'ESSAY') return null;
+  if (question.type === 'MULTIPLE_CHOICE') return answer?.selectedOptionId === question.correctOptionId;
+  return !!answer?.shortAnswer
+    && (question.acceptedAnswers ?? []).some(value => normalizeAnswer(value) === normalizeAnswer(answer.shortAnswer!));
+}
+
+function getEmptyAnalysisMessage(filter: AnalysisFilter): string {
+  if (filter === 'WRONG') return 'Tidak ada jawaban salah.';
+  if (filter === 'CORRECT') return 'Tidak ada jawaban benar.';
+  if (filter === 'ESSAY') return 'Tidak ada soal essay.';
+  return 'Belum ada soal untuk dianalisis.';
 }
 
 
@@ -37,7 +69,7 @@ export default function ResultsPage() {
   const [quickIndex, setQuickIndex] = useState(0);
   const [quickScore, setQuickScore] = useState<number | null>(null);
   const [quickComment, setQuickComment] = useState('');
-  const [analysisFilter, setAnalysisFilter] = useState<'ALL' | 'WRONG' | 'CORRECT' | 'ESSAY'>('ALL');
+  const [analysisFilter, setAnalysisFilter] = useState<AnalysisFilter>('ALL');
   const quickRequested = searchParams.get('quick') === '1';
 
   const selectedExam = useMemo(() => myExams.find(e => e.id === selectedExamId), [myExams, selectedExamId]);
@@ -118,10 +150,42 @@ export default function ResultsPage() {
   const quickTarget = quickTargets[quickIndex];
   const quickGradedCount = useMemo(() => quickTargets.filter(target => target.submission.essayScores.some(grade => grade.questionId === target.question.id)).length, [quickTargets]);
 
+  const detailAnalysis = useMemo(() => {
+    if (!detailSub || !selectedExam) return null;
+    const items: QuestionAnalysisItem[] = selectedExam.questions.map((question, index) => {
+      const answer = detailSub.answers.find(item => item.questionId === question.id);
+      return {
+        question,
+        questionNumber: index + 1,
+        answer,
+        isCorrect: getQuestionCorrectness(question, answer),
+      };
+    });
+    const essayScore = detailSub.essayScores.reduce((total, grade) => total + grade.score, 0);
+    return {
+      items,
+      correctCount: items.filter(item => item.isCorrect === true).length,
+      wrongCount: items.filter(item => item.isCorrect === false).length,
+      essayCount: items.filter(item => item.question.type === 'ESSAY').length,
+      essayScore,
+      provisionalScore: detailSub.mcScore + essayScore,
+    };
+  }, [detailSub, selectedExam]);
+
+  const visibleDetailQuestions = useMemo(() => {
+    if (!detailAnalysis) return [];
+    if (gradingMode) return detailAnalysis.items.filter(item => item.question.type === 'ESSAY');
+    if (analysisFilter === 'WRONG') return detailAnalysis.items.filter(item => item.isCorrect === false);
+    if (analysisFilter === 'CORRECT') return detailAnalysis.items.filter(item => item.isCorrect === true);
+    if (analysisFilter === 'ESSAY') return detailAnalysis.items.filter(item => item.question.type === 'ESSAY');
+    return detailAnalysis.items;
+  }, [analysisFilter, detailAnalysis, gradingMode]);
+
 
   const startGrading = (sub: Submission) => {
     setQuickMode(false);
     setDetailSub(sub);
+    setAnalysisFilter('ALL');
     const init: Record<string, { score: number; comment: string }> = {};
     sub.essayScores.forEach(g => { init[g.questionId] = { score: g.score, comment: g.comment ?? '' }; });
     setGradingScores(init);
@@ -249,6 +313,7 @@ export default function ResultsPage() {
     setAiSuggestions({});
     setGradingMode(false);
     setDetailSub(null);
+    setAnalysisFilter('ALL');
   };
 
   const handleReturn = async (sub: Submission) => {
@@ -260,6 +325,7 @@ export default function ResultsPage() {
     addToast({ type: 'info', title: 'Dikembalikan untuk revisi', message: `Jawaban ${sub.studentName} dibuka kembali.` });
     setDetailSub(null);
     setGradingMode(false);
+    setAnalysisFilter('ALL');
   };
 
   const exportExcel = () => {
@@ -541,12 +607,12 @@ export default function ResultsPage() {
       )}
 
       {/* Detail / Grading Modal */}
-      <Modal open={!!detailSub} onClose={() => { void discardAiSuggestions(); setDetailSub(null); setGradingMode(false); }}
-        title={gradingMode ? `Nilai Essay — ${detailSub?.studentName}` : `Detail Jawaban — ${detailSub?.studentName}`}
+      <Modal open={!!detailSub} onClose={() => { void discardAiSuggestions(); setDetailSub(null); setGradingMode(false); setAnalysisFilter('ALL'); }}
+        title={gradingMode ? `Nilai Essay — ${detailSub?.studentName}` : `Analisis — ${detailSub?.studentName}`}
         size="xl"
         footer={gradingMode ? (
           <>
-            <button className="btn btn-secondary" onClick={() => { void discardAiSuggestions(); setGradingMode(false); }}>Batal</button>
+            <button className="btn btn-secondary" onClick={() => { void discardAiSuggestions(); setGradingMode(false); setAnalysisFilter('ALL'); }}>Batal</button>
             <button className="btn btn-secondary" onClick={requestAiSuggestions} disabled={aiLoading || !allEssayGuidesAvailable} title={allEssayGuidesAvailable ? 'Buat saran nilai untuk seluruh essay siswa ini' : 'Lengkapi panduan jawaban pada setiap soal essay terlebih dahulu'}>
               <Sparkles size={15} /> {aiLoading ? 'Meminta saran...' : 'Nilai dengan AI'}
             </button>
@@ -557,70 +623,138 @@ export default function ResultsPage() {
           </>
         ) : (
           <>
-            <button className="btn btn-secondary" onClick={() => { setDetailSub(null); setGradingMode(false); }}>Tutup</button>
+            <button className="btn btn-secondary" onClick={() => { setDetailSub(null); setGradingMode(false); setAnalysisFilter('ALL'); }}>Tutup</button>
             <button className="btn btn-secondary btn-sm" onClick={() => detailSub && handleReturn(detailSub)}>
               <RotateCcw size={13} /> Kembalikan Revisi
             </button>
           </>
         )}>
-        {detailSub && selectedExam && (
+        {detailSub && selectedExam && detailAnalysis && (
           <div className="results-detail-modal-body">
-            {selectedExam.questions.map((q, idx) => {
-              const answer = detailSub.answers.find(a => a.questionId === q.id);
-              const grade = gradingScores[q.id] ?? detailSub.essayScores.find(g => g.questionId === q.id);
-              const normalizeAnswer = (value: string) => value.trim().toLowerCase().replace(/\s+/g, ' ');
-              const isCorrect = q.type === 'MULTIPLE_CHOICE'
-                ? answer?.selectedOptionId === q.correctOptionId
-                : q.type === 'SHORT_ANSWER' && !!answer?.shortAnswer && (q.acceptedAnswers ?? []).some(value => normalizeAnswer(value) === normalizeAnswer(answer.shortAnswer!));
+            {!gradingMode && (
+              <>
+                <section className="student-analysis-summary" aria-label={`Ringkasan nilai ${detailSub.studentName}`}>
+                  <div className="student-analysis-identity">
+                    <div>
+                      <strong>{detailSub.studentName}</strong>
+                      <span>Percobaan {detailSub.attemptNumber}</span>
+                    </div>
+                    {detailSub.isReturned && <span className="student-analysis-returned">Dikembalikan untuk revisi</span>}
+                  </div>
+                  <div className="student-analysis-score-row">
+                    <div className={`student-analysis-main-score ${isFinalSubmission(detailSub) ? 'is-final' : 'is-pending'}`}>
+                      <span>Nilai</span>
+                      {isFinalSubmission(detailSub) && detailSub.totalScore != null ? (
+                        <>
+                          <strong>{toPercent(detailSub.totalScore)} <small>/ 100</small></strong>
+                          <p>{detailSub.totalScore} / {maxTotal} poin</p>
+                        </>
+                      ) : (
+                        <>
+                          <strong className="student-analysis-pending-label">Belum final</strong>
+                          <p>Skor sementara <b>{detailAnalysis.provisionalScore} / {maxTotal}</b> poin</p>
+                        </>
+                      )}
+                    </div>
+                    <div className="student-analysis-score-breakdown">
+                      {maxMC > 0 && (
+                        <div>
+                          <span>PG</span>
+                          <strong>{detailSub.mcScore} / {maxMC}</strong>
+                        </div>
+                      )}
+                      {maxEssay > 0 && (
+                        <div>
+                          <span>Essay</span>
+                          <strong>{detailAnalysis.essayScore} / {maxEssay}</strong>
+                          {!isFinalSubmission(detailSub) && <small>dinilai</small>}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="student-analysis-counts" aria-label="Ringkasan jawaban">
+                    <span><b>{detailAnalysis.correctCount}</b> Benar</span>
+                    <span><b>{detailAnalysis.wrongCount}</b> Salah</span>
+                    <span><b>{detailAnalysis.essayCount}</b> Essay</span>
+                  </div>
+                </section>
 
-              if (gradingMode && q.type !== 'ESSAY') return null;
+                <div className="student-analysis-filters" role="group" aria-label="Filter analisis jawaban">
+                  {ANALYSIS_FILTERS.map(filter => (
+                    <button
+                      key={filter.value}
+                      type="button"
+                      className={`student-analysis-filter ${analysisFilter === filter.value ? 'is-active' : ''}`}
+                      aria-pressed={analysisFilter === filter.value}
+                      onClick={() => setAnalysisFilter(filter.value)}
+                    >
+                      {filter.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            <div className="student-analysis-question-list">
+            {visibleDetailQuestions.map(({ question: q, questionNumber, answer, isCorrect }) => {
+              const savedGrade = detailSub.essayScores.find(g => g.questionId === q.id);
+              const grade = gradingMode ? (gradingScores[q.id] ?? savedGrade) : savedGrade;
 
               return (
-                <div key={q.id} style={{ padding: 'var(--sp-4) 0', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ display: 'flex', gap: 'var(--sp-3)', alignItems: 'flex-start' }}>
-                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', paddingTop: 3, flexShrink: 0 }}>{idx + 1}.</span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: 'var(--sp-2)' }}>{q.text}</div>
+                <article key={q.id} className="student-analysis-question-card">
+                  <div className="student-analysis-question-heading">
+                    <span>Soal {questionNumber}</span>
+                    {q.type !== 'ESSAY' && (
+                      <span className={`student-analysis-result ${isCorrect ? 'is-correct' : 'is-wrong'}`}>
+                        {isCorrect ? <CheckCircle2 size={15} aria-hidden="true" /> : <XCircle size={15} aria-hidden="true" />}
+                        {isCorrect ? 'Benar' : 'Salah'}
+                      </span>
+                    )}
+                  </div>
+                  <div className="student-analysis-question-text">{q.text}</div>
 
                       {q.type === 'MULTIPLE_CHOICE' && (
-                        <>
-                          <div style={{ fontSize: '0.8rem', marginBottom: 4 }}>
-                            <span style={{ color: 'var(--text-muted)' }}>Jawaban: </span>
-                            {answer?.selectedOptionId
-                              ? q.options?.find(o => o.id === answer.selectedOptionId)?.text ?? '—'
-                              : <em style={{ color: 'var(--text-muted)' }}>Tidak dijawab</em>}
+                        <div className="student-analysis-answer-grid">
+                          <div className="student-analysis-answer-block">
+                            <span>Jawaban murid</span>
+                            <p>{answer?.selectedOptionId
+                              ? q.options?.find(option => option.id === answer.selectedOptionId)?.text ?? '—'
+                              : <em>Tidak dijawab</em>}</p>
                           </div>
-                          <div style={{ fontSize: '0.8rem' }}>
-                            <span style={{ color: 'var(--text-muted)' }}>Kunci: </span>
-                            {q.options?.find(o => o.id === q.correctOptionId)?.text}
+                          <div className="student-analysis-answer-block is-key">
+                            <span>Kunci</span>
+                            <p>{q.options?.find(option => option.id === q.correctOptionId)?.text ?? '—'}</p>
                           </div>
-                          <div style={{ marginTop: 4 }}>
-                            <span style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: 'var(--r-full)', background: isCorrect ? 'var(--success-light)' : 'var(--danger-light)', color: isCorrect ? 'var(--success)' : 'var(--danger)', fontWeight: 600 }}>
-                              {isCorrect ? '✓ Benar' : '✗ Salah'} ({isCorrect ? q.weight : 0}/{q.weight} poin)
-                            </span>
-                          </div>
-                        </>
+                          <div className="student-analysis-points">{isCorrect ? q.weight : 0} / {q.weight} poin</div>
+                        </div>
                       )}
 
                       {q.type === 'SHORT_ANSWER' && (
-                        <div style={{ fontSize: '0.8rem' }}>
-                          <div><span style={{ color: 'var(--text-muted)' }}>Jawaban: </span>{answer?.shortAnswer || '—'}</div>
-                          <div style={{ marginTop: 4, color: 'var(--text-muted)' }}>Jawaban diterima: {(q.acceptedAnswers ?? []).join(', ')}</div>
-                          <div style={{ marginTop: 4 }}><span style={{ color: isCorrect ? 'var(--success)' : 'var(--danger)', fontWeight: 700 }}>{isCorrect ? '✓ Benar' : '✗ Salah'} ({isCorrect ? q.weight : 0}/{q.weight} poin)</span></div>
+                        <div className="student-analysis-answer-grid">
+                          <div className="student-analysis-answer-block">
+                            <span>Jawaban murid</span>
+                            <p>{answer?.shortAnswer || <em>Tidak dijawab</em>}</p>
+                          </div>
+                          <div className="student-analysis-answer-block is-key">
+                            <span>Jawaban diterima</span>
+                            <p>{(q.acceptedAnswers ?? []).join(', ') || '—'}</p>
+                          </div>
+                          <div className="student-analysis-points">{isCorrect ? q.weight : 0} / {q.weight} poin</div>
                         </div>
                       )}
 
                       {q.type === 'ESSAY' && (
-                        <div>
-                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 6 }}>Jawaban Murid:</div>
-                          <div style={{ padding: 'var(--sp-3)', background: 'var(--surface-2)', borderRadius: 'var(--r-md)', fontSize: '0.875rem', color: 'var(--text-primary)', minHeight: 60, marginBottom: 'var(--sp-3)' }}>
+                        <div className="student-analysis-essay">
+                          <div className="student-analysis-answer-block">
+                            <span>Jawaban murid</span>
+                            <p className="student-analysis-long-answer">
                             {answer?.essayText || <em style={{ color: 'var(--text-muted)' }}>Tidak dijawab</em>}
+                            </p>
                           </div>
-                          {q.answerGuide && (
-                            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 'var(--sp-3)', padding: '6px 10px', background: 'var(--primary-light)', borderRadius: 'var(--r-sm)' }}>
-                              <strong>Panduan:</strong> {q.answerGuide}
-                            </div>
-                          )}
+                          <div className="student-analysis-answer-block is-guide">
+                            <span>Panduan jawaban</span>
+                            <p>{q.answerGuide || <em>Belum ada panduan jawaban.</em>}</p>
+                          </div>
                           {gradingMode && (
                             <>
                             {aiSuggestions[q.id] && (
@@ -649,18 +783,32 @@ export default function ResultsPage() {
                             </div>
                             </>
                           )}
-                          {!gradingMode && grade && 'score' in grade && (
-                            <span style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: 'var(--r-full)', background: 'var(--secondary-light)', color: 'var(--secondary)', fontWeight: 600 }}>
-                              Nilai: {grade.score}/{q.weight} poin
-                            </span>
+                          {!gradingMode && (
+                            <div className={`student-analysis-essay-grade ${grade ? 'is-graded' : 'is-pending'}`}>
+                              <div>
+                                <span>Nilai</span>
+                                <strong>{grade ? `${grade.score} / ${q.weight} poin` : 'Belum dinilai'}</strong>
+                                {!grade && <small>0 / {q.weight} poin</small>}
+                              </div>
+                              {grade?.comment?.trim() && (
+                                <div className="student-analysis-teacher-comment">
+                                  <span>Komentar guru</span>
+                                  <p>{grade.comment}</p>
+                                </div>
+                              )}
+                            </div>
                           )}
                         </div>
                       )}
-                    </div>
-                  </div>
-                </div>
+                </article>
               );
             })}
+            {!visibleDetailQuestions.length && (
+              <div className="student-analysis-empty" role="status">
+                {gradingMode ? 'Tidak ada soal essay.' : getEmptyAnalysisMessage(analysisFilter)}
+              </div>
+            )}
+            </div>
             {(detailSub.antiCheatEvents?.length ?? 0) > 0 && (
               <div style={{ marginTop: 'var(--sp-4)', padding: 'var(--sp-4)', background: 'var(--danger-light)', borderRadius: 'var(--r-md)', color: 'var(--danger)', fontSize: '0.8rem' }}>
                 <strong>Log Anti-cheat:</strong>{' '}
