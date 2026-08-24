@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { storage, type SaveSubmissionResult } from './storage';
-import { saveSession, type ExamSession } from './examSession';
+import { loadSession, saveSession, type ExamSession } from './examSession';
 import type { StudentAnswer } from '../types';
 
 // Critical student lifecycle safety layer.
@@ -48,26 +48,42 @@ function mapServerAnswers(rawAnswers: any[]): StudentAnswer[] {
   }));
 }
 
+function mergeAnswers(serverAnswers: StudentAnswer[], localAnswers: StudentAnswer[]): StudentAnswer[] {
+  const merged = new Map<string, StudentAnswer>();
+  serverAnswers.forEach(answer => merged.set(answer.questionId, answer));
+  localAnswers.forEach(answer => merged.set(answer.questionId, answer));
+  return Array.from(merged.values());
+}
+
 function hydrateServerDraft(exam: any, name: string, identifier: string, draft: any): void {
   if (!draft?.id || !draft?.attempt_number || !draft?.started_at) return;
 
+  const nis = identifier.trim() || name.trim();
+  const existingLocal = loadSession(exam.code, nis);
   const startedAt = String(draft.started_at);
   const wholeDuration = Number(exam.settings?.wholExamTimerSeconds ?? 3600);
   const elapsed = Math.max(0, Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000));
+  const serverAnswers = mapServerAnswers(Array.isArray(draft.answers) ? draft.answers : []);
+
+  // Local answers can be newer than the 5-second server autosave interval.
+  // Preserve them while restoring the canonical server submission UUID.
+  const localAnswers = existingLocal && existingLocal.attemptNumber === Number(draft.attempt_number)
+    ? existingLocal.answers
+    : [];
 
   const session: ExamSession = {
     submissionId: String(draft.id),
     examId: exam.id,
     examCode: exam.code,
     studentName: name.trim(),
-    nis: identifier.trim() || name.trim(),
+    nis,
     attemptNumber: Number(draft.attempt_number),
-    answers: mapServerAnswers(Array.isArray(draft.answers) ? draft.answers : []),
+    answers: mergeAnswers(serverAnswers, localAnswers),
     startedAt,
-    remainingSeconds: exam.settings?.timerMode === 'WHOLE_EXAM'
+    remainingSeconds: existingLocal?.remainingSeconds ?? (exam.settings?.timerMode === 'WHOLE_EXAM'
       ? Math.max(0, wholeDuration - elapsed)
-      : undefined,
-    currentQuestionIndex: 0,
+      : undefined),
+    currentQuestionIndex: existingLocal?.currentQuestionIndex ?? 0,
     isSubmitted: false,
   };
 
