@@ -5,6 +5,7 @@
 import { supabase } from '../lib/supabase';
 import { FunctionsFetchError, FunctionsHttpError, FunctionsRelayError } from '@supabase/supabase-js';
 import { localDateTimeToIso } from './helpers';
+import { getStudentAccessMessage, type StudentAccessMetadata, type StudentAccessReason } from './studentMessages';
 import type { Teacher, Exam, BankQuestion, QuestionCollection, Submission, StudentAnswer, BillingSnapshot, Subscription, Workspace, StudentRanking, AiGradingSuggestion, AiGradingSuggestionStatus } from '../types';
 
 const PENDING_SUBMISSION_QUEUE_KEY = 'kuizku_pending_submission_queue';
@@ -16,6 +17,8 @@ export interface ExamLookupResult {
   error?: {
     type: ExamLookupErrorType;
     message: string;
+    reason?: StudentAccessReason;
+    metadata?: StudentAccessMetadata;
   };
 }
 
@@ -72,25 +75,26 @@ async function describeAiFunctionError(error: unknown): Promise<string> {
 
 export interface StudentExamLookupResult extends ExamLookupResult {
   attemptNumber?: number;
+  attemptCount?: number;
+  maxAttempts?: number;
+  resume?: boolean;
 }
 
-function describeStudentAccessDenial(reason?: string): ExamLookupResult['error'] {
-  switch (reason) {
-    case 'NOT_FOUND':
-      return { type: 'NOT_FOUND', message: 'Kode ujian tidak ditemukan.' };
-    case 'NOT_ACTIVE':
-      return { type: 'PERMISSION_ERROR', message: 'Ujian belum dibuka atau sudah tidak aktif.' };
-    case 'NOT_STARTED':
-      return { type: 'PERMISSION_ERROR', message: 'Ujian belum dimulai. Periksa jadwal dari guru.' };
-    case 'ENDED':
-      return { type: 'PERMISSION_ERROR', message: 'Waktu ujian sudah berakhir.' };
-    case 'STUDENT_NOT_REGISTERED':
-      return { type: 'PERMISSION_ERROR', message: 'Nama atau NIS/ID tidak ditemukan dalam daftar peserta. Periksa penulisan atau hubungi guru.' };
-    case 'MAX_ATTEMPTS':
-      return { type: 'PERMISSION_ERROR', message: 'Batas percobaan untuk peserta ini sudah habis.' };
-    default:
-      return { type: 'PERMISSION_ERROR', message: 'Akses ujian ditolak.' };
-  }
+function describeStudentAccessDenial(data?: Record<string, unknown>): ExamLookupResult['error'] {
+  const reason = String(data?.reason ?? '') as StudentAccessReason;
+  const metadata: StudentAccessMetadata = {
+    attemptCount: data?.attempt_count == null ? undefined : Number(data.attempt_count),
+    maxAttempts: data?.max_attempts == null ? undefined : Number(data.max_attempts),
+    activeFrom: typeof data?.active_from === 'string' ? data.active_from : null,
+    activeTo: typeof data?.active_to === 'string' ? data.active_to : null,
+    examStatus: typeof data?.exam_status === 'string' ? data.exam_status : null,
+  };
+  return {
+    type: reason === 'NOT_FOUND' ? 'NOT_FOUND' : reason === 'NETWORK_ERROR' ? 'NETWORK_ERROR' : 'PERMISSION_ERROR',
+    reason,
+    metadata,
+    message: getStudentAccessMessage(reason, metadata),
+  };
 }
 
 function classifyExamLookupError(error: { code?: string; message?: string; status?: number }): ExamLookupResult['error'] {
@@ -224,7 +228,10 @@ export const storage = {
   },
 
   async getCurrentTeacher(): Promise<Teacher | null> {
-    const { data: { user } } = await supabase.auth.getUser();
+    // getSession restores the persisted browser session without forcing a
+    // network round-trip before the protected layout has rendered.
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
     if (!user) return null;
     const { data: tData } = await supabase.from('teachers').select('*').eq('id', user.id).single();
     if (!tData) {
@@ -338,8 +345,14 @@ export const storage = {
   async getStudentExamByCode(code: string, name: string, identifier: string): Promise<StudentExamLookupResult> {
     const { data, error } = await supabase.rpc('get_student_exam', { p_code: code, p_name: name, p_identifier: identifier });
     if (error) return { exam: null, error: classifyExamLookupError(error) };
-    if (!data?.allowed) return { exam: null, error: describeStudentAccessDenial(data?.reason) };
-    return { exam: dbToExam(data.exam), attemptNumber: Number(data.next_attempt_number ?? 1) };
+    if (!data?.allowed) return { exam: null, error: describeStudentAccessDenial(data) };
+    return {
+      exam: dbToExam(data.exam),
+      attemptNumber: Number(data.next_attempt_number ?? 1),
+      attemptCount: Number(data.attempt_count ?? 0),
+      maxAttempts: Number(data.max_attempts ?? data.exam?.settings?.maxAttempts ?? 1),
+      resume: data.resume === true,
+    };
   },
 
   async saveExam(exam: Exam): Promise<{ error?: string }> {

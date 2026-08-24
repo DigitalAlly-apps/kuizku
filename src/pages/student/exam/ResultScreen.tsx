@@ -4,6 +4,7 @@ import { CheckCircle, Clock, BookOpen, Home, History, Trophy } from 'lucide-reac
 import { formatDateTime, calcMaxMCScore } from '../../../utils/helpers';
 import { storage } from '../../../utils/storage';
 import type { Exam, Submission, StudentRanking } from '../../../types';
+import { studentSubmissionMessages } from '../../../utils/studentMessages';
 
 interface Props {
   exam: Exam;
@@ -108,14 +109,14 @@ export default function ResultScreen({ exam, submission, studentName }: Props) {
               {hasEssay && (
                 <div style={{ padding: 'var(--sp-3) var(--sp-4)', background: 'var(--secondary-light)', border: '1px solid rgba(124,58,237,0.2)', borderRadius: 'var(--r-md)', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: 10 }}>
                   <BookOpen size={16} style={{ color: 'var(--secondary)', flexShrink: 0 }} />
-                  <p style={{ color: 'var(--text-secondary)', margin: 0 }}>Soal essay akan dinilai guru secara manual.</p>
+                  <p style={{ color: 'var(--text-secondary)', margin: 0 }}>{studentSubmissionMessages.essayPending}</p>
                 </div>
               )}
             </div>
           ) : (
             <div style={{ padding: 'var(--sp-4)', background: 'var(--surface-2)', borderRadius: 'var(--r-md)', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               <Clock size={16} style={{ display: 'inline', marginRight: 6 }} />
-              {finalReleased ? 'Nilai akan diumumkan oleh guru.' : 'Nilai final ditahan sampai guru menutup ujian.'}
+              {hasEssay ? studentSubmissionMessages.essayPending : finalReleased ? 'Nilai akan diumumkan oleh guru.' : 'Nilai final ditahan sampai guru menutup ujian.'}
             </div>
           )}
 

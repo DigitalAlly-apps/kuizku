@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Hash, User, CreditCard, ListOrdered, Search, AlertCircle, ArrowRight, Clock, FileText, Calendar, History, Trophy, Play, BookOpen, RotateCcw } from 'lucide-react';
+import { Hash, User, CreditCard, ListOrdered, Search, AlertCircle, ArrowRight, Clock, FileText, Calendar, History, Trophy, Play, BookOpen } from 'lucide-react';
 import { storage } from '../../utils/storage';
 import { loadSession } from '../../utils/examSession';
 import { formatDateTime, formatExamFormat, formatTimerMode } from '../../utils/helpers';
 import { Spinner } from '../../components/ui';
 import type { Exam } from '../../types';
+import { getStudentAccessMessage } from '../../utils/studentMessages';
 
 type Step = 'code' | 'actions' | 'identity' | 'resume';
 
@@ -21,7 +22,6 @@ export default function JoinExamPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [foundExam, setFoundExam] = useState<Exam | null>(null);
-  const [nextAttemptNumber, setNextAttemptNumber] = useState(1);
   const [, setHasResume] = useState(false);
 
   // Format kode saat mengetik
@@ -70,7 +70,7 @@ export default function JoinExamPage() {
   const handleIdentitySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!name.trim()) { setError('Nama lengkap wajib diisi'); return; }
+    if (!name.trim()) { setError('Masukkan nama lengkap agar jawaban dan hasil ujian dapat dikenali.'); return; }
     if (!foundExam) return;
 
     // Gunakan nis sebagai identifier — bisa NISN, no absen, atau fallback ke nama
@@ -81,17 +81,9 @@ export default function JoinExamPage() {
     setLoading(false);
 
     if (!access.exam) {
-      let message = access.error?.message ?? 'Akses ditolak';
-      if (message.includes('belum dimulai') && foundExam.activeFrom) {
-        message = `Ujian belum dimulai. Jadwal mulai: ${formatDateTime(foundExam.activeFrom)}.`;
-      } else if (message.includes('sudah berakhir') && foundExam.activeTo) {
-        message = `Waktu ujian sudah berakhir. Batas waktu: ${formatDateTime(foundExam.activeTo)}.`;
-      }
-      setError(message);
+      setError(access.error?.message ?? getStudentAccessMessage());
       return;
     }
-    setNextAttemptNumber(access.attemptNumber ?? 1);
-
     if (loadSession(foundExam.code, identifier)) {
       setHasResume(true);
       setStep('resume');
@@ -106,15 +98,15 @@ export default function JoinExamPage() {
     if (!foundExam) return;
     const now = Date.now();
     if (foundExam.status !== 'ACTIVE') {
-      setError('Ujian sudah ditutup dan tidak dapat dikerjakan. Anda masih dapat melihat ranking bila sudah dirilis.');
+      setError(getStudentAccessMessage('NOT_ACTIVE'));
       return;
     }
     if (foundExam.activeFrom && new Date(foundExam.activeFrom).getTime() > now) {
-      setError(`Ujian belum dimulai. Jadwal mulai: ${formatDateTime(foundExam.activeFrom)}.`);
+      setError(getStudentAccessMessage('NOT_STARTED', { activeFrom: foundExam.activeFrom }));
       return;
     }
     if (foundExam.activeTo && new Date(foundExam.activeTo).getTime() < now) {
-      setError(`Waktu ujian sudah berakhir. Batas waktu: ${formatDateTime(foundExam.activeTo)}.`);
+      setError(getStudentAccessMessage('ENDED', { activeTo: foundExam.activeTo }));
       return;
     }
     setError('');
@@ -124,20 +116,13 @@ export default function JoinExamPage() {
   const handleResume = () => {
     // Fix #5: Validasi exam masih aktif sebelum resume
     if (!foundExam || foundExam.status !== 'ACTIVE') {
-      setError('Ujian sudah tidak aktif. Sesi tidak bisa dilanjutkan.');
+      setError(getStudentAccessMessage('NOT_ACTIVE'));
       setStep('identity');
       return;
     }
     const identifier = nis.trim() || name.trim();
     navigate(`/ujian/${foundExam.code}/kerjakan`, {
       state: { examId: foundExam.id, studentName: name.trim(), nis: identifier, resume: true }
-    });
-  };
-
-  const handleStartFresh = () => {
-    const identifier = nis.trim() || name.trim();
-    navigate(`/ujian/${foundExam!.code}/instruksi`, {
-      state: { examId: foundExam!.id, studentName: name.trim(), nis: identifier, attemptNumber: nextAttemptNumber }
     });
   };
 
@@ -390,7 +375,7 @@ export default function JoinExamPage() {
               <div style={styles.resumeIcon}><BookOpen size={28} strokeWidth={2} /></div>
               <h2>Ada Sesi Tersimpan</h2>
               <p style={{ color: 'var(--text-muted)', marginTop: 8 }}>
-                Anda pernah mengerjakan ujian <strong style={{ color: 'var(--text-primary)' }}>{foundExam.title}</strong> sebelumnya dan belum selesai. Ingin melanjutkan?
+                Anda memiliki ujian <strong style={{ color: 'var(--text-primary)' }}>{foundExam.title}</strong> yang belum selesai. Pilih lanjutkan untuk meneruskan jawaban sebelumnya. Melanjutkan ujian tidak membuat kesempatan baru.
               </p>
             </div>
 
@@ -398,8 +383,8 @@ export default function JoinExamPage() {
               <button className="btn btn-primary btn-lg" style={{ justifyContent: 'center' }} onClick={handleResume}>
                 <Play size={16} /> Lanjutkan dari Sesi Sebelumnya
               </button>
-              <button className="btn btn-secondary" style={{ justifyContent: 'center' }} onClick={handleStartFresh}>
-                <RotateCcw size={16} /> Mulai Ulang dari Awal
+              <button className="btn btn-secondary" style={{ justifyContent: 'center' }} onClick={() => { setStep('identity'); setError(''); }}>
+                Gunakan identitas lain
               </button>
             </div>
           </div>

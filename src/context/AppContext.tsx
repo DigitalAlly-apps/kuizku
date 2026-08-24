@@ -8,6 +8,7 @@ import { storage, type MutationResult } from '../utils/storage';
 import { generateId, generateExamCode } from '../utils/helpers';
 import { v4 as uuidv4 } from 'uuid';
 import { clearSessionBySubmissionId } from '../utils/examSession';
+import { supabase } from '../lib/supabase';
 
 // Semua fitur aktif — tidak ada gate
 const featureAccess = {
@@ -106,16 +107,53 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    const initAuth = async () => {
+    let mounted = true;
+    const clearTeacherState = () => {
+      if (!mounted) return;
+      setCurrentTeacher(null);
+      setExamsState([]);
+      setBankState([]);
+      setQuestionCollections([]);
+      setSubmissionsState([]);
+      setIsLoading(false);
+    };
+
+    const hydrateTeacher = async () => {
+      if (!mounted) return;
+      setIsLoading(true);
       const teacher = await storage.getCurrentTeacher();
+      if (!mounted) return;
       if (teacher) {
         setCurrentTeacher(teacher);
         await loadTeacherData(teacher);
       } else {
-        setIsLoading(false);
+        clearTeacherState();
       }
     };
-    initAuth();
+
+    const initAuth = async () => {
+      await hydrateTeacher();
+    };
+    void initAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        const manualLogout = sessionStorage.getItem('kuizku_manual_logout') === '1';
+        sessionStorage.removeItem('kuizku_manual_logout');
+        if (!manualLogout) sessionStorage.setItem('kuizku_auth_expired', '1');
+        clearTeacherState();
+        return;
+      }
+      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
+        void hydrateTeacher();
+      }
+      // TOKEN_REFRESHED intentionally keeps the already loaded teacher data.
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   // ---- Refresh ----
@@ -165,10 +203,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
+    sessionStorage.setItem('kuizku_manual_logout', '1');
     await storage.logout();
     setCurrentTeacher(null);
     setExamsState([]);
     setBankState([]);
+    setQuestionCollections([]);
     setSubmissionsState([]);
   };
 

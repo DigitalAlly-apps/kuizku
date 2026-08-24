@@ -2,24 +2,25 @@ import { supabase } from '../lib/supabase';
 import { storage, type SaveSubmissionResult } from './storage';
 import { loadSession, saveSession, type ExamSession } from './examSession';
 import type { StudentAnswer } from '../types';
+import { getStudentAccessMessage, studentSubmissionMessages } from './studentMessages';
 
 // Critical student lifecycle safety layer.
 // Keep this narrowly scoped to login/resume/submission behavior.
 
 const SUBMISSION_ERROR_MESSAGES: Record<string, string> = {
-  MAX_ATTEMPTS: 'Kesempatan mengerjakan sudah habis.',
-  ENDED: 'Waktu ujian sudah berakhir.',
-  NOT_STARTED: 'Ujian belum dimulai.',
-  NOT_ACTIVE: 'Ujian sudah tidak aktif.',
-  NOT_REGISTERED: 'Nama/NIS tidak terdaftar.',
+  MAX_ATTEMPTS: getStudentAccessMessage('MAX_ATTEMPTS'),
+  ENDED: getStudentAccessMessage('ENDED'),
+  NOT_STARTED: getStudentAccessMessage('NOT_STARTED'),
+  NOT_ACTIVE: getStudentAccessMessage('NOT_ACTIVE'),
+  NOT_REGISTERED: getStudentAccessMessage('STUDENT_NOT_REGISTERED'),
   INVALID_IDENTITY: 'Identitas peserta tidak valid. Silakan masuk ulang.',
   INVALID_ANSWERS: 'Ada jawaban yang tidak valid. Muat ulang ujian lalu coba lagi.',
-  SUBMISSION_CONFLICT: 'Sesi ujian berubah di server. Masuk ulang untuk melanjutkan jawaban yang tersimpan.',
+  SUBMISSION_CONFLICT: studentSubmissionMessages.conflict,
   SUBMISSION_FINAL: 'Jawaban untuk percobaan ini sudah dikumpulkan.',
 };
 
 function friendlySubmissionError(message?: string, queued = false): string | undefined {
-  if (queued) return 'Koneksi terputus. Jawaban Anda tetap tersimpan. Coba kumpulkan lagi.';
+  if (queued) return studentSubmissionMessages.offline;
   if (!message) return message;
 
   for (const [code, friendly] of Object.entries(SUBMISSION_ERROR_MESSAGES)) {
@@ -28,10 +29,10 @@ function friendlySubmissionError(message?: string, queued = false): string | und
 
   const normalized = message.toLowerCase();
   if (normalized.includes('duplicate key') || normalized.includes('unique constraint')) {
-    return 'Sesi ujian sedang dipulihkan. Masuk ulang lalu lanjutkan percobaan yang sama.';
+    return studentSubmissionMessages.conflict;
   }
   if (normalized.includes('failed to fetch') || normalized.includes('network') || normalized.includes('timeout')) {
-    return 'Koneksi terputus. Jawaban Anda tetap tersimpan. Coba kumpulkan lagi.';
+    return studentSubmissionMessages.offline;
   }
 
   return 'Jawaban belum dapat disimpan. Silakan coba lagi.';

@@ -12,6 +12,7 @@ import {
 
 import { useCountdown } from '../../hooks/useCountdown';
 import type { Exam, Question, StudentAnswer } from '../../types';
+import { studentSubmissionMessages } from '../../utils/studentMessages';
 
 // Sub-components
 import ExamHeader from './exam/ExamHeader';
@@ -313,7 +314,7 @@ export default function ExamTakingPage() {
         <div style={{ maxWidth: 480, textAlign: 'center', background: 'var(--surface)', border: '1px solid var(--warning)', borderRadius: 'var(--r-xl)', padding: 'var(--sp-8)' }}>
           <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>📥</div>
           <h1 style={{ marginBottom: 8 }}>Jawaban Belum Terkirim</h1>
-          <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>Jawaban Anda sudah tersimpan aman di perangkat. Sambungkan internet untuk mengirim jawaban ke server.</p>
+          <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>{studentSubmissionMessages.offline}</p>
           <button className="btn btn-primary" style={{ marginTop: 20 }} onClick={() => { setSubmitPending(false); void handleSubmit(false); }}>Coba Kirim Sekarang</button>
         </div>
       </div>

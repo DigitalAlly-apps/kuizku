@@ -4,14 +4,15 @@ import { AlertCircle, ArrowLeft, History, Search, Trophy, User } from 'lucide-re
 import { APP_CONFIG } from '../../lib/appConfig';
 import { storage } from '../../utils/storage';
 import type { StudentRanking } from '../../types';
+import { studentSubmissionMessages } from '../../utils/studentMessages';
 
 type LocationState = { studentName?: string; nis?: string };
 
 const reasonMessage: Record<string, string> = {
   IDENTITY_REQUIRED: 'Ujian ini memakai daftar peserta. Isi nama dan NIS/nomor absen Anda untuk melihat ranking.',
-  STUDENT_NOT_REGISTERED: 'Nama atau NIS/ID tidak ditemukan dalam daftar peserta.',
-  NOT_RELEASED: 'Ranking belum dirilis oleh guru.',
-  ESSAY_PENDING: 'Ranking belum tersedia karena penilaian essay masih berlangsung.',
+  STUDENT_NOT_REGISTERED: 'Data Anda belum ditemukan di daftar peserta. Periksa kembali nama dan nomor identitas, atau minta guru memeriksa daftar peserta ujian.',
+  NOT_RELEASED: studentSubmissionMessages.rankingNotReleased,
+  ESSAY_PENDING: studentSubmissionMessages.essayPending,
   NOT_FOUND: 'Ujian tidak ditemukan atau belum dapat menampilkan ranking.',
   UNAVAILABLE: 'Ranking belum dapat dimuat. Silakan coba lagi.',
 };
@@ -50,7 +51,7 @@ export default function StudentRankingPage() {
   const submitIdentity = (event: React.FormEvent) => {
     event.preventDefault();
     if (!name.trim()) {
-      setError('Nama lengkap wajib diisi untuk ujian dengan daftar peserta.');
+      setError('Masukkan nama lengkap agar ranking dapat dicocokkan dengan data peserta.');
       return;
     }
     void loadRanking();

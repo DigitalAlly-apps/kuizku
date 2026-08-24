@@ -7,7 +7,7 @@ import { storage } from '../../utils/storage';
 import { supabase } from '../../lib/supabase';
 
 export default function LoginPage() {
-  const { login, loginWithGoogle } = useAuth();
+  const { login, loginWithGoogle, currentTeacher } = useAuth();
   const navigate = useNavigate();
   const [mode, setMode] = useState<'login' | 'forgot' | 'reset'>('login');
   
@@ -28,6 +28,15 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    if (mode === 'login' && currentTeacher) {
+      navigate('/guru/dashboard', { replace: true });
+      return;
+    }
+    if (sessionStorage.getItem('kuizku_auth_expired') === '1') {
+      sessionStorage.removeItem('kuizku_auth_expired');
+      setError('Sesi login Anda sudah berakhir. Silakan masuk kembali untuk melanjutkan.');
+    }
+
     const enterRecovery = () => {
       setMode('reset');
       setError('');
@@ -44,7 +53,7 @@ export default function LoginPage() {
       }
     });
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [currentTeacher, mode, navigate]);
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
