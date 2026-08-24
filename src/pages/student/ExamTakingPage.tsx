@@ -95,7 +95,7 @@ export default function ExamTakingPage() {
         setSession(existing);
         setCurrentIdx(existing.currentQuestionIndex);
       } else {
-        // Fetch completed submissions for this student to determine attempt number
+        // Attempt number berasal dari submission COMPLETE di server. Draft/autosave tidak memakan jatah.
         const newSession = createSession(found, state.studentName, state.nis, attemptNumber ?? 1);
         setSession(newSession);
         setCurrentIdx(0);
@@ -110,55 +110,35 @@ export default function ExamTakingPage() {
     if (submitRef.current || !session || !exam) return;
     submitRef.current = true;
 
-    const latestLookup = code ? await storage.getStudentExamByCode(code, session.studentName, session.nis) : { exam: null };
-    const latestExam = latestLookup.exam;
-    const isUnavailable = latestLookup.error?.type === 'NETWORK_ERROR' || latestLookup.error?.type === 'BACKEND_UNAVAILABLE';
-    if (!latestExam && isUnavailable) {
-      const sub = { ...buildSubmission(session, exam), antiCheatEvents: antiCheatEventsRef.current };
-      const saveResult = await storage.saveSubmission(sub);
-      submitRef.current = false;
-      setShowSubmit(false);
-      if (saveResult.queued) {
-        setSubmittedData(sub);
-        setSubmitPending(true);
-      } else setLoadError(saveResult.error ?? 'Jawaban belum dapat disimpan. Silakan coba lagi.');
-      return;
-    }
-    if (!latestExam || latestExam.id !== exam.id || latestExam.status !== 'ACTIVE') {
-      submitRef.current = false;
-      setLoadError(latestLookup.error?.type === 'PERMISSION_ERROR' ? 'Ujian tidak dapat diakses.' : 'Ujian sudah ditutup.');
-      return;
-    }
-
-    const now = Date.now();
-    if (latestExam.activeFrom && new Date(latestExam.activeFrom).getTime() > now) {
-      submitRef.current = false;
-      setLoadError('Ujian belum dibuka. Jawaban tidak dapat dikumpulkan.');
-      return;
-    }
-    if (latestExam.activeTo && new Date(latestExam.activeTo).getTime() < now) {
-      submitRef.current = false;
-      setLoadError('Deadline ujian sudah lewat. Jawaban tidak dapat dikumpulkan.');
-      return;
-    }
-
-    const sub = { ...buildSubmission(session, latestExam), antiCheatEvents: antiCheatEventsRef.current };
-    // Jangan clear session sampai server mengonfirmasi submission final tersimpan.
+    // Final submit langsung menuju RPC save_student_submission.
+    // RPC adalah sumber kebenaran dan sudah memvalidasi status ujian, jadwal,
+    // daftar peserta, ownership submission, serta batas percobaan secara atomik.
+    // Menghindari lookup kedua di sini mencegah final submit kandas karena
+    // request validasi terpisah gagal sesaat sebelum jawaban dikirim.
+    const sub = { ...buildSubmission(session, exam), antiCheatEvents: antiCheatEventsRef.current };
     const saveResult = await storage.saveSubmission(sub);
+
     if (saveResult.saved) {
+      // Session baru dihapus setelah server mengonfirmasi submission COMPLETE.
       clearSession(session.examCode, session.nis);
       setSubmittedData({ ...sub, mcScore: saveResult.mcScore ?? sub.mcScore, totalScore: saveResult.totalScore });
-    } else {
-      submitRef.current = false;
+      setSubmitted(true);
+      setSubmitPending(false);
       setShowSubmit(false);
-      if (saveResult.queued) setSubmitPending(true);
-      else setLoadError(saveResult.error ?? 'Jawaban belum dapat disimpan. Silakan coba lagi.');
       return;
     }
 
-    setSubmitted(true);
+    submitRef.current = false;
     setShowSubmit(false);
-  }, [session, exam, code]);
+    setSubmittedData(sub);
+    if (saveResult.queued) {
+      // Jika koneksi putus, submission final tetap berada di queue lokal dan
+      // memakai ID yang sama. Retry aman/idempotent dan tidak menambah attempt.
+      setSubmitPending(true);
+    } else {
+      setLoadError(saveResult.error ?? 'Jawaban belum dapat disimpan. Silakan coba lagi.');
+    }
+  }, [session, exam]);
 
   // Server-side autosave draft. LocalStorage remains for instant resume on the
   // same device, while Supabase keeps a recoverable draft copy of answers.
