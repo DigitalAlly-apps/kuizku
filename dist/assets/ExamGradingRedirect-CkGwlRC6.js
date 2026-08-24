@@ -1,0 +1,1 @@
+import{y as r,a as t,r as i,j as s}from"./index-Cx5yftG5.js";import"./mammoth-CDhF3zS_.js";function c(){const{id:e}=r(),a=t();return i.useEffect(()=>{e?a(`/guru/hasil?exam=${encodeURIComponent(e)}&quick=1`,{replace:!0}):a("/guru/hasil",{replace:!0})},[e,a]),s.jsx("div",{className:"page-loader",children:s.jsx("span",{className:"spinner spinner-lg"})})}export{c as default};

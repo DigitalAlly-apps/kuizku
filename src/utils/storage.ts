@@ -619,8 +619,16 @@ export const storage = {
 
   async deleteTeacherSubmission(submissionId: string): Promise<MutationResult> {
     const { data, error } = await supabase.rpc('delete_teacher_submission', { p_submission_id: submissionId });
-    if (error) return { success: false, error: error.message };
-    if (data?.deleted !== true) return { success: false, error: 'Jawaban tidak dapat dihapus.' };
+    if (error) {
+      // Detail Supabase tetap tersedia bagi developer tanpa membocorkan nama
+      // function, schema cache, atau struktur database kepada guru.
+      console.error('Error deleting teacher submission:', error);
+      if (error.code === '42501' || error.message.toLowerCase().includes('not authorized')) {
+        return { success: false, error: 'Anda tidak memiliki izin untuk menghapus submission ini.' };
+      }
+      return { success: false, error: 'Submission gagal dihapus. Silakan coba lagi.' };
+    }
+    if (data?.deleted !== true) return { success: false, error: 'Submission gagal dihapus. Silakan coba lagi.' };
     return { success: true };
   },
 
