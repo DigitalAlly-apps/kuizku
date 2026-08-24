@@ -397,7 +397,7 @@ export default function ResultsPage() {
                     <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                       <span style={{ width: 60, fontSize: '0.78rem', color: 'var(--text-muted)' }}>{label}</span>
                       <div style={{ flex: 1, height: 8, background: 'var(--surface-2)', borderRadius: 'var(--r-full)', overflow: 'hidden' }}>
-                        <div style={{ width: `${finalScoreSubs.length ? (Number(count) / finalScoreSubs.length) * 100 : 0}%`, height: '100%', background: String(color) }} />
+                        <div style={{ width: `${scoreStats.count ? (Number(count) / scoreStats.count) * 100 : 0}%`, height: '100%', background: String(color) }} />
                       </div>
                       <strong style={{ fontSize: '0.78rem' }}>{count}</strong>
                     </div>
