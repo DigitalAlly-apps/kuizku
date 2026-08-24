@@ -353,12 +353,12 @@ export default function ResultsPage() {
           {/* Stats */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 'var(--sp-3)', marginBottom: 'var(--sp-8)' }}>
             {[
-              { label: 'Total Peserta', value: examSubs.length, color: 'var(--primary)' },
-              { label: 'Rata-rata Nilai', value: avgTotal || '—', color: 'var(--success)' },
-              { label: 'Maks. Poin', value: maxTotal, color: 'var(--accent)' },
-              { label: 'Median', value: scoreStats.median || '—', color: 'var(--secondary)' },
-              { label: 'Tertinggi', value: scoreStats.highest || '—', color: 'var(--success)' },
-              { label: 'Ketuntasan', value: `${scoreStats.mastery}%`, color: 'var(--warning)' },
+              { label: 'Total Peserta', value: uniqueParticipantCount, color: 'var(--primary)' },
+              { label: 'Submission', value: examSubs.length, color: 'var(--secondary)' },
+              { label: 'Rata-rata Nilai', value: gradedPercents.length ? avgTotal : '—', color: 'var(--success)' },
+              { label: 'Median', value: gradedPercents.length ? scoreStats.median : '—', color: 'var(--secondary)' },
+              { label: 'Tertinggi', value: gradedPercents.length ? scoreStats.highest : '—', color: 'var(--success)' },
+              { label: 'Ketuntasan ≥70', value: `${scoreStats.mastery}%`, color: 'var(--warning)' },
               { label: 'Essay Final', value: `${examSubs.filter(s => essayStatus(s) === 'FINAL').length}/${examSubs.length}`, color: 'var(--warning)' },
             ].map(s => (
               <div key={s.label} className="stat-card">
