@@ -26,12 +26,12 @@ export default function SubmitDialog({ open, questions, answeredIds, onConfirm, 
             : <AlertTriangle size={48} style={{ color: 'var(--warning)', margin: '0 auto var(--sp-3)' }} />
           }
           <h2 style={{ marginBottom: 8 }}>
-            {allAnswered ? 'Siap dikumpulkan?' : 'Periksa lagi sebelum kumpulkan'}
+            {allAnswered ? 'Yakin ingin mengumpulkan?' : 'Periksa lagi sebelum mengumpulkan'}
           </h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
             {allAnswered
-              ? 'Semua soal sudah terisi. Setelah dikumpulkan, jawaban tidak bisa diubah.'
-              : `${unanswered.length} soal masih kosong. Anda tetap bisa mengumpulkan, tetapi jawaban kosong tidak mendapat poin.`
+              ? 'Semua soal sudah terisi. Setelah dikumpulkan, kesempatan ini akan dianggap selesai dan jawaban tidak dapat diubah.'
+              : `${unanswered.length} soal masih kosong. Kamu tetap bisa mengumpulkan, tetapi jawaban kosong tidak mendapat poin. Setelah dikumpulkan, kesempatan ini akan dianggap selesai.`
             }
           </p>
         </div>
@@ -95,10 +95,10 @@ export default function SubmitDialog({ open, questions, answeredIds, onConfirm, 
 
         <div className="submit-dialog-actions" style={{ display: 'flex', gap: 'var(--sp-3)' }}>
           <button className="btn btn-secondary" style={{ flex: 1, justifyContent: 'center' }} onClick={onCancel}>
-            Kembali Periksa
+            Periksa Lagi
           </button>
           <button className="btn btn-success" style={{ flex: 1, justifyContent: 'center' }} onClick={onConfirm}>
-            ✓ Kumpulkan Sekarang
+            ✓ Ya, Kumpulkan
           </button>
         </div>
       </div>
