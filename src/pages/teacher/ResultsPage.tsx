@@ -557,13 +557,14 @@ export default function ResultsPage() {
                         </td>
                         <td>
                           <div style={{ display: 'flex', gap: 4 }}>
-                            <button className="btn btn-ghost btn-sm btn-icon" title={`Analisis ${sub.studentName}`} onClick={() => { setDetailSub(sub); setGradingMode(false); setAnalysisFilter('ALL'); }}>
-                              <BarChart2 size={14} />
+                            <button className="btn btn-ghost btn-sm results-analysis-action" type="button" aria-label={`Analisis ${sub.studentName}`} title={`Analisis ${sub.studentName}`} onClick={() => { setDetailSub(sub); setGradingMode(false); setAnalysisFilter('ALL'); }}>
+                              <BarChart2 size={14} aria-hidden="true" />
+                              <span>Analisis</span>
                             </button>
                             {selectedExam.format !== 'PG_ONLY' && (
-                              <button className="btn btn-ghost btn-sm btn-icon" title="Nilai Essay" onClick={() => startGrading(sub)}
+                              <button className="btn btn-ghost btn-sm btn-icon" type="button" aria-label="Nilai Essay" title="Nilai Essay" onClick={() => startGrading(sub)}
                                 style={{ color: needsGrading ? 'var(--warning)' : 'var(--text-muted)' }}>
-                                <Edit2 size={14} />
+                                <Edit2 size={14} aria-hidden="true" />
                               </button>
                             )}
                           </div>
