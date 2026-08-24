@@ -443,6 +443,8 @@ export default function ResultsPage() {
                     const gradingStatus = essayStatus(sub);
                     const needsGrading = gradingStatus === 'PENDING' || gradingStatus === 'PARTIAL';
                     const total = sub.totalScore;
+                    const isFinal = isFinalSubmission(sub);
+                    const provisional = sub.mcScore + essayTotal;
                     return (
                       <tr key={sub.id}>
                         <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{i + 1}</td>
