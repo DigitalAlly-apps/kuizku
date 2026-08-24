@@ -490,7 +490,7 @@ export default function ResultsPage() {
                         </td>
                         <td>
                           <div style={{ display: 'flex', gap: 4 }}>
-                            <button className="btn btn-ghost btn-sm btn-icon" title="Detail" onClick={() => { setDetailSub(sub); setGradingMode(false); }}>
+                            <button className="btn btn-ghost btn-sm btn-icon" title={`Analisis ${sub.studentName}`} onClick={() => { setDetailSub(sub); setGradingMode(false); setAnalysisFilter('ALL'); }}>
                               <BarChart2 size={14} />
                             </button>
                             {selectedExam.format !== 'PG_ONLY' && (
