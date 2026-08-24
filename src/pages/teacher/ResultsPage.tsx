@@ -434,7 +434,7 @@ export default function ResultsPage() {
                     <th>No</th><th>Nama</th><th>NIS</th><th>Percobaan</th>
                     {selectedExam.format !== 'ESSAY_ONLY' && <th>Skor PG</th>}
                     {selectedExam.format !== 'PG_ONLY' && <th>Skor Essay</th>}
-                    <th>Total</th><th>Waktu Submit</th><th>Aksi</th>
+                    <th>Nilai (0–100)</th><th>Waktu Submit</th><th>Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
