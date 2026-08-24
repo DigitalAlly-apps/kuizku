@@ -37,6 +37,7 @@ export default function ResultsPage() {
   const [quickIndex, setQuickIndex] = useState(0);
   const [quickScore, setQuickScore] = useState<number | null>(null);
   const [quickComment, setQuickComment] = useState('');
+  const [analysisFilter, setAnalysisFilter] = useState<'ALL' | 'WRONG' | 'CORRECT' | 'ESSAY'>('ALL');
   const quickRequested = searchParams.get('quick') === '1';
 
   const selectedExam = useMemo(() => myExams.find(e => e.id === selectedExamId), [myExams, selectedExamId]);
@@ -56,33 +57,57 @@ export default function ResultsPage() {
   const maxEssay = selectedExam ? calcMaxEssayScore(selectedExam) : 0;
   const maxTotal = maxMC + maxEssay;
 
-  const avgTotal = useMemo(() => {
-    if (!finalScoreSubs.length) return 0;
-    const total = finalScoreSubs.reduce((s, sub) => {
-      return s + (sub.totalScore ?? 0);
-    }, 0);
-    return Math.round(total / finalScoreSubs.length);
+  // Nilai skala 0-100
+  const toPercent = (points: number) => (maxTotal > 0 ? Math.round((points / maxTotal) * 100) : 0);
+  const isFinalSubmission = (sub: Submission) => {
+    const status = essayStatus(sub);
+    return !sub.isReturned && sub.totalScore != null && (status === 'NONE' || status === 'FINAL');
+  };
+  // Identitas peserta stabil: NIS, fallback nama (lowercase) bila NIS kosong
+  const participantKey = (sub: Submission) => (sub.nis?.trim() ? `nis:${sub.nis.trim().toLowerCase()}` : `name:${sub.studentName.trim().toLowerCase()}`);
+
+  const uniqueParticipantCount = useMemo(() => new Set(examSubs.map(participantKey)).size, [examSubs]);
+
+  // Attempt FINAL terbaik per peserta — dipakai untuk statistik & ranking
+  const bestFinalPerParticipant = useMemo(() => {
+    const map = new Map<string, Submission>();
+    finalScoreSubs.forEach(sub => {
+      const key = participantKey(sub);
+      const current = map.get(key);
+      if (!current || (sub.totalScore ?? 0) > (current.totalScore ?? 0)) map.set(key, sub);
+    });
+    return [...map.values()];
   }, [finalScoreSubs]);
 
-  const scoreStats = useMemo(() => {
-    const totals = finalScoreSubs.map(sub => sub.totalScore ?? 0).sort((a, b) => a - b);
-    if (!totals.length) return { median: 0, highest: 0, mastery: 0, distribution: [0, 0, 0, 0] };
-    const mid = Math.floor(totals.length / 2);
-    const median = totals.length % 2 ? totals[mid] : Math.round((totals[mid - 1] + totals[mid]) / 2);
-    const highest = totals[totals.length - 1];
-    const mastery = maxTotal > 0 ? Math.round((totals.filter(v => (v / maxTotal) * 100 >= 70).length / totals.length) * 100) : 0;
-    const distribution = [
-      totals.filter(v => maxTotal > 0 && (v / maxTotal) * 100 < 40).length,
-      totals.filter(v => maxTotal > 0 && (v / maxTotal) * 100 >= 40 && (v / maxTotal) * 100 < 70).length,
-      totals.filter(v => maxTotal > 0 && (v / maxTotal) * 100 >= 70 && (v / maxTotal) * 100 < 85).length,
-      totals.filter(v => maxTotal > 0 && (v / maxTotal) * 100 >= 85).length,
-    ];
-    return { median, highest, mastery, distribution };
-  }, [finalScoreSubs, maxTotal]);
+  const gradedPercents = useMemo(
+    () => bestFinalPerParticipant.map(sub => toPercent(sub.totalScore ?? 0)).sort((a, b) => a - b),
+    [bestFinalPerParticipant, maxTotal],
+  );
 
-  const ranking = useMemo(() => [...finalScoreSubs]
+  const avgTotal = useMemo(() => {
+    if (!gradedPercents.length) return 0;
+    return Math.round(gradedPercents.reduce((a, b) => a + b, 0) / gradedPercents.length);
+  }, [gradedPercents]);
+
+  const scoreStats = useMemo(() => {
+    const values = gradedPercents;
+    if (!values.length) return { median: 0, highest: 0, mastery: 0, distribution: [0, 0, 0, 0], count: 0 };
+    const mid = Math.floor(values.length / 2);
+    const median = values.length % 2 ? values[mid] : Math.round((values[mid - 1] + values[mid]) / 2);
+    const highest = values[values.length - 1];
+    const mastery = Math.round((values.filter(v => v >= 70).length / values.length) * 100);
+    const distribution = [
+      values.filter(v => v < 40).length,
+      values.filter(v => v >= 40 && v < 70).length,
+      values.filter(v => v >= 70 && v < 85).length,
+      values.filter(v => v >= 85).length,
+    ];
+    return { median, highest, mastery, distribution, count: values.length };
+  }, [gradedPercents]);
+
+  const ranking = useMemo(() => [...bestFinalPerParticipant]
     .sort((a, b) => (b.totalScore ?? 0) - (a.totalScore ?? 0))
-    .slice(0, 5), [finalScoreSubs]);
+    .slice(0, 5), [bestFinalPerParticipant]);
 
   const quickTargets = useMemo<QuickEssayTarget[]>(() => {
     if (!selectedExam) return [];
@@ -92,6 +117,7 @@ export default function ResultsPage() {
   }, [examSubs, selectedExam]);
   const quickTarget = quickTargets[quickIndex];
   const quickGradedCount = useMemo(() => quickTargets.filter(target => target.submission.essayScores.some(grade => grade.questionId === target.question.id)).length, [quickTargets]);
+
 
   const startGrading = (sub: Submission) => {
     setQuickMode(false);
@@ -257,11 +283,11 @@ export default function ResultsPage() {
         const comment = q.type === 'ESSAY' ? grade?.comment ?? '' : '';
         return [`${qIdx + 1}. ${answerText}`, score, comment];
       });
-      return [i + 1, s.studentName, s.nis, s.attemptNumber, s.submittedAt ? formatDateTime(s.submittedAt) : '-', s.mcScore, essayTotal || '', isFinal ? s.totalScore : '', isFinal ? 'FINAL' : gradingStatus === 'PARTIAL' ? 'DINILAI SEBAGIAN' : 'MENUNGGU PENILAIAN', maxMC, maxEssay, maxTotal, s.antiCheatEvents?.length ?? 0, ...details];
+      return [i + 1, s.studentName, s.nis, s.attemptNumber, s.submittedAt ? formatDateTime(s.submittedAt) : '-', s.mcScore, essayTotal || '', isFinal ? s.totalScore : '', isFinal && s.totalScore != null ? toPercent(s.totalScore) : '', isFinal ? 'FINAL' : gradingStatus === 'PARTIAL' ? 'DINILAI SEBAGIAN' : 'MENUNGGU PENILAIAN', maxMC, maxEssay, maxTotal, s.antiCheatEvents?.length ?? 0, ...details];
     });
     const detailHeaders = selectedExam.questions.flatMap((_, i) => [`S${i + 1} Jawaban`, `S${i + 1} Skor`, `S${i + 1} Komentar`]);
     const ws = XLSX.utils.aoa_to_sheet([
-      ['No','Nama','NIS','Percobaan','Waktu Submit','Skor PG','Skor Essay','Total','Status Nilai','Maks PG','Maks Essay','Maks Total','Pelanggaran Anti-cheat', ...detailHeaders],
+      ['No','Nama','NIS','Percobaan','Waktu Submit','Skor PG','Skor Essay','Total','Nilai (0-100)','Status Nilai','Maks PG','Maks Essay','Maks Total','Pelanggaran Anti-cheat', ...detailHeaders],
       ...rows,
     ]);
     const wb = XLSX.utils.book_new();
@@ -328,12 +354,12 @@ export default function ResultsPage() {
           {/* Stats */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 'var(--sp-3)', marginBottom: 'var(--sp-8)' }}>
             {[
-              { label: 'Total Peserta', value: examSubs.length, color: 'var(--primary)' },
-              { label: 'Rata-rata Nilai', value: avgTotal || '—', color: 'var(--success)' },
-              { label: 'Maks. Poin', value: maxTotal, color: 'var(--accent)' },
-              { label: 'Median', value: scoreStats.median || '—', color: 'var(--secondary)' },
-              { label: 'Tertinggi', value: scoreStats.highest || '—', color: 'var(--success)' },
-              { label: 'Ketuntasan', value: `${scoreStats.mastery}%`, color: 'var(--warning)' },
+              { label: 'Total Peserta', value: uniqueParticipantCount, color: 'var(--primary)' },
+              { label: 'Submission', value: examSubs.length, color: 'var(--secondary)' },
+              { label: 'Rata-rata Nilai', value: gradedPercents.length ? avgTotal : '—', color: 'var(--success)' },
+              { label: 'Median', value: gradedPercents.length ? scoreStats.median : '—', color: 'var(--secondary)' },
+              { label: 'Tertinggi', value: gradedPercents.length ? scoreStats.highest : '—', color: 'var(--success)' },
+              { label: 'Ketuntasan ≥70', value: `${scoreStats.mastery}%`, color: 'var(--warning)' },
               { label: 'Essay Final', value: `${examSubs.filter(s => essayStatus(s) === 'FINAL').length}/${examSubs.length}`, color: 'var(--warning)' },
             ].map(s => (
               <div key={s.label} className="stat-card">
@@ -372,7 +398,7 @@ export default function ResultsPage() {
                     <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                       <span style={{ width: 60, fontSize: '0.78rem', color: 'var(--text-muted)' }}>{label}</span>
                       <div style={{ flex: 1, height: 8, background: 'var(--surface-2)', borderRadius: 'var(--r-full)', overflow: 'hidden' }}>
-                        <div style={{ width: `${finalScoreSubs.length ? (Number(count) / finalScoreSubs.length) * 100 : 0}%`, height: '100%', background: String(color) }} />
+                        <div style={{ width: `${scoreStats.count ? (Number(count) / scoreStats.count) * 100 : 0}%`, height: '100%', background: String(color) }} />
                       </div>
                       <strong style={{ fontSize: '0.78rem' }}>{count}</strong>
                     </div>
@@ -381,18 +407,22 @@ export default function ResultsPage() {
                 <div>
                   {ranking.map((sub, i) => {
                     const total = sub.totalScore ?? 0;
-                    return <div key={sub.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+                    return <div key={sub.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
                       <span style={{ fontSize: '0.82rem' }}>{i + 1}. {sub.studentName}</span>
-                      <strong style={{ color: 'var(--success)' }}>{total}/{maxTotal}</strong>
+                      <span style={{ whiteSpace: 'nowrap' }}>
+                        <strong style={{ color: 'var(--success)' }}>{toPercent(total)}</strong>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>/100 · {total}/{maxTotal} poin</span>
+                      </span>
                     </div>;
                   })}
                 </div>
+
               </div>
             </div>
           )}
 
           {/* Participant Table */}
-          <SectionHeader title="Daftar Peserta" subtitle={`${examSubs.length} jawaban masuk${finalScoreSubs.length < examSubs.length ? ` • statistik final dari ${finalScoreSubs.length} peserta yang selesai dinilai` : ''}`} />
+          <SectionHeader title="Daftar Peserta" subtitle={`${uniqueParticipantCount} peserta unik • ${examSubs.length} submission${scoreStats.count < uniqueParticipantCount ? ` • statistik dari ${scoreStats.count} peserta yang nilainya final` : ''}`} />
           {examSubs.length === 0 ? (
             <div className="card">
               <EmptyState icon={<User size={48} />} title="Belum ada peserta" description="Bagikan kode ujian ke murid agar mereka bisa mengerjakan." />
@@ -405,7 +435,7 @@ export default function ResultsPage() {
                     <th>No</th><th>Nama</th><th>NIS</th><th>Percobaan</th>
                     {selectedExam.format !== 'ESSAY_ONLY' && <th>Skor PG</th>}
                     {selectedExam.format !== 'PG_ONLY' && <th>Skor Essay</th>}
-                    <th>Total</th><th>Waktu Submit</th><th>Aksi</th>
+                    <th>Nilai (0–100)</th><th>Waktu Submit</th><th>Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -414,6 +444,8 @@ export default function ResultsPage() {
                     const gradingStatus = essayStatus(sub);
                     const needsGrading = gradingStatus === 'PENDING' || gradingStatus === 'PARTIAL';
                     const total = sub.totalScore;
+                    const isFinal = isFinalSubmission(sub);
+                    const provisional = sub.mcScore + essayTotal;
                     return (
                       <tr key={sub.id}>
                         <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{i + 1}</td>
@@ -435,16 +467,31 @@ export default function ResultsPage() {
                             }
                           </td>
                         )}
-                        <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--success)', fontSize: '1rem' }}>
-                          {needsGrading || total == null || sub.isReturned ? <span style={{ fontSize: '0.78rem', color: sub.isReturned ? 'var(--danger)' : 'var(--warning)' }}>{sub.isReturned ? 'Dikembalikan' : 'Belum final'}</span> : <>{total}<span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '0.8rem' }}>/{maxTotal}</span></>}
+                        <td style={{ textAlign: 'center' }}>
+                          {isFinal && total != null ? (
+                            <>
+                              <div style={{ fontWeight: 800, fontSize: '1.15rem', color: 'var(--success)', lineHeight: 1.1 }}>
+                                {toPercent(total)}<span style={{ fontSize: '0.72rem', fontWeight: 500, color: 'var(--text-muted)' }}>/100</span>
+                              </div>
+                              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{total}/{maxTotal} poin</div>
+                            </>
+                          ) : (
+                            <>
+                              <div style={{ fontSize: '0.78rem', fontWeight: 600, color: sub.isReturned ? 'var(--danger)' : 'var(--warning)' }}>
+                                {sub.isReturned ? 'Dikembalikan' : 'Belum final'}
+                              </div>
+                              {!sub.isReturned && needsGrading && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>sementara {provisional}/{maxTotal} poin</div>}
+                            </>
+                          )}
                         </td>
+
                         <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                           {sub.submittedAt ? formatDateTime(sub.submittedAt) : '—'}
                           {(sub.antiCheatEvents?.length ?? 0) > 0 && <div style={{ color: 'var(--danger)', marginTop: 3 }}>{sub.antiCheatEvents!.length} pelanggaran</div>}
                         </td>
                         <td>
                           <div style={{ display: 'flex', gap: 4 }}>
-                            <button className="btn btn-ghost btn-sm btn-icon" title="Detail" onClick={() => { setDetailSub(sub); setGradingMode(false); }}>
+                            <button className="btn btn-ghost btn-sm btn-icon" title={`Analisis ${sub.studentName}`} onClick={() => { setDetailSub(sub); setGradingMode(false); setAnalysisFilter('ALL'); }}>
                               <BarChart2 size={14} />
                             </button>
                             {selectedExam.format !== 'PG_ONLY' && (
