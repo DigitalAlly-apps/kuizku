@@ -56,33 +56,57 @@ export default function ResultsPage() {
   const maxEssay = selectedExam ? calcMaxEssayScore(selectedExam) : 0;
   const maxTotal = maxMC + maxEssay;
 
-  const avgTotal = useMemo(() => {
-    if (!finalScoreSubs.length) return 0;
-    const total = finalScoreSubs.reduce((s, sub) => {
-      return s + (sub.totalScore ?? 0);
-    }, 0);
-    return Math.round(total / finalScoreSubs.length);
+  // Nilai skala 0-100
+  const toPercent = (points: number) => (maxTotal > 0 ? Math.round((points / maxTotal) * 100) : 0);
+  const isFinalSubmission = (sub: Submission) => {
+    const status = essayStatus(sub);
+    return !sub.isReturned && sub.totalScore != null && (status === 'NONE' || status === 'FINAL');
+  };
+  // Identitas peserta stabil: NIS, fallback nama (lowercase) bila NIS kosong
+  const participantKey = (sub: Submission) => (sub.nis?.trim() ? `nis:${sub.nis.trim().toLowerCase()}` : `name:${sub.studentName.trim().toLowerCase()}`);
+
+  const uniqueParticipantCount = useMemo(() => new Set(examSubs.map(participantKey)).size, [examSubs]);
+
+  // Attempt FINAL terbaik per peserta — dipakai untuk statistik & ranking
+  const bestFinalPerParticipant = useMemo(() => {
+    const map = new Map<string, Submission>();
+    finalScoreSubs.forEach(sub => {
+      const key = participantKey(sub);
+      const current = map.get(key);
+      if (!current || (sub.totalScore ?? 0) > (current.totalScore ?? 0)) map.set(key, sub);
+    });
+    return [...map.values()];
   }, [finalScoreSubs]);
 
-  const scoreStats = useMemo(() => {
-    const totals = finalScoreSubs.map(sub => sub.totalScore ?? 0).sort((a, b) => a - b);
-    if (!totals.length) return { median: 0, highest: 0, mastery: 0, distribution: [0, 0, 0, 0] };
-    const mid = Math.floor(totals.length / 2);
-    const median = totals.length % 2 ? totals[mid] : Math.round((totals[mid - 1] + totals[mid]) / 2);
-    const highest = totals[totals.length - 1];
-    const mastery = maxTotal > 0 ? Math.round((totals.filter(v => (v / maxTotal) * 100 >= 70).length / totals.length) * 100) : 0;
-    const distribution = [
-      totals.filter(v => maxTotal > 0 && (v / maxTotal) * 100 < 40).length,
-      totals.filter(v => maxTotal > 0 && (v / maxTotal) * 100 >= 40 && (v / maxTotal) * 100 < 70).length,
-      totals.filter(v => maxTotal > 0 && (v / maxTotal) * 100 >= 70 && (v / maxTotal) * 100 < 85).length,
-      totals.filter(v => maxTotal > 0 && (v / maxTotal) * 100 >= 85).length,
-    ];
-    return { median, highest, mastery, distribution };
-  }, [finalScoreSubs, maxTotal]);
+  const gradedPercents = useMemo(
+    () => bestFinalPerParticipant.map(sub => toPercent(sub.totalScore ?? 0)).sort((a, b) => a - b),
+    [bestFinalPerParticipant, maxTotal],
+  );
 
-  const ranking = useMemo(() => [...finalScoreSubs]
+  const avgTotal = useMemo(() => {
+    if (!gradedPercents.length) return 0;
+    return Math.round(gradedPercents.reduce((a, b) => a + b, 0) / gradedPercents.length);
+  }, [gradedPercents]);
+
+  const scoreStats = useMemo(() => {
+    const values = gradedPercents;
+    if (!values.length) return { median: 0, highest: 0, mastery: 0, distribution: [0, 0, 0, 0], count: 0 };
+    const mid = Math.floor(values.length / 2);
+    const median = values.length % 2 ? values[mid] : Math.round((values[mid - 1] + values[mid]) / 2);
+    const highest = values[values.length - 1];
+    const mastery = Math.round((values.filter(v => v >= 70).length / values.length) * 100);
+    const distribution = [
+      values.filter(v => v < 40).length,
+      values.filter(v => v >= 40 && v < 70).length,
+      values.filter(v => v >= 70 && v < 85).length,
+      values.filter(v => v >= 85).length,
+    ];
+    return { median, highest, mastery, distribution, count: values.length };
+  }, [gradedPercents]);
+
+  const ranking = useMemo(() => [...bestFinalPerParticipant]
     .sort((a, b) => (b.totalScore ?? 0) - (a.totalScore ?? 0))
-    .slice(0, 5), [finalScoreSubs]);
+    .slice(0, 5), [bestFinalPerParticipant]);
 
   const quickTargets = useMemo<QuickEssayTarget[]>(() => {
     if (!selectedExam) return [];
@@ -92,6 +116,7 @@ export default function ResultsPage() {
   }, [examSubs, selectedExam]);
   const quickTarget = quickTargets[quickIndex];
   const quickGradedCount = useMemo(() => quickTargets.filter(target => target.submission.essayScores.some(grade => grade.questionId === target.question.id)).length, [quickTargets]);
+
 
   const startGrading = (sub: Submission) => {
     setQuickMode(false);
