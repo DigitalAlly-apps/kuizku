@@ -83,37 +83,39 @@ export default function ExamWorkspacePage() {
         ] as const).map(([value, Icon, label]) => <button key={value} className={tab === value ? 'active' : ''} onClick={() => openTab(value)}><Icon size={16} /> {label}</button>)}
       </nav>
 
-      {tab === 'ringkasan' && <SummaryTab exam={exam} submissions={examSubmissions} finalCount={finalCount} essayCount={essayCount} onOpenTab={openTab} />}
+      {tab === 'ringkasan' && <SummaryTab exam={exam} submissions={examSubmissions} finalCount={finalCount} essayCount={essayCount} onOpenTab={openTab} maxAttempts={maxAttempts} savingAttempts={savingAttempts} onChangeAttempts={setAttemptOverride} onSaveAttempts={saveAttemptLimit} />}
       {tab === 'soal' && <QuestionsTab exam={exam} onEdit={() => navigate(`/guru/ujian/${exam.id}/edit-soal`)} onPreview={() => navigate(`/guru/ujian/${exam.id}/preview`)} />}
       {tab === 'peserta' && <ParticipantsTab submissions={examSubmissions} essayCount={essayCount} />}
       {tab === 'hasil' && <ResultsTab exam={exam} submissions={examSubmissions} essayCount={essayCount} onGrade={() => navigate(`/guru/hasil?exam=${exam.id}`)} />}
       {tab === 'pengaturan' && (
         <section className="card">
           <SectionHeader title="Pengaturan pengerjaan" subtitle="Pengaturan ini boleh diubah meskipun ujian sedang aktif." />
-          <div className="form-group" style={{ maxWidth: 360 }}>
-            <label className="form-label" htmlFor="workspace-max-attempts">Maksimal percobaan per murid</label>
-            <select id="workspace-max-attempts" className="form-select" value={maxAttempts} onChange={event => setAttemptOverride(Number(event.target.value))}>
-              <option value={1}>1 kali</option>
-              <option value={2}>2 kali</option>
-              <option value={3}>3 kali</option>
-              <option value={5}>5 kali</option>
-              <option value={0}>Tidak terbatas</option>
-            </select>
-            <span className="form-hint">Hanya submission yang berhasil dikumpulkan yang menghabiskan jatah. Draft/autosave dan submit gagal tidak dihitung sebagai percobaan selesai.</span>
-          </div>
-          <div style={{ display: 'flex', gap: 10, marginTop: 'var(--sp-4)', flexWrap: 'wrap' }}>
-            <button className="btn btn-primary" disabled={savingAttempts || maxAttempts === (exam.settings.maxAttempts ?? 1)} onClick={() => void saveAttemptLimit()}>
-              {savingAttempts ? 'Menyimpan...' : 'Simpan Batas Percobaan'}
-            </button>
-            <button className="btn btn-secondary" onClick={() => navigate(`/guru/ujian/${exam.id}/edit-soal`)}>Edit Soal</button>
-          </div>
+          <AttemptLimitControl currentValue={exam.settings.maxAttempts ?? 1} value={maxAttempts} saving={savingAttempts} onChange={setAttemptOverride} onSave={saveAttemptLimit} />
+          <div style={{ marginTop: 'var(--sp-4)' }}><button className="btn btn-secondary" onClick={() => navigate(`/guru/ujian/${exam.id}/edit-soal`)}>Edit Soal</button></div>
         </section>
       )}
     </div>
   );
 }
 
-function SummaryTab({ exam, submissions, finalCount, essayCount, onOpenTab }: { exam: NonNullable<ReturnType<typeof useApp>['exams']>[number]; submissions: Submission[]; finalCount: number; essayCount: number; onOpenTab: (tab: WorkspaceTab) => void }) {
+function AttemptLimitControl({ currentValue, value, saving, onChange, onSave }: { currentValue: number; value: number; saving: boolean; onChange: (value: number) => void; onSave: () => Promise<void> }) {
+  return <div className="form-group" style={{ maxWidth: 420 }}>
+    <label className="form-label" htmlFor="workspace-max-attempts">Maksimal percobaan per murid</label>
+    <div style={{ display: 'flex', gap: 10, alignItems: 'stretch', flexWrap: 'wrap' }}>
+      <select id="workspace-max-attempts" className="form-select" style={{ flex: '1 1 180px' }} value={value} onChange={event => onChange(Number(event.target.value))}>
+        <option value={1}>1 kali</option>
+        <option value={2}>2 kali</option>
+        <option value={3}>3 kali</option>
+        <option value={5}>5 kali</option>
+        <option value={0}>Tidak terbatas</option>
+      </select>
+      <button className="btn btn-primary" disabled={saving || value === currentValue} onClick={() => void onSave()}>{saving ? 'Menyimpan...' : 'Simpan'}</button>
+    </div>
+    <span className="form-hint">Hanya jawaban yang berhasil dikumpulkan yang memakai jatah. Draft, autosave, dan submit gagal tidak dihitung.</span>
+  </div>;
+}
+
+function SummaryTab({ exam, submissions, finalCount, essayCount, onOpenTab, maxAttempts, savingAttempts, onChangeAttempts, onSaveAttempts }: { exam: NonNullable<ReturnType<typeof useApp>['exams']>[number]; submissions: Submission[]; finalCount: number; essayCount: number; onOpenTab: (tab: WorkspaceTab) => void; maxAttempts: number; savingAttempts: boolean; onChangeAttempts: (value: number) => void; onSaveAttempts: () => Promise<void> }) {
   return <>
     <div className="workspace-summary-grid">
       <div><span>Soal</span><strong>{exam.questions.length}</strong></div>
@@ -127,8 +129,9 @@ function SummaryTab({ exam, submissions, finalCount, essayCount, onOpenTab }: { 
         <div className="workspace-progress-bar"><span style={{ width: submissions.length ? '100%' : '0%' }} /></div>
         <p className="workspace-muted">{essayCount > 0 ? `${submissions.filter(s => essayStatus(s, essayCount) !== 'FINAL').length} peserta masih menunggu koreksi essay.` : 'Ujian ini dinilai otomatis.'}</p>
       </section>
-      <section className="card"><SectionHeader title="Aksi utama" subtitle="Pilih pekerjaan yang ingin dilakukan." />
-        <div className="workspace-action-list"><button onClick={() => onOpenTab('soal')}><BookOpen size={18} /> Kelola soal</button><button onClick={() => onOpenTab('peserta')}><Users size={18} /> Lihat peserta</button><button onClick={() => onOpenTab('hasil')}><BarChart2 size={18} /> Buka hasil</button></div>
+      <section className="card"><SectionHeader title="Pengaturan cepat" subtitle="Atur jatah pengerjaan tanpa mencari menu lain." />
+        <AttemptLimitControl currentValue={exam.settings.maxAttempts ?? 1} value={maxAttempts} saving={savingAttempts} onChange={onChangeAttempts} onSave={onSaveAttempts} />
+        <div className="workspace-action-list" style={{ marginTop: 'var(--sp-4)' }}><button onClick={() => onOpenTab('soal')}><BookOpen size={18} /> Kelola soal</button><button onClick={() => onOpenTab('peserta')}><Users size={18} /> Lihat peserta</button><button onClick={() => onOpenTab('hasil')}><BarChart2 size={18} /> Buka hasil</button></div>
       </section>
     </div>
   </>;
