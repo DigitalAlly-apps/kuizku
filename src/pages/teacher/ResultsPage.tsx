@@ -406,12 +406,16 @@ export default function ResultsPage() {
                 <div>
                   {ranking.map((sub, i) => {
                     const total = sub.totalScore ?? 0;
-                    return <div key={sub.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+                    return <div key={sub.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
                       <span style={{ fontSize: '0.82rem' }}>{i + 1}. {sub.studentName}</span>
-                      <strong style={{ color: 'var(--success)' }}>{total}/{maxTotal}</strong>
+                      <span style={{ whiteSpace: 'nowrap' }}>
+                        <strong style={{ color: 'var(--success)' }}>{toPercent(total)}</strong>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>/100 · {total}/{maxTotal} poin</span>
+                      </span>
                     </div>;
                   })}
                 </div>
+
               </div>
             </div>
           )}
