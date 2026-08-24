@@ -844,9 +844,15 @@ tbody td {
 .student-analysis-score-breakdown > div { display: flex; flex-direction: column; justify-content: center; gap: 5px; min-height: 132px; padding: var(--sp-5); border-left: 1px solid var(--border); }
 .student-analysis-score-breakdown > div:only-child { grid-column: 1 / -1; }
 .student-analysis-score-breakdown strong { color: var(--text-primary); font-size: 1.15rem; font-variant-numeric: tabular-nums; }
-.student-analysis-score-breakdown small { color: var(--warning); font-size: .72rem; font-weight: 700; }
-.student-analysis-counts { display: flex; flex-wrap: wrap; gap: var(--sp-5); padding: 11px var(--sp-5); border-top: 1px solid var(--border); background: var(--surface); color: var(--text-muted); font-size: .78rem; }
-.student-analysis-counts b { margin-right: 3px; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.student-analysis-score-breakdown small { color: var(--warning); font-size: .72rem; font-weight: 700; line-height: 1.35; }
+.student-analysis-counts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; border-top: 1px solid var(--border); background: var(--border); }
+.student-analysis-counts.has-essay { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.student-analysis-count { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 12px var(--sp-5); background: var(--surface); }
+.student-analysis-count span { color: var(--text-muted); font-size: .69rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.student-analysis-count strong { color: var(--text-primary); font-size: .9rem; font-variant-numeric: tabular-nums; }
+.student-analysis-count small { color: var(--warning); font-size: .72rem; font-weight: 700; line-height: 1.3; }
+.student-analysis-count.is-correct strong { color: var(--success); }
+.student-analysis-count.is-wrong strong { color: var(--danger); }
 .student-analysis-filters { display: flex; gap: var(--sp-2); margin-bottom: var(--sp-5); }
 .student-analysis-filter { min-height: 44px; padding: 8px 16px; border: 1px solid var(--border-strong); border-radius: var(--r-full); background: var(--surface); color: var(--text-secondary); font: inherit; font-size: .82rem; font-weight: 700; cursor: pointer; transition: color var(--transition), border-color var(--transition), background var(--transition); touch-action: manipulation; }
 .student-analysis-filter:hover { border-color: var(--primary); color: var(--primary); }
@@ -895,7 +901,9 @@ tbody td {
   .student-analysis-main-score { min-height: 116px; padding: var(--sp-4); }
   .student-analysis-score-breakdown > div { min-height: 92px; padding: var(--sp-4); }
   .student-analysis-score-breakdown > div:first-child { border-left: 0; }
-  .student-analysis-counts { gap: var(--sp-4); padding: 10px var(--sp-4); }
+  .student-analysis-counts.has-essay { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .student-analysis-count.is-essay { grid-column: 1 / -1; }
+  .student-analysis-count { padding: 11px var(--sp-4); }
   .student-analysis-filters { margin-right: calc(var(--sp-4) * -1); margin-left: calc(var(--sp-4) * -1); padding: 2px var(--sp-4) var(--sp-2); overflow-x: auto; scrollbar-width: thin; }
   .student-analysis-filter { flex: 0 0 auto; }
   .student-analysis-question-card { padding: var(--sp-4); }

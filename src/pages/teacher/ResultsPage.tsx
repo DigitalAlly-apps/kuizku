@@ -177,11 +177,23 @@ export default function ResultsPage() {
       };
     });
     const essayScore = detailSub.essayScores.reduce((total, grade) => total + grade.score, 0);
+    const essayQuestionIds = new Set(
+      items
+        .filter(item => item.question.type === 'ESSAY')
+        .map(item => item.question.id),
+    );
+    const essayGradedCount = new Set(
+      detailSub.essayScores
+        .map(grade => grade.questionId)
+        .filter(questionId => essayQuestionIds.has(questionId)),
+    ).size;
     return {
       items,
       correctCount: items.filter(item => item.isCorrect === true).length,
       wrongCount: items.filter(item => item.isCorrect === false).length,
-      essayCount: items.filter(item => item.question.type === 'ESSAY').length,
+      essayCount: essayQuestionIds.size,
+      essayGradedCount,
+      essayPendingCount: essayQuestionIds.size - essayGradedCount,
       essayScore,
       provisionalScore: detailSub.mcScore + essayScore,
     };
@@ -692,17 +704,37 @@ export default function ResultsPage() {
                       )}
                       {maxEssay > 0 && (
                         <div>
-                          <span>Essay</span>
+                          <span>Essay · {detailAnalysis.essayGradedCount}/{detailAnalysis.essayCount} dinilai</span>
                           <strong>{detailAnalysis.essayScore} / {maxEssay}</strong>
-                          {!isFinalSubmission(detailSub) && <small>dinilai</small>}
+                          <small>
+                            {detailAnalysis.essayPendingCount > 0
+                              ? `${detailAnalysis.essayPendingCount} jawaban menunggu koreksi`
+                              : 'Semua jawaban essay sudah dinilai'}
+                          </small>
                         </div>
                       )}
                     </div>
                   </div>
-                  <div className="student-analysis-counts" aria-label="Ringkasan jawaban">
-                    <span><b>{detailAnalysis.correctCount}</b> Benar</span>
-                    <span><b>{detailAnalysis.wrongCount}</b> Salah</span>
-                    <span><b>{detailAnalysis.essayCount}</b> Essay</span>
+                  <div className={`student-analysis-counts ${detailAnalysis.essayCount > 0 ? 'has-essay' : ''}`} aria-label="Ringkasan jawaban">
+                    <div className="student-analysis-count is-correct">
+                      <span>Soal otomatis</span>
+                      <strong>{detailAnalysis.correctCount} benar</strong>
+                    </div>
+                    <div className="student-analysis-count is-wrong">
+                      <span>Soal otomatis</span>
+                      <strong>{detailAnalysis.wrongCount} salah</strong>
+                    </div>
+                    {detailAnalysis.essayCount > 0 && (
+                      <div className="student-analysis-count is-essay">
+                        <span>Jawaban essay</span>
+                        <strong>{detailAnalysis.essayGradedCount}/{detailAnalysis.essayCount} dinilai</strong>
+                        <small>
+                          {detailAnalysis.essayPendingCount > 0
+                            ? `${detailAnalysis.essayPendingCount} menunggu koreksi`
+                            : 'Koreksi selesai'}
+                        </small>
+                      </div>
+                    )}
                   </div>
                 </section>
 
