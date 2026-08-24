@@ -5,6 +5,7 @@ import App from './App.tsx'
 import { migrateLegacyBrandStorage } from './lib/brandMigration.ts'
 import './styles/global.css'
 import './styles/components.css'
+import './styles/teacher-mobile-pro.css'
 
 migrateLegacyBrandStorage()
 
