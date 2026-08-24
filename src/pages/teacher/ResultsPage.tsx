@@ -421,7 +421,7 @@ export default function ResultsPage() {
           )}
 
           {/* Participant Table */}
-          <SectionHeader title="Daftar Peserta" subtitle={`${examSubs.length} jawaban masuk${finalScoreSubs.length < examSubs.length ? ` • statistik final dari ${finalScoreSubs.length} peserta yang selesai dinilai` : ''}`} />
+          <SectionHeader title="Daftar Peserta" subtitle={`${uniqueParticipantCount} peserta unik • ${examSubs.length} submission${scoreStats.count < uniqueParticipantCount ? ` • statistik dari ${scoreStats.count} peserta yang nilainya final` : ''}`} />
           {examSubs.length === 0 ? (
             <div className="card">
               <EmptyState icon={<User size={48} />} title="Belum ada peserta" description="Bagikan kode ujian ke murid agar mereka bisa mengerjakan." />
