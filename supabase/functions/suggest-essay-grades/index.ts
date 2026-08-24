@@ -15,7 +15,13 @@ const geminiGradesSchema = z.object({
   })),
 });
 
-const json = (body: unknown, status = 200) => Response.json(body, { status });
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+const json = (body: unknown, status = 200) => Response.json(body, { status, headers: corsHeaders });
 const fail = (error: string, status: number, context?: Record<string, string | number>) => {
   console.error("suggest-essay-grades", { error, status, ...context });
   return json({ error }, status);
@@ -38,6 +44,9 @@ async function fetchGemini(payload: unknown, apiKey: string, model: string) {
 }
 
 Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { status: 200, headers: corsHeaders });
+  }
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
   const authHeader = req.headers.get("Authorization") ?? "";
@@ -49,8 +58,6 @@ Deno.serve(async (req: Request) => {
   const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
   if (!supabaseUrl || !supabaseAnonKey) return fail("server_not_configured", 503, { step: "supabase_env" });
 
-  // Use the caller's JWT for both identity verification and all database queries.
-  // This keeps RLS authoritative and avoids depending on wrapper-specific ctx.userClaims.
   const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     global: { headers: { Authorization: `Bearer ${accessToken}` } },
     auth: { persistSession: false, autoRefreshToken: false },
