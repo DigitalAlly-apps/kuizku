@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { BarChart2, BookOpen, ClipboardList, Copy, Edit2, Eye, Settings, Users } from 'lucide-react';
 import { useApp, useToast } from '../../context/AppContext';
@@ -24,13 +24,15 @@ export default function ExamWorkspacePage() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const navigate = useNavigate();
-  const { exams, submissions } = useApp();
+  const { exams, submissions, updateExam } = useApp();
   const { addToast } = useToast();
   const exam = exams.find(item => item.id === id);
   const tab = getTab(location.pathname);
   const examSubmissions = useMemo(() => submissions.filter(item => item.examId === id && item.isComplete), [submissions, id]);
   const essayCount = exam?.questions.filter(question => question.type === 'ESSAY').length ?? 0;
   const finalCount = examSubmissions.filter(item => essayStatus(item, essayCount) === 'FINAL' || essayStatus(item, essayCount) === 'NONE').length;
+  const [attemptOverride, setAttemptOverride] = useState<number | null>(null);
+  const [savingAttempts, setSavingAttempts] = useState(false);
 
   if (!exam) {
     return <div className="page-content"><EmptyState icon={<ClipboardList size={48} />} title="Ujian tidak ditemukan" description="Ujian mungkin sudah dihapus atau tidak dapat dimuat." /></div>;
@@ -44,6 +46,18 @@ export default function ExamWorkspacePage() {
   const copyLink = async () => {
     await navigator.clipboard.writeText(`${window.location.origin}/ujian/${exam.code}`);
     addToast({ type: 'success', title: 'Link ujian disalin' });
+  };
+  const maxAttempts = attemptOverride ?? exam.settings.maxAttempts ?? 1;
+  const saveAttemptLimit = async () => {
+    setSavingAttempts(true);
+    const result = await updateExam(exam.id, { settings: { ...exam.settings, maxAttempts } });
+    setSavingAttempts(false);
+    if (result.error) {
+      addToast({ type: 'error', title: 'Batas percobaan belum tersimpan', message: result.error });
+      return;
+    }
+    setAttemptOverride(null);
+    addToast({ type: 'success', title: 'Batas percobaan diperbarui', message: maxAttempts === 0 ? 'Murid sekarang boleh mengerjakan tanpa batas percobaan.' : `Maksimal ${maxAttempts} percobaan per murid.` });
   };
 
   return (
@@ -73,7 +87,28 @@ export default function ExamWorkspacePage() {
       {tab === 'soal' && <QuestionsTab exam={exam} onEdit={() => navigate(`/guru/ujian/${exam.id}/edit-soal`)} onPreview={() => navigate(`/guru/ujian/${exam.id}/preview`)} />}
       {tab === 'peserta' && <ParticipantsTab submissions={examSubmissions} essayCount={essayCount} />}
       {tab === 'hasil' && <ResultsTab exam={exam} submissions={examSubmissions} essayCount={essayCount} onGrade={() => navigate(`/guru/hasil?exam=${exam.id}`)} />}
-      {tab === 'pengaturan' && <div className="card workspace-empty-tab"><Settings size={32} /><h2>Pengaturan ujian</h2><p>Pengaturan ujian dikelola dari editor ujian.</p><button className="btn btn-primary" onClick={() => navigate(`/guru/ujian/${exam.id}/edit-soal`)}>Buka Editor Ujian</button></div>}
+      {tab === 'pengaturan' && (
+        <section className="card">
+          <SectionHeader title="Pengaturan pengerjaan" subtitle="Pengaturan ini boleh diubah meskipun ujian sedang aktif." />
+          <div className="form-group" style={{ maxWidth: 360 }}>
+            <label className="form-label" htmlFor="workspace-max-attempts">Maksimal percobaan per murid</label>
+            <select id="workspace-max-attempts" className="form-select" value={maxAttempts} onChange={event => setAttemptOverride(Number(event.target.value))}>
+              <option value={1}>1 kali</option>
+              <option value={2}>2 kali</option>
+              <option value={3}>3 kali</option>
+              <option value={5}>5 kali</option>
+              <option value={0}>Tidak terbatas</option>
+            </select>
+            <span className="form-hint">Hanya submission yang berhasil dikumpulkan yang menghabiskan jatah. Draft/autosave dan submit gagal tidak dihitung sebagai percobaan selesai.</span>
+          </div>
+          <div style={{ display: 'flex', gap: 10, marginTop: 'var(--sp-4)', flexWrap: 'wrap' }}>
+            <button className="btn btn-primary" disabled={savingAttempts || maxAttempts === (exam.settings.maxAttempts ?? 1)} onClick={() => void saveAttemptLimit()}>
+              {savingAttempts ? 'Menyimpan...' : 'Simpan Batas Percobaan'}
+            </button>
+            <button className="btn btn-secondary" onClick={() => navigate(`/guru/ujian/${exam.id}/edit-soal`)}>Edit Soal</button>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
