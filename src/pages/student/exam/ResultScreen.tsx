@@ -122,7 +122,7 @@ export default function ResultScreen({ exam, submission, studentName }: Props) {
               )}
               {finalPercent != null && (
                 <div style={{ marginTop: 'var(--sp-4)', padding: 'var(--sp-3) var(--sp-4)', background: finalPercent >= passingScore ? 'var(--success-light)' : 'var(--warning-light)', borderRadius: 'var(--r-md)', fontWeight: 700 }}>
-                  {finalPercent}/100 · {finalPercent >= passingScore ? 'Tuntas' : 'Belum Tuntas'}
+                  {finalPercent}/100 · {finalPercent >= passingScore ? 'Lulus' : 'Belum Lulus'}
                 </div>
               )}
             </div>
@@ -211,7 +211,7 @@ export default function ResultScreen({ exam, submission, studentName }: Props) {
                             {' '}{isCorrect ? '✓' : '✗'}
                           </span>
                         </div>
-                        {!isCorrect && (
+                        {!isCorrect && showAnswerKey && q.correctOptionId && (
                           <div>
                             <span style={{ color: 'var(--text-muted)' }}>Jawaban benar: </span>
                             <span style={{ fontWeight: 600, color: 'var(--success)' }}>
