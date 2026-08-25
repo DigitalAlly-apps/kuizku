@@ -33,3 +33,8 @@ export const canShowAnswerKey = (exam: Exam): boolean => {
   const mode = getAnswerKeyReleaseMode(exam.settings);
   return mode === 'IMMEDIATE' || (mode === 'AFTER_EXAM_END' && isExamEndedForRelease(exam));
 };
+
+export const canShowRanking = (exam: Exam, hasPendingEssay: boolean): boolean =>
+  exam.settings.showRankingAfterSubmit !== false && canShowScore(exam, hasPendingEssay);
+
+export const shouldAutoSubmitOnTimeUp = (settings: ExamSettings): boolean => settings.autoSubmitOnTimeUp !== false;

@@ -52,6 +52,13 @@ const defaultSettings: ExamSettings = {
   shuffleQuestions: false,
   shuffleOptions: false,
   antiCheatSensitivity: 'MEDIUM',
+  passingScore: 70,
+  navigationMode: 'FREE',
+  scoreReleaseMode: 'IMMEDIATE',
+  answerKeyReleaseMode: 'NEVER',
+  explanationReleaseMode: 'NEVER',
+  showRankingAfterSubmit: false,
+  autoSubmitOnTimeUp: true,
 };
 
 const emptyWizardData: WizardData = {

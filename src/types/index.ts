@@ -123,6 +123,8 @@ export interface ExamSettings {
   scoreReleaseMode?: 'IMMEDIATE' | 'AFTER_EXAM_END' | 'AFTER_GRADING' | 'NEVER';
   answerKeyReleaseMode?: 'IMMEDIATE' | 'AFTER_EXAM_END' | 'NEVER';
   explanationReleaseMode?: 'IMMEDIATE' | 'AFTER_EXAM_END' | 'NEVER';
+  showRankingAfterSubmit?: boolean;
+  autoSubmitOnTimeUp?: boolean;
 }
 
 // ---- Pre-loaded Student List ----

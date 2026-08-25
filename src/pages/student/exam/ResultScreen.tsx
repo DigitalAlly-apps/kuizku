@@ -5,6 +5,7 @@ import { formatDateTime, calcMaxMCScore } from '../../../utils/helpers';
 import { storage } from '../../../utils/storage';
 import type { Exam, Submission, StudentRanking } from '../../../types';
 import { studentSubmissionMessages } from '../../../utils/studentMessages';
+import { canShowAnswerKey, canShowRanking, canShowScore, getPassingScore } from '../../../utils/examSettings';
 
 interface Props {
   exam: Exam;
@@ -16,16 +17,23 @@ const HISTORY_KEY = 'kuizku_student_history';
 
 export default function ResultScreen({ exam, submission, studentName }: Props) {
   const hasEssay      = exam.format !== 'PG_ONLY';
-  const finalReleased = !exam.settings.releaseResultsAfterGrading || exam.status === 'ENDED' || !hasEssay;
-  const showScore     = exam.settings.showScoreAfterSubmit && finalReleased;
-  const showAnswerKey = exam.settings.showAnswerKeyAfterSubmit && exam.status === 'ENDED';
+  const hasPendingEssay = hasEssay && submission.totalScore == null;
+  const showScore = canShowScore(exam, hasPendingEssay);
+  const showRanking = canShowRanking(exam, hasPendingEssay);
+  // get_student_exam sengaja tidak membawa kunci sebelum ada RPC review aman.
+  const showAnswerKey = canShowAnswerKey(exam);
+  const passingScore = getPassingScore(exam.settings);
   const maxMC         = calcMaxMCScore(exam);
+  const maxTotal = exam.questions.reduce((sum, question) => sum + question.weight, 0);
+  const finalPercent = submission.totalScore == null || maxTotal === 0
+    ? null
+    : Math.round((submission.totalScore / maxTotal) * 100);
   const hasShortAnswer = exam.questions.some(question => question.type === 'SHORT_ANSWER');
   const mcPct         = maxMC > 0 ? Math.round((submission.mcScore / maxMC) * 100) : 0;
   const [ranking, setRanking] = useState<StudentRanking | null>(null);
 
   useEffect(() => {
-    if (!showScore) return;
+    if (!showRanking) return;
     let cancelled = false;
     const loadRanking = () => storage.getStudentRanking(exam.code, submission.id, submission.nis).then(result => {
       if (!cancelled) setRanking(result);
@@ -39,7 +47,7 @@ export default function ResultScreen({ exam, submission, studentName }: Props) {
       cancelled = true;
       window.clearInterval(refreshId);
     };
-  }, [exam.code, submission.id, submission.nis, showScore]);
+  }, [exam.code, submission.id, submission.nis, showRanking]);
 
   // ---- Save local student history ----
   useEffect(() => {
@@ -112,11 +120,16 @@ export default function ResultScreen({ exam, submission, studentName }: Props) {
                   <p style={{ color: 'var(--text-secondary)', margin: 0 }}>{studentSubmissionMessages.essayPending}</p>
                 </div>
               )}
+              {finalPercent != null && (
+                <div style={{ marginTop: 'var(--sp-4)', padding: 'var(--sp-3) var(--sp-4)', background: finalPercent >= passingScore ? 'var(--success-light)' : 'var(--warning-light)', borderRadius: 'var(--r-md)', fontWeight: 700 }}>
+                  {finalPercent}/100 · {finalPercent >= passingScore ? 'Tuntas' : 'Belum Tuntas'}
+                </div>
+              )}
             </div>
           ) : (
             <div style={{ padding: 'var(--sp-4)', background: 'var(--surface-2)', borderRadius: 'var(--r-md)', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               <Clock size={16} style={{ display: 'inline', marginRight: 6 }} />
-              {hasEssay ? studentSubmissionMessages.essayPending : finalReleased ? 'Nilai akan diumumkan oleh guru.' : 'Nilai final ditahan sampai guru menutup ujian.'}
+              {hasPendingEssay ? studentSubmissionMessages.essayPending : 'Nilai belum tersedia sesuai pengaturan guru.'}
             </div>
           )}
 
@@ -129,7 +142,7 @@ export default function ResultScreen({ exam, submission, studentName }: Props) {
           )}
         </div>
 
-        {showScore && ranking?.available && (
+        {showRanking && ranking?.available && (
           <div className="student-ranking-card">
             <div className="student-ranking-header">
               <div>
@@ -160,7 +173,7 @@ export default function ResultScreen({ exam, submission, studentName }: Props) {
           </div>
         )}
 
-        {showScore && ranking && !ranking.available && (
+        {showRanking && ranking && !ranking.available && (
           <div className="student-ranking-unavailable">
             <Trophy size={18} /> Ranking belum tersedia untuk ujian ini.
           </div>

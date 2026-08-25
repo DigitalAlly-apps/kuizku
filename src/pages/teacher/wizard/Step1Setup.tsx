@@ -25,9 +25,22 @@ export default function Step1Setup({ initial, onNext }: Props) {
   const [studentList, setStudentList] = useState(initial.preloadedStudents.map(s => `${s.name}, ${s.nis}`).join('\n'));
   const [accessMode, setAccessMode] = useState<'OPEN' | 'LIST'>(initial.preloadedStudents.length > 0 ? 'LIST' : 'OPEN');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [preset, setPreset] = useState<'LATIHAN' | 'UJIAN' | 'LCC' | 'CUSTOM'>('CUSTOM');
 
-  const setSetting = <K extends keyof ExamSettings>(k: K, v: ExamSettings[K]) =>
+  const setSetting = <K extends keyof ExamSettings>(k: K, v: ExamSettings[K]) => {
+    setPreset('CUSTOM');
     setSettings(s => ({ ...s, [k]: v }));
+  };
+
+  const applyPreset = (nextPreset: 'LATIHAN' | 'UJIAN' | 'LCC') => {
+    const presets: Record<'LATIHAN' | 'UJIAN' | 'LCC', Partial<ExamSettings>> = {
+      LATIHAN: { navigationMode: 'FREE', maxAttempts: 0, shuffleQuestions: false, shuffleOptions: false, scoreReleaseMode: 'IMMEDIATE', answerKeyReleaseMode: 'IMMEDIATE', explanationReleaseMode: 'IMMEDIATE', showRankingAfterSubmit: false, antiCheatSensitivity: 'OFF' },
+      UJIAN: { navigationMode: 'FREE', maxAttempts: 1, shuffleQuestions: true, shuffleOptions: true, scoreReleaseMode: 'AFTER_EXAM_END', answerKeyReleaseMode: 'AFTER_EXAM_END', explanationReleaseMode: 'NEVER', showRankingAfterSubmit: false, antiCheatSensitivity: 'MEDIUM' },
+      LCC: { navigationMode: 'FREE', maxAttempts: 1, shuffleQuestions: true, shuffleOptions: true, scoreReleaseMode: 'IMMEDIATE', answerKeyReleaseMode: 'AFTER_EXAM_END', explanationReleaseMode: 'NEVER', showRankingAfterSubmit: true, antiCheatSensitivity: 'LOW', timerMode: 'WHOLE_EXAM' },
+    };
+    setSettings(current => ({ ...current, ...presets[nextPreset] }));
+    setPreset(nextPreset);
+  };
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -39,6 +52,8 @@ export default function Step1Setup({ initial, onNext }: Props) {
     const students = parseStudents(studentList);
     if (accessMode === 'LIST' && students.students.length === 0) e.students = 'Tambahkan minimal satu peserta atau pilih akses terbuka.';
     if (accessMode === 'LIST' && students.duplicates.length > 0) e.students = `NIS/ID duplikat: ${students.duplicates.join(', ')}`;
+    const passingScore = Number(settings.passingScore ?? 70);
+    if (!Number.isFinite(passingScore) || passingScore < 0 || passingScore > 100) e.passingScore = 'KKM harus bernilai 0 sampai 100.';
     return e;
   };
 
@@ -66,6 +81,14 @@ export default function Step1Setup({ initial, onNext }: Props) {
     <div>
       <h2 style={{ marginBottom: 'var(--sp-2)' }}>Pengaturan Ujian</h2>
       <p style={{ color: 'var(--text-muted)', marginBottom: 'var(--sp-6)' }}>Isi informasi dasar dan tipe kegiatan ini.</p>
+      <section className="card" style={{ padding: 'var(--sp-4)', marginBottom: 'var(--sp-5)' }}>
+        <label className="form-label">Mode Pengaturan</label>
+        <div className="wizard-choice-row" style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
+          {(['LATIHAN', 'UJIAN', 'LCC'] as const).map(value => <button key={value} type="button" className={`btn btn-sm ${preset === value ? 'btn-primary' : 'btn-secondary'}`} onClick={() => applyPreset(value)}>{value === 'LATIHAN' ? 'Latihan' : value === 'UJIAN' ? 'Ujian' : 'LCC'}</button>)}
+          <button type="button" className={`btn btn-sm ${preset === 'CUSTOM' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setPreset('CUSTOM')}>Custom</button>
+        </div>
+        <span className="form-hint">Preset adalah shortcut. Anda tetap bisa mengubah setiap pengaturan sesudahnya.</span>
+      </section>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-5)' }}>
         <div>
@@ -111,13 +134,33 @@ export default function Step1Setup({ initial, onNext }: Props) {
           {settings.timerMode === 'WHOLE_EXAM' && <div className="form-group compact-form-group" style={{ marginTop: 'var(--sp-3)', maxWidth: 200 }}><label className="form-label" htmlFor="s1-timer">Durasi Total (menit)</label><input id="s1-timer" type="number" className="form-input" min={5} max={300} value={Math.round((settings.wholExamTimerSeconds ?? 3600) / 60)} onChange={e => setSetting('wholExamTimerSeconds', parseInt(e.target.value) * 60)} /></div>}
           {settings.timerMode === 'PER_QUESTION' && <div className="form-group compact-form-group" style={{ marginTop: 'var(--sp-3)', maxWidth: 240 }}><label className="form-label" htmlFor="s1-perq-timer">Default Timer per Soal (detik)</label><input id="s1-perq-timer" type="number" className="form-input" min={10} max={3600} value={settings.perQuestionDefaultSeconds ?? 60} onChange={e => setSetting('perQuestionDefaultSeconds', parseInt(e.target.value) || 60)} /><span className="form-hint">Dipakai jika soal tidak punya timer khusus.</span></div>}
         </div>
-        <div className="form-group compact-form-group" style={{ maxWidth: 240 }}><label className="form-label" htmlFor="s1-attempts">Maks. Percobaan</label><select id="s1-attempts" className="form-select" value={settings.maxAttempts} onChange={e => setSetting('maxAttempts', parseInt(e.target.value))}><option value={1}>1x (default)</option><option value={2}>2x</option><option value={3}>3x</option><option value={0}>Tidak Terbatas</option></select></div>
-        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 'var(--sp-4)' }}>
-          <Toggle id="t-score" label="Tampilkan Skor Setelah Submit" hint="Murid bisa melihat skor segera setelah selesai mengerjakan." checked={settings.showScoreAfterSubmit} onChange={v => setSetting('showScoreAfterSubmit', v)} />
-          <Toggle id="t-key" label="Tampilkan Kunci Jawaban Setelah Ujian" hint="Murid bisa melihat kunci jawaban PG setelah ujian ditutup." checked={settings.showAnswerKeyAfterSubmit} onChange={v => setSetting('showAnswerKeyAfterSubmit', v)} />
-          <Toggle id="t-release" label="Tahan Nilai Final Sampai Ujian Ditutup" hint="Cocok untuk ujian essay/kombinasi agar nilai dirilis setelah guru menutup ujian." checked={settings.releaseResultsAfterGrading ?? false} onChange={v => setSetting('releaseResultsAfterGrading', v)} />
+        <section className="card" style={{ padding: 'var(--sp-4)' }}>
+          <h3 style={{ fontSize: '1rem', marginBottom: 'var(--sp-3)' }}>Waktu &amp; Percobaan</h3>
+          <div className="form-group compact-form-group" style={{ maxWidth: 240 }}><label className="form-label" htmlFor="s1-attempts">Maks. Percobaan</label><select id="s1-attempts" className="form-select" value={settings.maxAttempts} onChange={e => setSetting('maxAttempts', parseInt(e.target.value))}><option value={1}>1x (default)</option><option value={2}>2x</option><option value={3}>3x</option><option value={0}>Tidak Terbatas</option></select><span className="form-hint">Guru dapat menambah satu kesempatan khusus untuk peserta tertentu di halaman Hasil.</span></div>
+        </section>
+        <section className="card" style={{ padding: 'var(--sp-4)' }}>
+          <h3 style={{ fontSize: '1rem', marginBottom: 'var(--sp-2)' }}>Cara Mengerjakan</h3>
+          <p className="form-hint" style={{ marginTop: 0 }}>Pilih cara peserta berpindah antarsoal.</p>
+          <div className="student-access-choice" role="radiogroup" aria-label="Navigasi soal">
+            <button type="button" role="radio" aria-checked={(settings.navigationMode ?? 'FREE') === 'FREE'} className={(settings.navigationMode ?? 'FREE') === 'FREE' ? 'is-active' : ''} onClick={() => setSetting('navigationMode', 'FREE')}><strong>Bebas</strong><span>Peserta dapat membuka soal mana pun.</span></button>
+            <button type="button" role="radio" aria-checked={settings.navigationMode === 'SEQUENTIAL'} className={settings.navigationMode === 'SEQUENTIAL' ? 'is-active' : ''} onClick={() => setSetting('navigationMode', 'SEQUENTIAL')}><strong>Berurutan</strong><span>Soal berikutnya terbuka melalui tombol Berikutnya.</span></button>
+          </div>
           <Toggle id="t-shuffle-q" label="Acak Urutan Soal" checked={settings.shuffleQuestions} onChange={v => setSetting('shuffleQuestions', v)} />
           <Toggle id="t-shuffle-o" label="Acak Urutan Pilihan Jawaban (PG)" hint="Setiap murid mendapatkan urutan pilihan yang berbeda." checked={settings.shuffleOptions} onChange={v => setSetting('shuffleOptions', v)} />
+        </section>
+        <section className="card" style={{ padding: 'var(--sp-4)' }}>
+          <h3 style={{ fontSize: '1rem', marginBottom: 'var(--sp-3)' }}>Penilaian</h3>
+          <div className="form-group compact-form-group" style={{ maxWidth: 240 }}><label className="form-label" htmlFor="s1-passing-score">Batas Ketuntasan / KKM</label><input id="s1-passing-score" type="number" min={0} max={100} inputMode="numeric" className={`form-input ${errors.passingScore ? 'error' : ''}`} value={settings.passingScore ?? 70} onChange={e => setSetting('passingScore', Number(e.target.value))} /><span className="form-hint">Nilai minimum agar peserta dinyatakan tuntas.</span>{errors.passingScore && <span className="form-error">{errors.passingScore}</span>}</div>
+        </section>
+        <section className="card" style={{ padding: 'var(--sp-4)' }}>
+          <h3 style={{ fontSize: '1rem', marginBottom: 'var(--sp-3)' }}>Setelah Mengumpulkan</h3>
+          <div className="form-group"><label className="form-label" htmlFor="s1-score-release">Nilai</label><select id="s1-score-release" className="form-select" value={settings.scoreReleaseMode ?? 'IMMEDIATE'} onChange={e => setSetting('scoreReleaseMode', e.target.value as ExamSettings['scoreReleaseMode'])}><option value="IMMEDIATE">Langsung</option><option value="AFTER_EXAM_END">Setelah ujian berakhir</option><option value="AFTER_GRADING">Setelah penilaian selesai</option><option value="NEVER">Jangan tampilkan</option></select></div>
+          <div className="form-group"><label className="form-label" htmlFor="s1-key-release">Kunci Jawaban</label><select id="s1-key-release" className="form-select" value={settings.answerKeyReleaseMode ?? 'NEVER'} onChange={e => setSetting('answerKeyReleaseMode', e.target.value as ExamSettings['answerKeyReleaseMode'])}><option value="IMMEDIATE">Langsung</option><option value="AFTER_EXAM_END">Setelah ujian berakhir</option><option value="NEVER">Jangan tampilkan</option></select><span className="form-hint">Kunci hanya akan dimuat ketika aturan rilis terpenuhi.</span></div>
+          <div className="form-group"><label className="form-label" htmlFor="s1-explanation-release">Pembahasan</label><select id="s1-explanation-release" className="form-select" value={settings.explanationReleaseMode ?? 'NEVER'} onChange={e => setSetting('explanationReleaseMode', e.target.value as ExamSettings['explanationReleaseMode'])}><option value="IMMEDIATE">Langsung</option><option value="AFTER_EXAM_END">Setelah ujian berakhir</option><option value="NEVER">Jangan tampilkan</option></select><span className="form-hint">Pembahasan soal belum tersedia pada versi ini.</span></div>
+          <Toggle id="t-ranking" label="Tampilkan Ranking" hint="Peserta dapat melihat posisi setelah hasil tersedia." checked={settings.showRankingAfterSubmit ?? false} onChange={v => setSetting('showRankingAfterSubmit', v)} />
+        </section>
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 'var(--sp-4)' }}>
+          {settings.timerMode === 'WHOLE_EXAM' && <Toggle id="t-auto-submit" label="Kumpulkan otomatis saat waktu habis" hint="Jika dimatikan, jawaban dikunci dan murid diminta mengumpulkan sendiri." checked={settings.autoSubmitOnTimeUp !== false} onChange={v => setSetting('autoSubmitOnTimeUp', v)} />}
           <div className="form-group compact-form-group" style={{ marginTop: 'var(--sp-4)', maxWidth: 260 }}><label className="form-label" htmlFor="s1-anticheat">Sensitivitas Anti-cheat</label><select id="s1-anticheat" className="form-select" value={settings.antiCheatSensitivity ?? 'MEDIUM'} onChange={e => setSetting('antiCheatSensitivity', e.target.value as ExamSettings['antiCheatSensitivity'])}><option value="OFF">Nonaktif</option><option value="LOW">Rendah (5 pelanggaran)</option><option value="MEDIUM">Sedang (3 pelanggaran)</option><option value="HIGH">Tinggi (1 pelanggaran)</option></select></div>
         </div>
       </div>

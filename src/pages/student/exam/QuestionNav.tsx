@@ -1,31 +1,35 @@
 // QuestionNav — sidebar desktop and bottom sheet mobile
 import { useEffect } from 'react';
-import { X } from 'lucide-react';
+import { Lock, X } from 'lucide-react';
 import type { Question } from '../../../types';
 
 interface Props {
   questions: Question[];
   currentIdx: number;
   answeredIds: Set<string>;
+  maxAvailableIdx?: number;
   onGoTo: (idx: number) => void;
   onReview: () => void;
   mobileOpen: boolean;
   onCloseMobile: () => void;
 }
 
-function QuestionGrid({ questions, currentIdx, answeredIds, onGoTo, onPick }: {
+function QuestionGrid({ questions, currentIdx, answeredIds, maxAvailableIdx = questions.length - 1, onGoTo, onPick }: {
   questions: Question[]; currentIdx: number; answeredIds: Set<string>;
+  maxAvailableIdx?: number;
   onGoTo: (idx: number) => void; onPick?: () => void;
 }) {
   return <div className="question-nav-grid">
     {questions.map((q, idx) => {
       const isAnswered = answeredIds.has(q.id);
       const isCurrent = idx === currentIdx;
-      return <button key={q.id} type="button" onClick={() => { onGoTo(idx); onPick?.(); }}
-        title={`Soal ${idx + 1}${isAnswered ? ' (sudah dijawab)' : ' (belum dijawab)'}`}
-        aria-label={`Soal ${idx + 1}, ${isCurrent ? 'sedang dibuka' : isAnswered ? 'sudah dijawab' : 'belum dijawab'}`}
-        className={`question-nav-number ${isCurrent ? 'is-current' : ''} ${isAnswered ? 'is-answered' : ''}`}>
+      const isLocked = idx > maxAvailableIdx;
+      return <button key={q.id} type="button" disabled={isLocked} onClick={() => { onGoTo(idx); onPick?.(); }}
+        title={`Soal ${idx + 1}${isLocked ? ' (terkunci)' : isAnswered ? ' (sudah dijawab)' : ' (belum dijawab)'}`}
+        aria-label={`Soal ${idx + 1}, ${isLocked ? 'terkunci' : isCurrent ? 'sedang dibuka' : isAnswered ? 'sudah dijawab' : 'belum dijawab'}`}
+        className={`question-nav-number ${isCurrent ? 'is-current' : ''} ${isAnswered ? 'is-answered' : ''} ${isLocked ? 'is-locked' : ''}`}>
         <span>{idx + 1}</span>
+        {isLocked && <Lock aria-hidden="true" className="question-nav-lock" size={12} />}
         {isAnswered && <span aria-hidden="true" className="question-nav-check">✓</span>}
         {isCurrent && <span aria-hidden="true" className="question-nav-current-dot" />}
       </button>;
@@ -33,7 +37,7 @@ function QuestionGrid({ questions, currentIdx, answeredIds, onGoTo, onPick }: {
   </div>;
 }
 
-function QuestionNavContent({ questions, currentIdx, answeredIds, onGoTo, onPick, onReview }: Props & { onPick?: () => void }) {
+function QuestionNavContent({ questions, currentIdx, answeredIds, maxAvailableIdx, onGoTo, onPick, onReview }: Props & { onPick?: () => void }) {
   const answered = answeredIds.size;
   const unanswered = questions.length - answered;
   return <>
@@ -43,7 +47,8 @@ function QuestionNavContent({ questions, currentIdx, answeredIds, onGoTo, onPick
       <span><i className="legend-dot unanswered" /> Belum</span>
       <span><i className="legend-dot current" /> Aktif</span>
     </div>
-    <QuestionGrid questions={questions} currentIdx={currentIdx} answeredIds={answeredIds} onGoTo={onGoTo} onPick={onPick} />
+    {maxAvailableIdx != null && maxAvailableIdx < questions.length - 1 && <p className="form-hint" style={{ margin: '0 0 var(--sp-3)' }}>Ujian ini menggunakan navigasi berurutan.</p>}
+    <QuestionGrid questions={questions} currentIdx={currentIdx} answeredIds={answeredIds} maxAvailableIdx={maxAvailableIdx} onGoTo={onGoTo} onPick={onPick} />
     <div className="question-nav-summary">
       <div><span>Dijawab</span><strong className="answered-text">{answered}</strong></div>
       <div><span>Belum</span><strong className={unanswered > 0 ? 'unanswered-text' : 'answered-text'}>{unanswered}</strong></div>

@@ -13,6 +13,7 @@ import {
 import { useCountdown } from '../../hooks/useCountdown';
 import type { Exam, Question, StudentAnswer } from '../../types';
 import { studentSubmissionMessages } from '../../utils/studentMessages';
+import { getNavigationMode, shouldAutoSubmitOnTimeUp } from '../../utils/examSettings';
 
 // Sub-components
 import ExamHeader from './exam/ExamHeader';
@@ -44,6 +45,7 @@ export default function ExamTakingPage() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitPending, setSubmitPending] = useState(false);
+  const [timeExpired, setTimeExpired] = useState(false);
   const [submittedData, setSubmittedData] = useState<ReturnType<typeof buildSubmission> | null>(null);
   const [error] = useState('');
   const submitRef = useRef(false);
@@ -188,7 +190,13 @@ export default function ExamTakingPage() {
   const wholeTimer = useCountdown({
     initialSeconds: initialWholeSeconds,
     autoStart: wholeTimerEnabled && !!session && !submitted,
-    onExpire: useCallback(() => handleSubmit(true), [handleSubmit]),
+    onExpire: useCallback(() => {
+      if (exam && shouldAutoSubmitOnTimeUp(exam.settings)) void handleSubmit(true);
+      else {
+        setTimeExpired(true);
+        setShowSubmit(true);
+      }
+    }, [exam, handleSubmit]),
   });
   const wholeRemainingRef = useRef(wholeTimer.remaining);
   wholeRemainingRef.current = wholeTimer.remaining;
@@ -218,7 +226,7 @@ export default function ExamTakingPage() {
   const goNext = useCallback(() => {
     const next = Math.min(currentIdx + 1, questions.length - 1);
     setCurrentIdx(next);
-    setSession(s => s ? updateCurrentIndex(s, next) : s);
+    setSession(s => s ? updateCurrentIndex(s, next, true) : s);
   }, [currentIdx, questions.length]);
 
   const perQTimer = useCountdown({
@@ -254,23 +262,28 @@ export default function ExamTakingPage() {
 
   // ---- Answer handler (autosave) ----
   const handleAnswer = useCallback((answer: StudentAnswer) => {
+    if (timeExpired) return;
     setSession(prev => {
       if (!prev) return prev;
       return upsertAnswer(prev, answer);
     });
-  }, []);
+  }, [timeExpired]);
 
   // ---- Navigation ----
+  const sequential = exam ? getNavigationMode(exam.settings) === 'SEQUENTIAL' : false;
+  const maxAvailableIdx = sequential ? Math.max(session?.highestUnlockedIndex ?? session?.currentQuestionIndex ?? 0, currentIdx) : questions.length - 1;
+
   const goTo = useCallback((idx: number) => {
+    if (sequential && idx > maxAvailableIdx) return;
     setCurrentIdx(idx);
     setSession(s => s ? updateCurrentIndex(s, idx) : s);
     if (perQEnabled && questions[idx]?.timerSeconds) {
       perQTimer.reset(questions[idx].timerSeconds!);
     }
-  }, [perQEnabled, questions]);
+  }, [perQEnabled, questions, sequential, maxAvailableIdx]);
 
   const goPrev = () => goTo(Math.max(currentIdx - 1, 0));
-  const goNextBtn = () => goTo(Math.min(currentIdx + 1, questions.length - 1));
+  const goNextBtn = () => goNext();
 
   // ---- Error state ----
   if (loadError) {
@@ -347,6 +360,7 @@ export default function ExamTakingPage() {
           Tetap di halaman ujian. Perpindahan aplikasi/tab tercatat ({violations}/{exam.settings.antiCheatSensitivity === 'HIGH' ? 1 : exam.settings.antiCheatSensitivity === 'LOW' ? 5 : 3}).
         </div>
       )}
+      {timeExpired && <div role="alert" style={{ background: 'var(--warning)', color: 'var(--text-primary)', padding: '10px var(--sp-6)', fontSize: '0.85rem', fontWeight: 700, textAlign: 'center' }}>Waktu habis. Jawaban dikunci; silakan kumpulkan jawaban Anda.</div>}
 
       <div className="exam-taking-body" style={{ flex: 1, display: 'flex' }}>
         {/* Main question area */}
@@ -385,6 +399,7 @@ export default function ExamTakingPage() {
           questions={questions}
           currentIdx={currentIdx}
           answeredIds={answeredIds}
+          maxAvailableIdx={maxAvailableIdx}
           onGoTo={goTo}
           onReview={() => setShowSubmit(true)}
           mobileOpen={mobileNavOpen}
@@ -413,7 +428,7 @@ export default function ExamTakingPage() {
         questions={questions}
         answeredIds={answeredIds}
         onConfirm={() => handleSubmit(false)}
-        onCancel={() => setShowSubmit(false)}
+        onCancel={() => { if (!timeExpired) setShowSubmit(false); }}
       />
     </div>
   );

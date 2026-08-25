@@ -19,6 +19,8 @@ export interface ExamSession {
   startedAt: string;
   remainingSeconds?: number; // for whole-exam timer
   currentQuestionIndex: number;
+  /** Soal tertinggi yang pernah dibuka; dipakai untuk resume navigasi berurutan. */
+  highestUnlockedIndex?: number;
   isSubmitted: boolean;
 }
 
@@ -78,6 +80,7 @@ export function createSession(
       ? (exam.settings.wholExamTimerSeconds ?? 3600)
       : undefined,
     currentQuestionIndex: 0,
+    highestUnlockedIndex: 0,
     isSubmitted: false,
   };
   saveSession(session);
@@ -106,8 +109,9 @@ export function updateTimer(session: ExamSession, remaining: number): ExamSessio
 }
 
 // ---- Update current question index ----
-export function updateCurrentIndex(session: ExamSession, index: number): ExamSession {
-  const updated = { ...session, currentQuestionIndex: index };
+export function updateCurrentIndex(session: ExamSession, index: number, unlock = false): ExamSession {
+  const previousHighest = session.highestUnlockedIndex ?? session.currentQuestionIndex;
+  const updated = { ...session, currentQuestionIndex: index, highestUnlockedIndex: unlock ? Math.max(previousHighest, index) : previousHighest };
   saveSession(updated);
   return updated;
 }
