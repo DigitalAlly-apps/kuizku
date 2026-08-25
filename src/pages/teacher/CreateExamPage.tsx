@@ -19,6 +19,8 @@ const STEPS = [
   { num: 5, label: 'Publikasi' },
 ];
 
+const DRAFT_KEY = 'kuizku_wizard_draft';
+
 type WizardData = {
   title: string;
   description: string;
@@ -33,14 +35,12 @@ type WizardData = {
   preloadedStudents: PreloadedStudent[];
 };
 
-type WizardDraft = {
-  data: WizardData;
-  step: 1 | 2 | 3 | 4;
+type WizardDraft = Partial<WizardData> & {
+  data?: Partial<WizardData>;
+  step?: number;
 };
 
-const DRAFT_KEY = 'kuizku_wizard_draft';
 const IMPORT_SESSION_KEY = 'kuizku_import_in_progress';
-
 const defaultSettings: ExamSettings = {
   timerMode: 'NONE',
   wholExamTimerSeconds: 3600,
@@ -54,56 +54,64 @@ const defaultSettings: ExamSettings = {
   antiCheatSensitivity: 'MEDIUM',
 };
 
+const emptyWizardData: WizardData = {
+  title: '', description: '', subject: '', className: '', activeFrom: '', activeTo: '',
+  examType: 'UJIAN', settings: defaultSettings, format: 'PG_ONLY', questions: [], preloadedStudents: [],
+};
+
+function readWizardDraft(): { data: WizardData; step: 1 | 2 | 3 | 4 } {
+  try {
+    const saved = localStorage.getItem(DRAFT_KEY);
+    if (!saved) return { data: emptyWizardData, step: 1 };
+
+    const parsed = JSON.parse(saved) as WizardDraft;
+    const savedData: Partial<WizardData> = parsed.data ?? parsed;
+    const savedStep = typeof parsed.step === 'number' ? parsed.step : 1;
+
+    return {
+      data: {
+        ...emptyWizardData,
+        ...savedData,
+        settings: { ...defaultSettings, ...(savedData.settings ?? {}) },
+        questions: Array.isArray(savedData.questions) ? savedData.questions : [],
+        preloadedStudents: Array.isArray(savedData.preloadedStudents) ? savedData.preloadedStudents : [],
+      },
+      step: Math.min(4, Math.max(1, savedStep)) as 1 | 2 | 3 | 4,
+    };
+  } catch {
+    return { data: emptyWizardData, step: 1 };
+  }
+}
+
 export default function CreateExamPage() {
   const { currentTeacher, exams, refreshExams } = useApp();
   const { addToast } = useToast();
   const navigate = useNavigate();
 
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
-  const [data, setData] = useState<WizardData>({
-    title: '', description: '', subject: '', className: '', activeFrom: '', activeTo: '',
-    examType: 'UJIAN', settings: defaultSettings, format: 'PG_ONLY', questions: [], preloadedStudents: [],
-  });
+  const [initialDraft] = useState(readWizardDraft);
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(initialDraft.step);
+  const [data, setData] = useState<WizardData>(initialDraft.data);
   const [createdExam, setCreatedExam] = useState<Exam | null>(null);
   const [saving, setSaving] = useState(false);
-  const [draftHydrated, setDraftHydrated] = useState(false);
 
   const saveWizardDraft = useCallback((draftData: WizardData, draftStep: 1 | 2 | 3 | 4) => {
     try {
-      const draft: WizardDraft = { data: draftData, step: draftStep };
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ data: draftData, step: draftStep }));
     } catch {
       // Storage bisa penuh/terblokir di private mode. Wizard tetap berjalan.
     }
   }, []);
 
-  // Load draft on mount
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(DRAFT_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved) as Partial<WizardDraft> | Partial<WizardData>;
-        const hasVersionedDraft = parsed && typeof parsed === 'object' && 'data' in parsed;
-        const draftData = hasVersionedDraft ? (parsed as WizardDraft).data : parsed as Partial<WizardData>;
-        const draftStep = hasVersionedDraft ? (parsed as WizardDraft).step : 1;
-        setData(d => ({ ...d, ...draftData }));
-        if ([1, 2, 3, 4].includes(draftStep)) setStep(draftStep as 1 | 2 | 3 | 4);
-        if (sessionStorage.getItem(IMPORT_SESSION_KEY) === '1') {
-          sessionStorage.removeItem(IMPORT_SESSION_KEY);
-          addToast({ type: 'info', title: 'Draft ujian dipulihkan', message: 'Anda kembali ke langkah terakhir sebelum import file.' });
-        }
-      }
-    } catch { /* ignore */ }
-    setDraftHydrated(true);
-  }, [addToast]);
-
-  // Save draft on every data change (debounced via step check)
-  useEffect(() => {
-    if (!draftHydrated || createdExam) return; // jangan menimpa draft sebelum selesai dipulihkan
+    if (createdExam) return;
     if (step <= 4) saveWizardDraft(data, step as 1 | 2 | 3 | 4);
-  }, [data, step, createdExam, draftHydrated, saveWizardDraft]);
+  }, [data, step, createdExam, saveWizardDraft]);
 
-  // Warn before unload jika ada data
+  useEffect(() => {
+    if (sessionStorage.getItem(IMPORT_SESSION_KEY) !== '1') return;
+    sessionStorage.removeItem(IMPORT_SESSION_KEY);
+    addToast({ type: 'info', title: 'Draft ujian dipulihkan', message: 'Anda kembali ke langkah terakhir sebelum import file.' });
+  }, [addToast]);
   useEffect(() => {
     if (createdExam) return;
     const handler = (e: BeforeUnloadEvent) => {
@@ -131,7 +139,6 @@ export default function CreateExamPage() {
   };
 
   const handleStep2Next = (format: ExamFormat) => {
-    // If format changed and we have incompatible questions, confirm before deleting
     const hasIncompat = data.questions.some(q => {
       if (format === 'PG_ONLY' && q.type === 'ESSAY') return true;
       if (format === 'ESSAY_ONLY' && q.type !== 'ESSAY') return true;
@@ -144,7 +151,7 @@ export default function CreateExamPage() {
         return false;
       }).length;
       if (!window.confirm(`${incompatCount} soal tidak kompatibel dengan format ini dan akan dihapus. Lanjutkan?`)) {
-        return; // user batal
+        return;
       }
       const filtered = data.questions.filter(q => {
         if (format === 'PG_ONLY') return q.type !== 'ESSAY';
@@ -205,7 +212,6 @@ export default function CreateExamPage() {
     setCreatedExam(newExam);
     setSaving(false);
     setStep(5);
-    // Clear draft setelah berhasil save
     localStorage.removeItem(DRAFT_KEY);
   };
 
@@ -214,8 +220,6 @@ export default function CreateExamPage() {
     navigate('/guru/ujian');
   };
 
-
-
   return (
     <div className="page-content" style={{ maxWidth: 860 }}>
       <div className="page-header">
@@ -223,7 +227,6 @@ export default function CreateExamPage() {
         <p>Ikuti langkah berikut untuk membuat ujian yang siap dibagikan ke murid.</p>
       </div>
 
-      {/* Wizard Steps */}
       <div className="wizard-steps" style={{ marginBottom: 'var(--sp-10)' }}>
         {STEPS.map((s, i) => (
           <>
@@ -238,7 +241,6 @@ export default function CreateExamPage() {
         ))}
       </div>
 
-      {/* Step Content */}
       <div className="card">
         {step === 1 && (
           <Step1Setup
