@@ -13,13 +13,14 @@ interface Props {
   format: ExamFormat;
   subject: string;
   initial: Question[];
+  onQuestionsChange?: (questions: Question[]) => void;
   onNext: (questions: Question[]) => void;
   onBack: () => void;
 }
 
 type ActiveModal = 'manual' | 'import' | 'bank' | 'edit' | null;
 
-export default function Step3Questions({ format, subject, initial, onNext, onBack }: Props) {
+export default function Step3Questions({ format, subject, initial, onQuestionsChange, onNext, onBack }: Props) {
   const { addToBankFromQuestion } = useApp();
   const { addToast } = useToast();
   const [questions, setQuestions] = useState<Question[]>(initial);
@@ -28,9 +29,14 @@ export default function Step3Questions({ format, subject, initial, onNext, onBac
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [dupDialogId, setDupDialogId] = useState<string | null>(null);
 
+  const setQuestionsAndSync = (next: Question[]) => {
+    setQuestions(next);
+    onQuestionsChange?.(next);
+  };
+
   const addQuestions = (qs: Question[]) => {
     const merged = reorderQuestions([...questions, ...qs.map(q => ({ ...q, id: generateId() }))]);
-    setQuestions(merged);
+    setQuestionsAndSync(merged);
     addToast({ type: 'success', title: `${qs.length} soal ditambahkan!` });
   };
 
@@ -48,7 +54,7 @@ export default function Step3Questions({ format, subject, initial, onNext, onBac
         addToast({ type: 'warning', title: 'Soal ditambahkan ke ujian, tetapi belum tersimpan di bank', message: bankResult.error });
       }
     }
-    setQuestions(updated);
+    setQuestionsAndSync(updated);
     setActiveModal(null);
     setEditTarget(null);
     if (editTarget || bankSaved) addToast({ type: 'success', title: editTarget ? 'Soal diperbarui' : 'Soal ditambahkan & disimpan ke bank soal' });
@@ -61,7 +67,7 @@ export default function Step3Questions({ format, subject, initial, onNext, onBac
 
   const handleDelete = () => {
     if (!deleteId) return;
-    setQuestions(reorderQuestions(questions.filter(q => q.id !== deleteId)));
+    setQuestionsAndSync(reorderQuestions(questions.filter(q => q.id !== deleteId)));
     setDeleteId(null);
     addToast({ type: 'info', title: 'Soal dihapus' });
   };
@@ -72,7 +78,7 @@ export default function Step3Questions({ format, subject, initial, onNext, onBac
     const copy: Question = { ...orig, id: generateId(), text: `${orig.text} (Salinan)`, order: 0 };
     const idx = questions.findIndex(q => q.id === id);
     const inserted = [...questions.slice(0, idx + 1), copy, ...questions.slice(idx + 1)];
-    setQuestions(reorderQuestions(inserted));
+    setQuestionsAndSync(reorderQuestions(inserted));
     setDupDialogId(null);
     addToast({ type: 'success', title: 'Soal diduplikasi', message: 'Edit soal salinan sesuai kebutuhan.' });
   };
@@ -114,7 +120,7 @@ export default function Step3Questions({ format, subject, initial, onNext, onBac
           { key: 'import', icon: <Upload size={20} />, label: 'Import File', hint: 'Excel / CSV', color: 'var(--success)', bg: 'var(--success-light)' },
           { key: 'bank', icon: <BookOpen size={20} />, label: 'Bank Soal', hint: 'Pakai soal lama', color: 'var(--secondary)', bg: 'var(--secondary-light)' },
         ].map(btn => (
-          <button key={btn.key} className="card" style={{ border: `1px solid ${btn.color}30`, background: btn.bg, cursor: 'pointer', textAlign: 'center', padding: 'var(--sp-4)', transition: 'all 0.15s ease' }}
+          <button key={btn.key} type="button" className="card" style={{ border: `1px solid ${btn.color}30`, background: btn.bg, cursor: 'pointer', textAlign: 'center', padding: 'var(--sp-4)', transition: 'all 0.15s ease' }}
             onClick={() => setActiveModal(btn.key as ActiveModal)}
             onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-2px)')}
             onMouseLeave={e => (e.currentTarget.style.transform = '')}>
@@ -214,8 +220,8 @@ export default function Step3Questions({ format, subject, initial, onNext, onBac
         onCancel={() => setDupDialogId(null)} />
 
       <div className="wizard-nav-row" style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--sp-8)', paddingTop: 'var(--sp-6)', borderTop: '1px solid var(--border)' }}>
-        <button className="btn btn-secondary" onClick={onBack}>← Kembali</button>
-        <button className="btn btn-primary btn-lg" onClick={handleNext} disabled={questions.length === 0}>
+        <button type="button" className="btn btn-secondary" onClick={onBack}>← Kembali</button>
+        <button type="button" className="btn btn-primary btn-lg" onClick={handleNext} disabled={questions.length === 0}>
           Lanjut: Review ({questions.length} soal) →
         </button>
       </div>

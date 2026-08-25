@@ -11,12 +11,30 @@ interface Props {
   open: boolean;
   format: ExamFormat;
   onImport: (questions: Question[]) => void;
+  onBeforeImport?: () => void;
   onClose: () => void;
 }
 
 type Step = 'upload' | 'preview' | 'done';
+const IMPORT_SESSION_KEY = 'kuizku_import_in_progress';
+const MAX_IMPORT_FILE_SIZE = 5 * 1024 * 1024;
 
-export default function ImportModal({ open, format, onImport, onClose }: Props) {
+function logImport(event: string, detail?: Record<string, unknown>) {
+  console.info(`[Kuizku import] ${event}`, detail ?? '');
+}
+
+function describeImportError(value: unknown): string {
+  const message = value instanceof Error ? value.message : String(value ?? '');
+  const normalized = message.toLowerCase();
+  if (normalized.includes('format excel tidak dikenali')) return message;
+  if (normalized.includes('abort')) return 'Pemilihan file dibatalkan. Anda tetap berada di halaman soal.';
+  if (normalized.includes('memory') || normalized.includes('allocation') || normalized.includes('array buffer')) {
+    return 'File Excel terlalu besar untuk diproses di perangkat ini. Kurangi ukuran file atau gunakan komputer.';
+  }
+  return 'File tidak dapat dibaca. Pastikan file tidak rusak dan gunakan format Excel/CSV/Word yang didukung.';
+}
+
+export default function ImportModal({ open, format, onImport, onBeforeImport, onClose }: Props) {
   const [step, setStep] = useState<Step>('upload');
   const [result, setResult] = useState<ImportResult | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -25,39 +43,58 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
   const [showFormat, setShowFormat] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const reset = () => { setStep('upload'); setResult(null); setError(''); setShowFormat(false); };
+  const clearImportSession = () => sessionStorage.removeItem(IMPORT_SESSION_KEY);
+  const reset = () => { clearImportSession(); setStep('upload'); setResult(null); setError(''); setShowFormat(false); };
   const handleClose = () => { reset(); onClose(); };
 
+  const openFilePicker = () => {
+    onBeforeImport?.();
+    logImport('FILE_PICKER_OPEN');
+    fileRef.current?.click();
+  };
+
   const processFile = async (file: File) => {
+    onBeforeImport?.();
+    sessionStorage.setItem(IMPORT_SESSION_KEY, '1');
     setLoading(true);
     setError('');
+    let openedPreview = false;
+    const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
+    logImport('IMPORT_START');
+    logImport('FILE_SELECTED', { name: file.name, size: file.size, type: file.type || 'unknown', extension });
     try {
-      if (file.size > 5 * 1024 * 1024) {
-        setError('File terlalu besar. Maksimal 5 MB.');
-        setLoading(false);
+      if (file.size === 0) {
+        setError('File kosong dan tidak dapat diimport. Pilih file Excel yang berisi soal.');
+        return;
+      }
+      if (file.size > MAX_IMPORT_FILE_SIZE) {
+        setError('File Excel terlalu besar untuk diproses di perangkat ini. Maksimal 5 MB. Kurangi ukuran file atau gunakan komputer.');
         return;
       }
 
-      const ext = file.name.split('.').pop()?.toLowerCase();
       let res: ImportResult;
-      if (ext === 'csv') res = await parseCSVFile(file);
-      else if (ext === 'xlsx' || ext === 'xls') res = await parseExcelFile(file);
-      else if (ext === 'docx') res = await parseWordFile(file);
-      else { setError('Format file tidak didukung. Gunakan .xlsx, .xls, .csv, atau .docx'); setLoading(false); return; }
+      if (extension === 'csv') res = await parseCSVFile(file);
+      else if (extension === 'xlsx' || extension === 'xls') res = await parseExcelFile(file, stage => logImport(stage));
+      else if (extension === 'docx') res = await parseWordFile(file);
+      else { setError('Format file tidak didukung. Gunakan .xlsx, .xls, .csv, atau .docx.'); return; }
 
       if (res.totalRows > 200) {
         setError(`File berisi ${res.totalRows} soal. Maksimal 200 soal per import.`);
-        setLoading(false);
         return;
       }
 
       const filtered = filterByFormat(res, format);
       setResult(filtered);
       setStep('preview');
+      openedPreview = true;
+      logImport('PARSE_SUCCESS', { totalRows: filtered.totalRows, validRows: filtered.valid.length, invalidRows: filtered.invalid.length });
     } catch (e) {
-      setError(String(e));
+      logImport('IMPORT_ERROR', { message: e instanceof Error ? e.message : String(e) });
+      setError(describeImportError(e));
+    } finally {
+      if (!openedPreview) clearImportSession();
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const filterByFormat = (res: ImportResult, fmt: ExamFormat): ImportResult => {
@@ -88,6 +125,8 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
     if (!result) return;
     const questions = result.valid.map((r, i) => ({ ...(r.question as Question), order: i + 1 }));
     onImport(questions);
+    clearImportSession();
+    logImport('IMPORT_SUCCESS', { importedRows: questions.length });
     setStep('done');
   };
 
@@ -151,7 +190,16 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
             onDragOver={e => { e.preventDefault(); setDragging(true); }}
             onDragLeave={() => setDragging(false)}
             onDrop={dropHandler}
-            onClick={() => fileRef.current?.click()}>
+            onClick={openFilePicker}
+            onKeyDown={event => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                openFilePicker();
+              }
+            }}
+            role="button"
+            tabIndex={0}
+            aria-label="Pilih file Excel, CSV, atau Word untuk diimport">
             <Upload size={32} style={{ color: 'var(--primary)', margin: '0 auto var(--sp-3)' }} />
             <p style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
               {loading ? 'Memproses file...' : 'Drag & drop file atau klik untuk pilih'}
@@ -160,7 +208,13 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
               Format: .xlsx, .xls, .csv, .docx — Maks. 5 MB, 200 soal
             </p>
             <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv,.docx" style={{ display: 'none' }}
-              onChange={e => e.target.files?.[0] && processFile(e.target.files[0])} />
+              onChange={event => {
+                const file = event.target.files?.[0];
+                // Reset value agar file yang sama dapat dipilih lagi setelah error.
+                event.target.value = '';
+                if (file) void processFile(file);
+                else logImport('FILE_PICKER_CANCELLED');
+              }} />
           </div>
 
           {error && (
@@ -288,10 +342,10 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'var(--sp-5)', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button className="btn btn-secondary" onClick={reset}>Perbaiki File Dulu</button>
-              {result.invalid.length > 0 && <button className="btn btn-ghost" onClick={() => downloadInvalidRows(result.invalid)}><Download size={14} /> Download Soal Bermasalah</button>}
+              <button type="button" className="btn btn-secondary" onClick={reset}>Perbaiki File Dulu</button>
+              {result.invalid.length > 0 && <button type="button" className="btn btn-ghost" onClick={() => downloadInvalidRows(result.invalid)}><Download size={14} /> Download Soal Bermasalah</button>}
             </div>
-            <button className="btn btn-primary" disabled={result.valid.length === 0} onClick={handleConfirmImport}>Import {result.valid.length} Soal Valid</button>
+            <button type="button" className="btn btn-primary" disabled={result.valid.length === 0} onClick={handleConfirmImport}>Import {result.valid.length} Soal Valid</button>
           </div>
         </div>
       )}
@@ -303,7 +357,7 @@ export default function ImportModal({ open, format, onImport, onClose }: Props) 
           <p style={{ color: 'var(--text-muted)', marginBottom: 'var(--sp-6)' }}>
             Anda bisa mengecek dan mengedit soal yang diimport sebelum melanjutkan.
           </p>
-          <button className="btn btn-primary" onClick={handleClose}>Selesai</button>
+          <button type="button" className="btn btn-primary" onClick={handleClose}>Selesai</button>
         </div>
       )}
     </Modal>

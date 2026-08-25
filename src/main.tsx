@@ -16,15 +16,27 @@ registerSW({ immediate: true })
 // Setelah deploy baru, tab/PWA lama kadang masih menunjuk ke JS/CSS chunk
 // yang sudah tidak tersedia di Vercel. Reload biasa tidak selalu cukup karena
 // service worker atau Cache API masih dapat menyajikan asset versi lama.
-// Pola recovery ini mengikuti implementasi yang sudah dipakai di EduTrack:
-// unregister service worker, bersihkan Cache API, lalu reload satu kali.
+// Recovery hanya untuk chunk Vite yang benar-benar basi. Error aplikasi biasa
+// (termasuk parser file) tidak boleh menyebabkan reload seluruh wizard.
 const isStaleAssetError = (value: unknown) => {
   const message = value instanceof Error ? value.message : String(value ?? '')
-  return /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|Loading chunk|CSS chunk|stylesheet|vite:preloadError|Cannot read properties of undefined \(reading ['"]default['"]\)/i.test(message)
+  return /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|Loading chunk|CSS chunk|vite:preloadError/i.test(message)
+}
+
+const isImportInProgress = () => sessionStorage.getItem('kuizku_import_in_progress') === '1'
+
+const isViteAssetElement = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLScriptElement || target instanceof HTMLLinkElement)) return false
+  const url = target instanceof HTMLScriptElement ? target.src : target.href
+  return /\/assets\//.test(url)
 }
 
 const recoverFromStaleAssets = async () => {
   if (!navigator.onLine) return
+  if (isImportInProgress()) {
+    console.info('[Kuizku import] STALE_ASSET_RECOVERY_SKIPPED_DURING_IMPORT')
+    return
+  }
 
   const key = 'kuizku_asset_recovery'
   if (sessionStorage.getItem(key) === '1') return
@@ -53,9 +65,7 @@ window.addEventListener('vite:preloadError', event => {
 })
 
 window.addEventListener('error', event => {
-  const target = event.target as HTMLElement | null
-  const isAssetElement = target?.tagName === 'SCRIPT' || target?.tagName === 'LINK'
-  if (isAssetElement || isStaleAssetError(event.error || event.message)) {
+  if (isViteAssetElement(event.target) || isStaleAssetError(event.error || event.message)) {
     void recoverFromStaleAssets()
   }
 }, true)

@@ -16,20 +16,13 @@ import { formatDateTime, generateId } from './helpers';
 export async function parseWordFile(file: File): Promise<ImportResult> {
   // @ts-ignore — mammoth is installed but might not have types
   const mammoth = await import('mammoth');
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const arrayBuffer = e.target?.result as ArrayBuffer;
-        const result = await mammoth.extractRawText({ arrayBuffer });
-        resolve(parseWordText(result.value as string));
-      } catch (err) {
-        reject(new Error('Gagal membaca file Word: ' + String(err)));
-      }
-    };
-    reader.onerror = () => reject(new Error('Gagal membaca file'));
-    reader.readAsArrayBuffer(file);
-  });
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer });
+    return parseWordText(result.value as string);
+  } catch (err) {
+    throw new Error('Gagal membaca file Word: ' + String(err));
+  }
 }
 
 function parseWordText(text: string): ImportResult {
@@ -123,54 +116,60 @@ function parseWordText(text: string): ImportResult {
 // Header resmi: Tipe, Pertanyaan, Opsi A-F, Kunci, Bobot, Tag, Panduan Jawaban
 // Bobot boleh kosong dan otomatis bernilai 1.
 
-export async function parseExcelFile(file: File): Promise<ImportResult> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = e.target?.result;
-        const workbook = XLSX.read(data, { type: 'binary' });
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
-        const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, {
-          defval: '',
-          raw: false,
-        });
-        validateSpreadsheetHeaders(rows);
-        resolve(parseSpreadsheetRows(rows));
-      } catch (err) {
-        if (err instanceof Error && err.message.startsWith('Format Excel tidak dikenali')) reject(err);
-        else reject(new Error('Gagal membaca file Excel: ' + String(err)));
-      }
-    };
-    reader.onerror = () => reject(new Error('Gagal membaca file'));
-    reader.readAsBinaryString(file);
-  });
+export type ImportParseStage = 'ARRAY_BUFFER_START' | 'ARRAY_BUFFER_READY' | 'XLSX_READ_START' | 'XLSX_READ_SUCCESS' | 'SHEET_FOUND' | 'PARSE_SUCCESS';
+
+export async function parseExcelFile(file: File, onProgress?: (stage: ImportParseStage) => void): Promise<ImportResult> {
+  try {
+    onProgress?.('ARRAY_BUFFER_START');
+    const arrayBuffer = await file.arrayBuffer();
+    onProgress?.('ARRAY_BUFFER_READY');
+
+    onProgress?.('XLSX_READ_START');
+    const workbook = XLSX.read(arrayBuffer, {
+      type: 'array',
+      cellFormula: false,
+      cellHTML: false,
+    });
+    onProgress?.('XLSX_READ_SUCCESS');
+
+    // Template resmi menggunakan sheet SOAL. Tetap gunakan sheet pertama bila
+    // pengguna membuat file sederhana tanpa nama sheet tersebut.
+    const sheetName = workbook.SheetNames.find(name => name.trim().toLowerCase() === 'soal') ?? workbook.SheetNames[0];
+    const sheet = sheetName ? workbook.Sheets[sheetName] : undefined;
+    if (!sheet) throw new Error('Format Excel tidak dikenali. Sheet soal tidak ditemukan.');
+    onProgress?.('SHEET_FOUND');
+
+    const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, {
+      defval: '',
+      raw: false,
+    });
+    validateSpreadsheetHeaders(rows);
+    const result = parseSpreadsheetRows(rows);
+    onProgress?.('PARSE_SUCCESS');
+    return result;
+  } catch (err) {
+    if (err instanceof Error && err.message.startsWith('Format Excel tidak dikenali')) throw err;
+    throw new Error('Gagal membaca file Excel: ' + String(err));
+  }
 }
 
 export async function parseCSVFile(file: File): Promise<ImportResult> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const text = e.target?.result as string;
-        const workbook = XLSX.read(text, { type: 'string' });
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
-        const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, {
-          defval: '',
-          raw: false,
-        });
-        validateSpreadsheetHeaders(rows);
-        resolve(parseSpreadsheetRows(rows));
-      } catch (err) {
-        if (err instanceof Error && err.message.startsWith('Format Excel tidak dikenali')) reject(err);
-        else reject(new Error('Gagal membaca file CSV: ' + String(err)));
-      }
-    };
-    reader.onerror = () => reject(new Error('Gagal membaca file'));
-    reader.readAsText(file, 'UTF-8');
-  });
+  try {
+    const text = await file.text();
+    const workbook = XLSX.read(text, { type: 'string' });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = sheetName ? workbook.Sheets[sheetName] : undefined;
+    if (!sheet) throw new Error('Format Excel tidak dikenali. Sheet soal tidak ditemukan.');
+    const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, {
+      defval: '',
+      raw: false,
+    });
+    validateSpreadsheetHeaders(rows);
+    return parseSpreadsheetRows(rows);
+  } catch (err) {
+    if (err instanceof Error && err.message.startsWith('Format Excel tidak dikenali')) throw err;
+    throw new Error('Gagal membaca file CSV: ' + String(err));
+  }
 }
 
 function normalizeKey(key: string): string {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle } from 'lucide-react';
 import Step1Setup from './wizard/Step1Setup';
@@ -33,6 +33,14 @@ type WizardData = {
   preloadedStudents: PreloadedStudent[];
 };
 
+type WizardDraft = {
+  data: WizardData;
+  step: 1 | 2 | 3 | 4;
+};
+
+const DRAFT_KEY = 'kuizku_wizard_draft';
+const IMPORT_SESSION_KEY = 'kuizku_import_in_progress';
+
 const defaultSettings: ExamSettings = {
   timerMode: 'NONE',
   wholExamTimerSeconds: 3600,
@@ -51,35 +59,49 @@ export default function CreateExamPage() {
   const { addToast } = useToast();
   const navigate = useNavigate();
 
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [data, setData] = useState<WizardData>({
     title: '', description: '', subject: '', className: '', activeFrom: '', activeTo: '',
     examType: 'UJIAN', settings: defaultSettings, format: 'PG_ONLY', questions: [], preloadedStudents: [],
   });
   const [createdExam, setCreatedExam] = useState<Exam | null>(null);
   const [saving, setSaving] = useState(false);
+  const [draftHydrated, setDraftHydrated] = useState(false);
 
-  // Fix #7: Autosave wizard draft ke localStorage
-  const DRAFT_KEY = 'kuizku_wizard_draft';
+  const saveWizardDraft = useCallback((draftData: WizardData, draftStep: 1 | 2 | 3 | 4) => {
+    try {
+      const draft: WizardDraft = { data: draftData, step: draftStep };
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    } catch {
+      // Storage bisa penuh/terblokir di private mode. Wizard tetap berjalan.
+    }
+  }, []);
 
   // Load draft on mount
   useEffect(() => {
     try {
       const saved = localStorage.getItem(DRAFT_KEY);
       if (saved) {
-        const parsed = JSON.parse(saved);
-        setData(d => ({ ...d, ...parsed }));
+        const parsed = JSON.parse(saved) as Partial<WizardDraft> | Partial<WizardData>;
+        const hasVersionedDraft = parsed && typeof parsed === 'object' && 'data' in parsed;
+        const draftData = hasVersionedDraft ? (parsed as WizardDraft).data : parsed as Partial<WizardData>;
+        const draftStep = hasVersionedDraft ? (parsed as WizardDraft).step : 1;
+        setData(d => ({ ...d, ...draftData }));
+        if ([1, 2, 3, 4].includes(draftStep)) setStep(draftStep as 1 | 2 | 3 | 4);
+        if (sessionStorage.getItem(IMPORT_SESSION_KEY) === '1') {
+          sessionStorage.removeItem(IMPORT_SESSION_KEY);
+          addToast({ type: 'info', title: 'Draft ujian dipulihkan', message: 'Anda kembali ke langkah terakhir sebelum import file.' });
+        }
       }
     } catch { /* ignore */ }
-  }, []);
+    setDraftHydrated(true);
+  }, [addToast]);
 
   // Save draft on every data change (debounced via step check)
   useEffect(() => {
-    if (createdExam) return; // sudah selesai, jangan save draft
-    try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
-    } catch { /* ignore */ }
-  }, [data, createdExam]);
+    if (!draftHydrated || createdExam) return; // jangan menimpa draft sebelum selesai dipulihkan
+    if (step <= 4) saveWizardDraft(data, step as 1 | 2 | 3 | 4);
+  }, [data, step, createdExam, draftHydrated, saveWizardDraft]);
 
   // Warn before unload jika ada data
   useEffect(() => {
@@ -95,6 +117,13 @@ export default function CreateExamPage() {
   }, [data, createdExam]);
 
   const update = (partial: Partial<WizardData>) => setData(d => ({ ...d, ...partial }));
+
+  const handleQuestionsChange = (questions: Question[]) => {
+    const nextData = { ...data, questions };
+    setData(nextData);
+    // Ini dipanggil sebelum file picker terbuka, bukan menunggu useEffect.
+    saveWizardDraft(nextData, 3);
+  };
 
   const handleStep1Next = (d: Pick<WizardData, 'title' | 'description' | 'subject' | 'className' | 'examType' | 'activeFrom' | 'activeTo' | 'settings' | 'preloadedStudents'>) => {
     update(d);
@@ -131,7 +160,9 @@ export default function CreateExamPage() {
   };
 
   const handleStep3Next = (questions: Question[]) => {
-    update({ questions });
+    const nextData = { ...data, questions };
+    setData(nextData);
+    saveWizardDraft(nextData, 4);
     setStep(4);
   };
 
@@ -227,6 +258,7 @@ export default function CreateExamPage() {
             format={data.format}
             subject={data.subject}
             initial={data.questions}
+            onQuestionsChange={handleQuestionsChange}
             onNext={handleStep3Next}
             onBack={() => setStep(2)}
           />
