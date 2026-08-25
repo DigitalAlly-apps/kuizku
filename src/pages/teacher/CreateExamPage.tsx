@@ -35,9 +35,9 @@ type WizardData = {
   preloadedStudents: PreloadedStudent[];
 };
 
-type WizardDraft = {
-  data: Partial<WizardData>;
-  step: number;
+type WizardDraft = Partial<WizardData> & {
+  data?: Partial<WizardData>;
+  step?: number;
 };
 
 const defaultSettings: ExamSettings = {
@@ -63,10 +63,9 @@ function readWizardDraft(): { data: WizardData; step: number } {
     const saved = localStorage.getItem(DRAFT_KEY);
     if (!saved) return { data: emptyWizardData, step: 1 };
 
-    const parsed = JSON.parse(saved) as WizardDraft | Partial<WizardData>;
-    // Backward compatible dengan draft lama yang hanya menyimpan WizardData.
-    const savedData = 'data' in parsed && parsed.data ? parsed.data : parsed;
-    const savedStep = 'step' in parsed && typeof parsed.step === 'number' ? parsed.step : 1;
+    const parsed = JSON.parse(saved) as WizardDraft;
+    const savedData: Partial<WizardData> = parsed.data ?? parsed;
+    const savedStep = typeof parsed.step === 'number' ? parsed.step : 1;
 
     return {
       data: {
@@ -76,7 +75,6 @@ function readWizardDraft(): { data: WizardData; step: number } {
         questions: Array.isArray(savedData.questions) ? savedData.questions : [],
         preloadedStudents: Array.isArray(savedData.preloadedStudents) ? savedData.preloadedStudents : [],
       },
-      // Step 5 membutuhkan createdExam runtime; draft hanya aman dipulihkan sampai Review.
       step: Math.min(4, Math.max(1, savedStep)),
     };
   } catch {
@@ -89,24 +87,19 @@ export default function CreateExamPage() {
   const { addToast } = useToast();
   const navigate = useNavigate();
 
-  // Baca draft secara sinkron saat state pertama dibuat. Ini mencegah race condition
-  // di mana effect autosave menimpa draft lama dengan data kosong sebelum effect load selesai.
   const [initialDraft] = useState(readWizardDraft);
   const [step, setStep] = useState(initialDraft.step);
   const [data, setData] = useState<WizardData>(initialDraft.data);
   const [createdExam, setCreatedExam] = useState<Exam | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // Simpan data + posisi wizard. Jika page remount/reload saat import, guru kembali
-  // ke langkah terakhir dengan nama ujian/mapel/pengaturan tetap utuh.
   useEffect(() => {
     if (createdExam) return;
     try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify({ data, step } satisfies WizardDraft));
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ data, step }));
     } catch { /* ignore */ }
   }, [data, step, createdExam]);
 
-  // Warn before unload jika ada data
   useEffect(() => {
     if (createdExam) return;
     const handler = (e: BeforeUnloadEvent) => {
@@ -127,7 +120,6 @@ export default function CreateExamPage() {
   };
 
   const handleStep2Next = (format: ExamFormat) => {
-    // If format changed and we have incompatible questions, confirm before deleting
     const hasIncompat = data.questions.some(q => {
       if (format === 'PG_ONLY' && q.type === 'ESSAY') return true;
       if (format === 'ESSAY_ONLY' && q.type !== 'ESSAY') return true;
