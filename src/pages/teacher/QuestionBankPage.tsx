@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Search, BookOpen, Trash2, Edit2, ChevronDown, ChevronRight, Share2, Download, LibraryBig, FolderPlus } from 'lucide-react';
+import { Search, BookOpen, Trash2, Edit2, ChevronDown, ChevronRight, Share2, Download, LibraryBig, FolderPlus, CheckSquare, Square, Loader2 } from 'lucide-react';
 import { useApp, useToast } from '../../context/AppContext';
 import { EmptyState, ConfirmDialog, Modal } from '../../components/ui';
 import QuestionEditor from '../../components/exam/QuestionEditor';
@@ -19,6 +19,9 @@ export default function QuestionBankPage() {
   const [collectionModalOpen, setCollectionModalOpen] = useState(false);
   const [savingCollection, setSavingCollection] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [editQ, setEditQ] = useState<BankQuestion | null>(null);
   const [preview, setPreview] = useState<BankQuestion | null>(null);
   const [groupBy, setGroupBy] = useState<'kelas' | 'mapel' | 'none'>('kelas');
@@ -48,6 +51,25 @@ export default function QuestionBankPage() {
   }, [myBank, typeFilter, tagFilter, collectionFilter, search]);
 
   const collectionNames = useMemo(() => new Map(questionCollections.map(c => [c.id, c.name])), [questionCollections]);
+  const selectedFilteredCount = filtered.filter(question => selectedIds.has(question.id)).length;
+  const allFilteredSelected = filtered.length > 0 && selectedFilteredCount === filtered.length;
+
+  const toggleSelection = (id: string) => {
+    setSelectedIds(previous => {
+      const next = new Set(previous);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAllFiltered = () => {
+    setSelectedIds(previous => {
+      const next = new Set(previous);
+      if (allFilteredSelected) filtered.forEach(question => next.delete(question.id));
+      else filtered.forEach(question => next.add(question.id));
+      return next;
+    });
+  };
 
   const handleCreateCollection = async () => {
     setSavingCollection(true);
@@ -95,8 +117,38 @@ export default function QuestionBankPage() {
       return;
     }
     if (preview?.id === deleteId) setPreview(null);
+    setSelectedIds(previous => {
+      const next = new Set(previous);
+      next.delete(deleteId);
+      return next;
+    });
     setDeleteId(null);
     addToast({ type: 'success', title: 'Soal dihapus dari bank soal.' });
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedIds).filter(id => myBank.some(question => question.id === id));
+    if (ids.length === 0) {
+      setBulkDeleteOpen(false);
+      return;
+    }
+    setBulkDeleting(true);
+    let deletedCount = 0;
+    let failedCount = 0;
+    for (const id of ids) {
+      const result = await deleteBankQuestion(id);
+      if (result.error) failedCount += 1;
+      else deletedCount += 1;
+    }
+    setBulkDeleting(false);
+    setBulkDeleteOpen(false);
+    setSelectedIds(new Set());
+    if (preview && ids.includes(preview.id)) setPreview(null);
+    if (failedCount > 0) {
+      addToast({ type: 'error', title: `${deletedCount} soal terhapus`, message: `${failedCount} soal gagal dihapus. Coba lagi untuk soal yang tersisa.` });
+    } else {
+      addToast({ type: 'success', title: `${deletedCount} soal dihapus`, message: 'Soal dihapus dari bank soal. Soal di ujian yang sudah dibuat tetap aman.' });
+    }
   };
 
   const handleEditSave = async (q: import('../../types').Question) => {
@@ -216,6 +268,12 @@ export default function QuestionBankPage() {
               value={search} onChange={e => setSearch(e.target.value)} />
           </div>
           <span className="bank-filter-result-count">{filtered.length} dari {myBank.length} soal</span>
+          {filtered.length > 0 && (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={toggleSelectAllFiltered} style={{ marginLeft: 'auto' }}>
+              {allFilteredSelected ? <CheckSquare size={15} /> : <Square size={15} />}
+              {allFilteredSelected ? 'Batal pilih semua' : 'Pilih semua hasil'}
+            </button>
+          )}
         </div>
         <div className="bank-filter-select-row">
           <label>
@@ -258,6 +316,18 @@ export default function QuestionBankPage() {
           )}
         </div>
       </div>
+
+      {selectedIds.size > 0 && (
+        <div role="status" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--sp-3)', flexWrap: 'wrap', margin: 'var(--sp-4) 0', padding: 'var(--sp-3) var(--sp-4)', border: '1px solid var(--primary)', borderRadius: 'var(--r-md)', background: 'var(--primary-light)' }}>
+          <span style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>{selectedIds.size} soal dipilih</span>
+          <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setSelectedIds(new Set())}>Batal pilih</button>
+            <button type="button" className="btn btn-danger btn-sm" onClick={() => setBulkDeleteOpen(true)} disabled={bulkDeleting}>
+              <Trash2 size={14} /> Hapus yang dipilih
+            </button>
+          </div>
+      </div>
+      )}
 
       <div className="bank-page-layout" style={{ display: 'flex', gap: 'var(--sp-5)' }}>
         {/* Question List Grouped */}
@@ -307,6 +377,9 @@ export default function QuestionBankPage() {
                             <div key={bq.id} className={`bank-card ${preview?.id === bq.id ? 'selected' : ''}`}
                               onClick={() => setPreview(bq)}>
                               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6, alignItems: 'center' }}>
+                                <button type="button" aria-label={`${selectedIds.has(bq.id) ? 'Batalkan pilihan' : 'Pilih'} soal`} onClick={event => { event.stopPropagation(); toggleSelection(bq.id); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, padding: 0, border: 0, borderRadius: 'var(--r-sm)', background: 'transparent', color: selectedIds.has(bq.id) ? 'var(--primary)' : 'var(--text-muted)', cursor: 'pointer' }}>
+                                  {selectedIds.has(bq.id) ? <CheckSquare size={17} /> : <Square size={17} />}
+                                </button>
                                 <span className={`badge ${bq.type === 'MULTIPLE_CHOICE' || bq.type === 'SHORT_ANSWER' ? 'badge-pg' : 'badge-essay'}`}>
                                   {bq.type === 'MULTIPLE_CHOICE' ? 'PG' : bq.type === 'SHORT_ANSWER' ? 'Short' : 'Essay'}
                                 </span>
@@ -412,6 +485,20 @@ export default function QuestionBankPage() {
       <ConfirmDialog open={!!deleteId} title="Hapus dari Bank Soal?"
         message="Soal ini akan dihapus dari bank soal. Soal di ujian yang sudah dibuat tidak terpengaruh."
         confirmLabel="Hapus" danger onConfirm={handleDelete} onCancel={() => setDeleteId(null)} />
+
+      <Modal open={bulkDeleteOpen} onClose={() => { if (!bulkDeleting) setBulkDeleteOpen(false); }} title="Hapus banyak soal?"
+        footer={
+          <>
+            <button type="button" className="btn btn-secondary" onClick={() => setBulkDeleteOpen(false)} disabled={bulkDeleting}>Batal</button>
+            <button type="button" className="btn btn-danger" onClick={() => void handleBulkDelete()} disabled={bulkDeleting}>
+              {bulkDeleting ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> Menghapus...</> : <><Trash2 size={15} /> Hapus {selectedIds.size} soal</>}
+            </button>
+          </>
+        }>
+        <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
+          {selectedIds.size} soal akan dihapus dari bank soal. Soal yang sudah tersalin ke ujian dan jawaban siswa tidak ikut terhapus.
+        </p>
+      </Modal>
 
       <Modal open={shareOpen} onClose={() => setShareOpen(false)} title="Import Soal Bersama" size="lg">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
