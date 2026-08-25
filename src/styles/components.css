@@ -877,6 +877,35 @@
 .bank-card-actions .btn-icon { width: 36px; height: 36px; }
 .bank-preview-title { display: flex; align-items: center; gap: 8px; font-weight: 750; margin-bottom: var(--sp-3); color: var(--text); }
 
+/* Account settings: compact, scannable and mobile-first */
+.settings-page .page-header { margin-bottom: var(--sp-5); }
+.settings-eyebrow { color: var(--primary); font-size: .7rem; font-weight: 800; letter-spacing: .12em; margin-bottom: 6px; }
+.settings-page .page-header p { max-width: 620px; }
+.settings-main-card { padding: clamp(var(--sp-4), 3vw, var(--sp-7)); }
+.settings-profile-card { border: 1px solid var(--border); }
+.settings-section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-4); grid-column: 1 / -1; padding-bottom: var(--sp-1); }
+.settings-section-heading h2 { margin: 0 0 5px; font-size: 1rem; }
+.settings-section-heading p { margin: 0; color: var(--text-muted); font-size: .82rem; line-height: 1.5; }
+.settings-required-note { color: var(--text-muted); font-size: .75rem; white-space: nowrap; }
+.settings-profile-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-4); }
+.settings-profile-form .form-group { margin: 0; }
+.settings-profile-form .form-label { margin-bottom: 7px; }
+.settings-save-button { grid-column: 1 / -1; justify-self: start; margin-top: var(--sp-1); min-height: 44px; }
+.settings-section-card { padding: clamp(var(--sp-4), 3vw, var(--sp-6)); }
+.settings-section-card h3 { font-size: 1rem; }
+.settings-section-card button { transition: border-color .18s ease, background .18s ease, transform .18s ease; }
+.settings-section-card button:hover { transform: translateY(-1px); }
+.settings-theme-option:focus-visible { outline: 3px solid color-mix(in srgb, var(--primary) 35%, transparent); outline-offset: 2px; }
+
+@media (max-width: 640px) {
+  .settings-profile-card { align-items: flex-start !important; flex-direction: column; }
+  .settings-completion { width: 100%; }
+  .settings-profile-form { grid-template-columns: 1fr; }
+  .settings-section-heading { flex-direction: column; gap: 6px; }
+  .settings-required-note { white-space: normal; }
+  .settings-save-button { width: 100%; justify-content: center; }
+}
+
 @media (max-width: 560px) {
   .student-access-choice { grid-template-columns: 1fr; }
 
