@@ -135,7 +135,7 @@ export default function ResultScreen({ exam, submission, studentName }: Props) {
               <div>
                 <div className="student-ranking-eyebrow"><Trophy size={15} /> Ranking Kelas</div>
                 <h2>Posisi Anda #{ranking.currentRank ?? '—'}</h2>
-                <p>{ranking.totalParticipants ?? 0} peserta • skor terbaik per murid</p>
+                <p>{ranking.totalParticipants ?? 0} peserta • peringkat berdasarkan hasil akhir</p>
               </div>
               <div className="student-ranking-medal">🏆</div>
             </div>
@@ -144,7 +144,6 @@ export default function ResultScreen({ exam, submission, studentName }: Props) {
                 <div key={`${entry.rank}-${entry.studentName}`} className={`student-ranking-row ${entry.isCurrent ? 'is-you' : ''}`}>
                   <span className="student-ranking-rank">{entry.rank}</span>
                   <span className="student-ranking-name">{entry.studentName}{entry.isCurrent && ' (Anda)'}</span>
-                  <strong>{entry.score}/{entry.maxScore}</strong>
                 </div>
               ))}
               {ranking.currentRank != null && ranking.currentRank > 10 && (() => {
@@ -154,7 +153,6 @@ export default function ResultScreen({ exam, submission, studentName }: Props) {
                   <div className="student-ranking-row is-you">
                     <span className="student-ranking-rank">{current.rank}</span>
                     <span className="student-ranking-name">{current.studentName} (Anda)</span>
-                    <strong>{current.score}/{current.maxScore}</strong>
                   </div>
                 </> : null;
               })()}

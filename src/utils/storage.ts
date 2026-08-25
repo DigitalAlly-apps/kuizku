@@ -507,16 +507,13 @@ export const storage = {
     }
     return {
       available: true,
-      entries: Array.isArray(data.entries) ? data.entries.map((entry: { rank: number; studentName: string; score: number; maxScore: number; isCurrent?: boolean }) => ({
+      entries: Array.isArray(data.entries) ? data.entries.map((entry: { rank: number; studentName: string; isCurrent?: boolean }) => ({
         rank: Number(entry.rank),
         studentName: String(entry.studentName),
-        score: Number(entry.score),
-        maxScore: Number(entry.maxScore),
         isCurrent: entry.isCurrent === true,
       })) : [],
       currentRank: data.currentRank == null ? undefined : Number(data.currentRank),
       totalParticipants: data.totalParticipants == null ? undefined : Number(data.totalParticipants),
-      maxScore: data.maxScore == null ? undefined : Number(data.maxScore),
     };
   },
 
@@ -533,16 +530,13 @@ export const storage = {
     if (!data?.available) return { available: false, entries: [], reason: data?.reason ?? 'NOT_RELEASED' };
     return {
       available: true,
-      entries: Array.isArray(data.entries) ? data.entries.map((entry: { rank: number; studentName: string; score: number; maxScore: number; isCurrent?: boolean }) => ({
+      entries: Array.isArray(data.entries) ? data.entries.map((entry: { rank: number; studentName: string; isCurrent?: boolean }) => ({
         rank: Number(entry.rank),
         studentName: String(entry.studentName),
-        score: Number(entry.score),
-        maxScore: Number(entry.maxScore),
         isCurrent: entry.isCurrent === true,
       })) : [],
       currentRank: data.currentRank == null ? undefined : Number(data.currentRank),
       totalParticipants: data.totalParticipants == null ? undefined : Number(data.totalParticipants),
-      maxScore: data.maxScore == null ? undefined : Number(data.maxScore),
     };
   },
 

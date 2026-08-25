@@ -103,7 +103,7 @@ export default function StudentRankingPage() {
               <div>
                 <div className="student-ranking-eyebrow"><Trophy size={15} /> Ranking Kelas</div>
                 <h2>{currentEntry ? `Posisi Anda #${ranking.currentRank}` : 'Daftar Peringkat'}</h2>
-                <p>{ranking.totalParticipants ?? 0} peserta • skor terbaik per murid</p>
+                <p>{ranking.totalParticipants ?? 0} peserta • peringkat berdasarkan hasil akhir</p>
               </div>
               <div className="student-ranking-medal">🏆</div>
             </div>
@@ -111,9 +111,8 @@ export default function StudentRankingPage() {
               {visibleEntries.slice(0, 10).map(entry => <div key={`${entry.rank}-${entry.studentName}`} className={`student-ranking-row ${entry.isCurrent ? 'is-you' : ''}`}>
                 <span className="student-ranking-rank">{entry.rank}</span>
                 <span className="student-ranking-name">{entry.studentName}{entry.isCurrent && ' (Anda)'}</span>
-                <strong>{entry.score}/{entry.maxScore}</strong>
               </div>)}
-              {currentEntry && ranking.currentRank && ranking.currentRank > 10 && <><div className="student-ranking-more">•••</div><div className="student-ranking-row is-you"><span className="student-ranking-rank">{currentEntry.rank}</span><span className="student-ranking-name">{currentEntry.studentName} (Anda)</span><strong>{currentEntry.score}/{currentEntry.maxScore}</strong></div></>}
+              {currentEntry && ranking.currentRank && ranking.currentRank > 10 && <><div className="student-ranking-more">•••</div><div className="student-ranking-row is-you"><span className="student-ranking-rank">{currentEntry.rank}</span><span className="student-ranking-name">{currentEntry.studentName} (Anda)</span></div></>}
             </div>
             {!currentEntry && <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: 'var(--sp-4) 0 0' }}>Ingin posisi Anda ditandai? Masukkan identitas saat membuka ranking dari riwayat ujian.</p>}
           </section>

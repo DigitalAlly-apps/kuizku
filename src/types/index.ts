@@ -225,8 +225,6 @@ export interface Submission {
 export interface RankingEntry {
   rank: number;
   studentName: string;
-  score: number;
-  maxScore: number;
   isCurrent?: boolean;
 }
 
@@ -235,7 +233,6 @@ export interface StudentRanking {
   entries: RankingEntry[];
   currentRank?: number;
   totalParticipants?: number;
-  maxScore?: number;
   reason?: string;
 }
 
