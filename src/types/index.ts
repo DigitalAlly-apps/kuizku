@@ -115,6 +115,14 @@ export interface ExamSettings {
   shuffleQuestions: boolean;
   shuffleOptions: boolean;        // for MC only
   antiCheatSensitivity?: 'OFF' | 'LOW' | 'MEDIUM' | 'HIGH';
+  /** Nilai skala 0-100 agar peserta dinyatakan tuntas. */
+  passingScore?: number;
+  /** FREE mempertahankan perilaku ujian lama. */
+  navigationMode?: 'FREE' | 'SEQUENTIAL';
+  /** Kebijakan baru; resolver tetap membaca field lama untuk ujian terdahulu. */
+  scoreReleaseMode?: 'IMMEDIATE' | 'AFTER_EXAM_END' | 'AFTER_GRADING' | 'NEVER';
+  answerKeyReleaseMode?: 'IMMEDIATE' | 'AFTER_EXAM_END' | 'NEVER';
+  explanationReleaseMode?: 'IMMEDIATE' | 'AFTER_EXAM_END' | 'NEVER';
 }
 
 // ---- Pre-loaded Student List ----

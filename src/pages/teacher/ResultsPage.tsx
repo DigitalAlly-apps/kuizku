@@ -4,6 +4,8 @@ import { Download, User, Edit2, BarChart2, RotateCcw, MessageSquare, RefreshCcw,
 import { useApp, useToast } from '../../context/AppContext';
 import { EmptyState, FormatBadge, StatusBadge, SectionHeader, Modal } from '../../components/ui';
 import { calcMaxMCScore, calcMaxEssayScore, formatDateTime } from '../../utils/helpers';
+import { getPassingScore } from '../../utils/examSettings';
+import { storage } from '../../utils/storage';
 import * as XLSX from 'xlsx';
 import type { AiGradingSuggestion, Question, StudentAnswer, Submission } from '../../types';
 
@@ -71,6 +73,8 @@ export default function ResultsPage() {
   const [quickComment, setQuickComment] = useState('');
   const [analysisFilter, setAnalysisFilter] = useState<AnalysisFilter>('ALL');
   const [deletingSubmissionId, setDeletingSubmissionId] = useState<string | null>(null);
+  const [attemptTarget, setAttemptTarget] = useState<Submission | null>(null);
+  const [grantingAttempt, setGrantingAttempt] = useState(false);
   const quickRequested = searchParams.get('quick') === '1';
 
   const handleDeleteSubmission = async (submission: Submission) => {
@@ -85,6 +89,20 @@ export default function ResultsPage() {
     }
     if (detailSub?.id === submission.id) setDetailSub(null);
     addToast({ type: 'success', title: 'Submission dihapus', message: `Jawaban ${submission.studentName} telah dihapus.` });
+  };
+
+  const grantExtraAttempt = async () => {
+    if (!selectedExam || !attemptTarget) return;
+    const identifier = attemptTarget.nis.trim() || attemptTarget.studentName.trim();
+    setGrantingAttempt(true);
+    const result = await storage.grantStudentExtraAttempt(selectedExam.id, identifier);
+    setGrantingAttempt(false);
+    if (result.error) {
+      addToast({ type: 'error', title: 'Kesempatan belum ditambahkan', message: result.error });
+      return;
+    }
+    setAttemptTarget(null);
+    addToast({ type: 'success', title: 'Kesempatan ditambahkan', message: `1 kesempatan tambahan diberikan kepada ${attemptTarget.studentName}.` });
   };
 
   const selectedExam = useMemo(() => myExams.find(e => e.id === selectedExamId), [myExams, selectedExamId]);
@@ -103,6 +121,7 @@ export default function ResultsPage() {
   const maxMC = selectedExam ? calcMaxMCScore(selectedExam) : 0;
   const maxEssay = selectedExam ? calcMaxEssayScore(selectedExam) : 0;
   const maxTotal = maxMC + maxEssay;
+  const passingScore = selectedExam ? getPassingScore(selectedExam.settings) : 70;
 
   // Nilai skala 0-100
   const toPercent = (points: number) => (maxTotal > 0 ? Math.round((points / maxTotal) * 100) : 0);
@@ -138,19 +157,20 @@ export default function ResultsPage() {
 
   const scoreStats = useMemo(() => {
     const values = gradedPercents;
-    if (!values.length) return { median: 0, highest: 0, mastery: 0, distribution: [0, 0, 0, 0], count: 0 };
+    if (!values.length) return { median: 0, highest: 0, mastery: 0, masteryCount: 0, distribution: [0, 0, 0, 0], count: 0 };
     const mid = Math.floor(values.length / 2);
     const median = values.length % 2 ? values[mid] : Math.round((values[mid - 1] + values[mid]) / 2);
     const highest = values[values.length - 1];
-    const mastery = Math.round((values.filter(v => v >= 70).length / values.length) * 100);
+    const masteryCount = values.filter(v => v >= passingScore).length;
+    const mastery = Math.round((masteryCount / values.length) * 100);
     const distribution = [
       values.filter(v => v < 40).length,
       values.filter(v => v >= 40 && v < 70).length,
       values.filter(v => v >= 70 && v < 85).length,
       values.filter(v => v >= 85).length,
     ];
-    return { median, highest, mastery, distribution, count: values.length };
-  }, [gradedPercents]);
+    return { median, highest, mastery, masteryCount, distribution, count: values.length };
+  }, [gradedPercents, passingScore]);
 
   const ranking = useMemo(() => [...bestFinalPerParticipant]
     .sort((a, b) => (b.totalScore ?? 0) - (a.totalScore ?? 0))
@@ -452,7 +472,7 @@ export default function ResultsPage() {
               { label: 'Rata-rata Nilai', value: gradedPercents.length ? avgTotal : '—', color: 'var(--success)' },
               { label: 'Median', value: gradedPercents.length ? scoreStats.median : '—', color: 'var(--secondary)' },
               { label: 'Tertinggi', value: gradedPercents.length ? scoreStats.highest : '—', color: 'var(--success)' },
-              { label: 'Ketuntasan ≥70', value: `${scoreStats.mastery}%`, color: 'var(--warning)' },
+              { label: `Ketuntasan ≥${passingScore}`, value: gradedPercents.length ? `${scoreStats.masteryCount}/${gradedPercents.length} (${scoreStats.mastery}%)` : '—', color: 'var(--warning)' },
               { label: 'Essay Final', value: `${examSubs.filter(s => essayStatus(s) === 'FINAL').length}/${examSubs.length}`, color: 'var(--warning)' },
             ].map(s => (
               <div key={s.label} className="stat-card">
@@ -594,6 +614,9 @@ export default function ResultsPage() {
                                 <Edit2 size={14} aria-hidden="true" />
                               </button>
                             )}
+                            <button className="btn btn-ghost btn-sm" type="button" aria-label={`Tambah satu kesempatan untuk ${sub.studentName}`} title="Tambah 1 kesempatan" onClick={() => setAttemptTarget(sub)}>
+                              +1 <span className="results-analysis-action">Kesempatan</span>
+                            </button>
                             <button
                               className="btn btn-ghost btn-sm btn-icon"
                               type="button"
@@ -646,6 +669,18 @@ export default function ResultsPage() {
       )}
 
       {/* Detail / Grading Modal */}
+      <Modal
+        open={!!attemptTarget}
+        onClose={() => !grantingAttempt && setAttemptTarget(null)}
+        title={`Tambah kesempatan untuk ${attemptTarget?.studentName ?? ''}`}
+        subtitle="Perubahan ini hanya berlaku untuk peserta ini."
+        footer={<><button className="btn btn-secondary" disabled={grantingAttempt} onClick={() => setAttemptTarget(null)}>Batal</button><button className="btn btn-primary" disabled={grantingAttempt} onClick={() => void grantExtraAttempt()}>{grantingAttempt ? 'Menambahkan...' : 'Tambah Kesempatan'}</button></>}
+      >
+        {attemptTarget && <div style={{ padding: '0 var(--sp-6) var(--sp-2)' }}>
+          <p style={{ margin: 0, color: 'var(--text-secondary)' }}>Saat ini peserta sudah memakai <strong>{attemptTarget.attemptNumber}</strong> percobaan pada submission ini.</p>
+          <p style={{ margin: 'var(--sp-3) 0 0', color: 'var(--text-secondary)' }}>Setelah ditambah, batas efektifnya menjadi <strong>{(selectedExam?.settings.maxAttempts ?? 1) + 1}</strong> atau lebih jika sebelumnya sudah pernah diberi tambahan.</p>
+        </div>}
+      </Modal>
       <Modal open={!!detailSub} onClose={() => { void discardAiSuggestions(); setDetailSub(null); setGradingMode(false); setAnalysisFilter('ALL'); }}
         title={gradingMode ? `Nilai Essay — ${detailSub?.studentName}` : `Analisis — ${detailSub?.studentName}`}
         size="xl"
