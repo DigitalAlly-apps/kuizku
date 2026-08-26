@@ -25,21 +25,8 @@ export default function Step1Setup({ initial, onNext }: Props) {
   const [studentList, setStudentList] = useState(initial.preloadedStudents.map(s => `${s.name}, ${s.nis}`).join('\n'));
   const [accessMode, setAccessMode] = useState<'OPEN' | 'LIST'>(initial.preloadedStudents.length > 0 ? 'LIST' : 'OPEN');
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [preset, setPreset] = useState<'LATIHAN' | 'UJIAN' | 'LCC' | 'CUSTOM'>('CUSTOM');
-
   const setSetting = <K extends keyof ExamSettings>(k: K, v: ExamSettings[K]) => {
-    setPreset('CUSTOM');
     setSettings(s => ({ ...s, [k]: v }));
-  };
-
-  const applyPreset = (nextPreset: 'LATIHAN' | 'UJIAN' | 'LCC') => {
-    const presets: Record<'LATIHAN' | 'UJIAN' | 'LCC', Partial<ExamSettings>> = {
-      LATIHAN: { navigationMode: 'FREE', maxAttempts: 0, shuffleQuestions: false, shuffleOptions: false, scoreReleaseMode: 'IMMEDIATE', answerKeyReleaseMode: 'IMMEDIATE', explanationReleaseMode: 'IMMEDIATE', showRankingAfterSubmit: false, antiCheatSensitivity: 'OFF' },
-      UJIAN: { navigationMode: 'FREE', maxAttempts: 1, shuffleQuestions: true, shuffleOptions: true, scoreReleaseMode: 'AFTER_EXAM_END', answerKeyReleaseMode: 'AFTER_EXAM_END', explanationReleaseMode: 'NEVER', showRankingAfterSubmit: false, antiCheatSensitivity: 'MEDIUM' },
-      LCC: { navigationMode: 'FREE', maxAttempts: 1, shuffleQuestions: true, shuffleOptions: true, scoreReleaseMode: 'IMMEDIATE', answerKeyReleaseMode: 'AFTER_EXAM_END', explanationReleaseMode: 'NEVER', showRankingAfterSubmit: true, antiCheatSensitivity: 'LOW', timerMode: 'WHOLE_EXAM' },
-    };
-    setSettings(current => ({ ...current, ...presets[nextPreset] }));
-    setPreset(nextPreset);
   };
 
   const validate = () => {
@@ -81,15 +68,6 @@ export default function Step1Setup({ initial, onNext }: Props) {
     <div>
       <h2 style={{ marginBottom: 'var(--sp-2)' }}>Pengaturan Ujian</h2>
       <p style={{ color: 'var(--text-muted)', marginBottom: 'var(--sp-6)' }}>Isi informasi dasar dan tipe kegiatan ini.</p>
-      <section className="card" style={{ padding: 'var(--sp-4)', marginBottom: 'var(--sp-5)' }}>
-        <label className="form-label">Mode Pengaturan</label>
-        <div className="wizard-choice-row" style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
-          {(['LATIHAN', 'UJIAN', 'LCC'] as const).map(value => <button key={value} type="button" className={`btn btn-sm ${preset === value ? 'btn-primary' : 'btn-secondary'}`} onClick={() => applyPreset(value)}>{value === 'LATIHAN' ? 'Latihan' : value === 'UJIAN' ? 'Ujian' : 'LCC'}</button>)}
-          <button type="button" className={`btn btn-sm ${preset === 'CUSTOM' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setPreset('CUSTOM')}>Custom</button>
-        </div>
-        <span className="form-hint">Preset adalah shortcut. Anda tetap bisa mengubah setiap pengaturan sesudahnya.</span>
-      </section>
-
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-5)' }}>
         <div>
           <label className="form-label" style={{ display: 'block', marginBottom: 'var(--sp-2)' }}>Tipe Kegiatan <span style={{ color: 'var(--danger)' }}>*</span></label>

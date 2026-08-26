@@ -55,116 +55,38 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="page-content settings-page" style={{ maxWidth: 900 }}>
-      <div className="page-header">
-        <div className="settings-eyebrow">AKUN GURU</div>
-        <h1>Pengaturan Akun</h1>
-        <p>Kelola profil, tampilan, dan keamanan akun Kuizku Anda.</p>
+    <div className="page-content settings-page">
+      <div className="page-header settings-page-header">
+        <div><div className="settings-eyebrow">AKUN GURU</div><h1>Pengaturan Akun</h1><p>Kelola identitas, tampilan, dan keamanan akun Kuizku Anda.</p></div>
+        <div className="settings-header-status"><CheckCircle2 size={16} /> Akun aktif</div>
       </div>
 
-      <div className="card settings-main-card">
-        <div className="settings-profile-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--sp-4)', marginBottom: 'var(--sp-6)', padding: 'var(--sp-5)', background: 'var(--surface-2)', borderRadius: 'var(--r-lg)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-4)' }}>
-          <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg, var(--primary), var(--secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', fontWeight: 700, color: 'white' }}>
-            {name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase() || '?'}
-          </div>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>{name || 'Nama Guru'}</div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{currentTeacher?.email}</div>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 7, color: 'var(--success)', fontSize: '0.75rem', fontWeight: 600 }}><CheckCircle2 size={14} /> Akun aktif</div>
-          </div>
-          </div>
-          <div className="settings-completion" style={{ minWidth: 150 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 7 }}><span>Profil</span><strong style={{ color: 'var(--text-primary)' }}>{profileCompletion}%</strong></div>
-            <div style={{ height: 7, borderRadius: 99, background: 'var(--border)' }}><div style={{ width: `${profileCompletion}%`, height: '100%', borderRadius: 99, background: 'var(--primary)', transition: 'width 180ms ease' }} /></div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 6 }}>Lengkapi agar identitas ujian lebih jelas.</div>
-          </div>
-        </div>
-
-        <div className="settings-profile-form">
-          <div className="settings-section-heading">
-            <div><h2>Profil publik</h2><p>Nama ini dapat muncul di identitas dan hasil ujian yang Anda kelola.</p></div>
-            <span className="settings-required-note">* Wajib diisi</span>
-          </div>
-          <div className="form-group settings-field-wide">
-            <label className="form-label" htmlFor="settings-name">Nama Lengkap <span style={{ color: 'var(--danger)' }}>*</span></label>
-            <div style={{ position: 'relative' }}>
-              <User size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-              <input id="settings-name" className="form-input" style={{ paddingLeft: 40 }}
-                value={name} onChange={e => setName(e.target.value)} />
+      <div className="settings-account-layout">
+        <section className="settings-profile-area" aria-labelledby="profile-heading">
+          <div className="settings-profile-banner">
+            <div className="settings-profile-identity">
+              <div className="settings-avatar">{name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase() || '?'}</div>
+              <div><h2>{name || 'Nama Guru'}</h2><p>{currentTeacher?.email}</p><span>Guru / Pengelola ujian</span></div>
             </div>
+            <div className="settings-completion"><div><span>Profil lengkap</span><strong>{profileCompletion}%</strong></div><div className="settings-progress"><i style={{ width: `${profileCompletion}%` }} /></div><small>Lengkapi agar identitas ujian lebih jelas.</small></div>
           </div>
 
-          <div className="form-group">
-            <label className="form-label" htmlFor="settings-subject">Mata Pelajaran</label>
-            <div style={{ position: 'relative' }}>
-              <BookOpen size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-              <input id="settings-subject" className="form-input" style={{ paddingLeft: 40 }}
-                placeholder="Contoh: Matematika, Bahasa Indonesia..."
-                value={subject} onChange={e => setSubject(e.target.value)} />
-            </div>
+          <div className="settings-section-heading"><div><h2 id="profile-heading">Profil publik</h2><p>Informasi ini dapat muncul pada identitas dan hasil ujian yang Anda kelola.</p></div><span className="settings-required-note">* Wajib diisi</span></div>
+          <div className="settings-profile-form">
+            <div className="form-group settings-field-wide"><label className="form-label" htmlFor="settings-name">Nama Lengkap <span style={{ color: 'var(--danger)' }}>*</span></label><div className="settings-input-wrap"><User size={16} /><input id="settings-name" className="form-input" value={name} onChange={e => setName(e.target.value)} /></div></div>
+            <div className="form-group"><label className="form-label" htmlFor="settings-subject">Mata Pelajaran</label><div className="settings-input-wrap"><BookOpen size={16} /><input id="settings-subject" className="form-input" placeholder="Contoh: Matematika" value={subject} onChange={e => setSubject(e.target.value)} /></div></div>
+            <div className="form-group"><label className="form-label" htmlFor="settings-inst">Institusi</label><div className="settings-input-wrap"><Building size={16} /><input id="settings-inst" className="form-input" placeholder="Nama sekolah/lembaga" value={institution} onChange={e => setInstitution(e.target.value)} /></div></div>
           </div>
+          <div className="settings-form-footer"><span>Perubahan profil hanya berlaku setelah disimpan.</span><button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Menyimpan...</> : <><Save size={16} /> Simpan Perubahan</>}</button></div>
+        </section>
 
-          <div className="form-group">
-            <label className="form-label" htmlFor="settings-inst">Institusi</label>
-            <div style={{ position: 'relative' }}>
-              <Building size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-              <input id="settings-inst" className="form-input" style={{ paddingLeft: 40 }}
-                value={institution} onChange={e => setInstitution(e.target.value)} />
-            </div>
-          </div>
-
-          <button className="btn btn-primary settings-save-button" onClick={handleSave} disabled={saving}>
-            {saving ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Menyimpan...</> : <><Save size={16} /> Simpan Perubahan</>}
-          </button>
-        </div>
+        <aside className="settings-side-area">
+          <section className="settings-side-section" aria-labelledby="account-info-heading"><div className="settings-section-icon"><Info size={18} /></div><div className="settings-side-content"><h2 id="account-info-heading">Informasi Akun</h2><p>Data login dikelola oleh Kuizku.</p><div className="settings-info-list">{[['Email login', currentTeacher?.email ?? '—'], ['ID Akun', (currentTeacher?.id.slice(0, 8) ?? '—') + '...']].map(([label, val]) => <div key={label}><span>{label}</span><strong>{val}</strong></div>)}</div></div></section>
+          <section className="settings-side-section" aria-labelledby="appearance-heading"><div className="settings-section-icon"><Palette size={18} /></div><div className="settings-side-content"><h2 id="appearance-heading">Tampilan</h2><p>Pilih mode yang nyaman di perangkat ini.</p><div className="settings-theme-list">{([['light', Sun, 'Mode terang'], ['dark', Moon, 'Mode gelap']] as const).map(([value, Icon, label]) => <button className="settings-theme-option" key={value} type="button" onClick={() => changeTheme(value)} aria-pressed={theme === value}><Icon size={17} /><span>{label}</span>{theme === value && <CheckCircle2 size={16} />}</button>)}</div></div></section>
+        </aside>
       </div>
 
-      <div className="card settings-section-card" style={{ marginTop: 'var(--sp-4)' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--sp-3)', marginBottom: 'var(--sp-4)' }}>
-          <Info size={19} style={{ color: 'var(--primary)', marginTop: 2 }} />
-          <div><h3 style={{ marginBottom: 4 }}>Informasi Akun</h3><p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.82rem' }}>Informasi ini dikelola oleh sistem login Kuizku.</p></div>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
-          {[['Email login', currentTeacher?.email ?? '—'], ['ID Akun', (currentTeacher?.id.slice(0, 8) ?? '—') + '...'], ['Peran', 'Guru / Pengelola ujian']].map(([label, val]) => (
-            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--sp-3) 0', borderBottom: '1px solid var(--border)' }}>
-              <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{label}</span>
-              <span style={{ fontSize: '0.875rem', fontFamily: 'monospace' }}>{val}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="card settings-section-card" style={{ marginTop: 'var(--sp-4)' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--sp-3)', marginBottom: 'var(--sp-4)' }}>
-          <Palette size={19} style={{ color: 'var(--primary)', marginTop: 2 }} />
-          <div><h3 style={{ marginBottom: 4 }}>Preferensi Tampilan</h3><p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.82rem' }}>Pilih tampilan yang nyaman digunakan. Pengaturan ini hanya berlaku di perangkat ini.</p></div>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--sp-3)' }}>
-          {([['light', Sun, 'Mode terang', 'Cocok untuk ruangan terang'], ['dark', Moon, 'Mode gelap', 'Lebih nyaman untuk malam hari']] as const).map(([value, Icon, label, description]) => (
-            <button className="settings-theme-option" key={value} type="button" onClick={() => changeTheme(value)} aria-pressed={theme === value} style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)', minHeight: 64, padding: 'var(--sp-3) var(--sp-4)', borderRadius: 'var(--r-md)', border: `1px solid ${theme === value ? 'var(--primary)' : 'var(--border)'}`, background: theme === value ? 'var(--primary-light)' : 'var(--surface)', color: 'var(--text-primary)', textAlign: 'left', cursor: 'pointer' }}>
-              <Icon size={19} style={{ color: theme === value ? 'var(--primary)' : 'var(--text-muted)' }} />
-              <span><strong style={{ display: 'block', fontSize: '0.88rem' }}>{label}</strong><small style={{ color: 'var(--text-muted)' }}>{description}</small></span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="card settings-section-card" style={{ marginTop: 'var(--sp-4)' }}>
-        <h3 style={{ marginBottom: 'var(--sp-4)' }}>Keamanan & Pemulihan</h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
-          <div style={{ display: 'flex', gap: 'var(--sp-3)', alignItems: 'flex-start' }}>
-            <Shield size={18} style={{ color: 'var(--primary)', marginTop: 2 }} />
-            <div>
-              <div style={{ fontWeight: 600, marginBottom: 4 }}>Reset password via email</div>
-              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Sistem akan mengirim tautan pemulihan ke email akun Anda.</div>
-            </div>
-          </div>
-          <button className="btn btn-secondary" onClick={handleResetPassword} disabled={sendingReset} style={{ alignSelf: 'flex-start' }}>
-            {sendingReset ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Mengirim...</> : <><Mail size={16} /> Kirim Email Reset Password</>}
-          </button>
-        </div>
-      </div>
+      <section className="settings-security-area" aria-labelledby="security-heading"><div className="settings-security-copy"><div className="settings-section-icon"><Shield size={18} /></div><div><h2 id="security-heading">Keamanan & Pemulihan</h2><p>Kirim tautan reset password ke email akun Anda. Sesi login tetap aktif sampai Anda keluar sendiri.</p></div></div><button className="btn btn-secondary" onClick={handleResetPassword} disabled={sendingReset}>{sendingReset ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Mengirim...</> : <><Mail size={16} /> Kirim Email Reset Password</>}</button></section>
     </div>
   );
 }
