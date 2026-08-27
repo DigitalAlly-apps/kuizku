@@ -51,26 +51,40 @@ export default function ImportModal({ open, format, onImport, onBeforeImport, on
   const [error, setError] = useState('');
   const [showFormat, setShowFormat] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const processingRef = useRef(false);
 
   const clearImportSession = () => safeSessionStorage('remove');
   const reset = () => { clearImportSession(); setStep('upload'); setResult(null); setError(''); setShowFormat(false); };
   const handleClose = () => { reset(); onClose(); };
 
   const openFilePicker = () => {
+    if (processingRef.current) return;
     onBeforeImport?.();
     logImport('FILE_PICKER_OPEN');
     fileRef.current?.click();
   };
 
   const processFile = async (file: File) => {
+    if (processingRef.current) {
+      logImport('DUPLICATE_FILE_EVENT_IGNORED', { name: file.name });
+      return;
+    }
+    processingRef.current = true;
     setLoading(true);
     setError('');
     let openedPreview = false;
-    const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
+    const nameExtension = file.name.includes('.') ? file.name.split('.').pop()?.toLowerCase() ?? '' : '';
+    const mimeExtensions: Record<string, string> = {
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+      'application/vnd.ms-excel': 'xls',
+      'text/csv': 'csv',
+      'application/csv': 'csv',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+    };
+    const extension = nameExtension || mimeExtensions[file.type.toLowerCase()] || '';
     logImport('IMPORT_START');
     logImport('FILE_SELECTED', { name: file.name, size: file.size, type: file.type || 'unknown', extension });
     try {
-      onBeforeImport?.();
       safeSessionStorage('set');
       if (file.size === 0) {
         setError('File kosong dan tidak dapat diimport. Pilih file Excel yang berisi soal.');
@@ -102,6 +116,7 @@ export default function ImportModal({ open, format, onImport, onBeforeImport, on
       setError(describeImportError(e));
     } finally {
       if (!openedPreview) safeSessionStorage('remove');
+      processingRef.current = false;
       setLoading(false);
     }
   };
@@ -147,7 +162,10 @@ export default function ImportModal({ open, format, onImport, onBeforeImport, on
     e.preventDefault();
     setDragging(false);
     const file = e.dataTransfer.files[0];
-    if (file) processFile(file);
+    if (file) {
+      onBeforeImport?.();
+      void processFile(file);
+    }
   };
 
   const handleTemplateDownload = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -163,6 +181,14 @@ export default function ImportModal({ open, format, onImport, onBeforeImport, on
       subtitle="Upload file Excel, CSV, atau Word (.docx) berisi daftar soal Anda">
       {step === 'upload' && (
         <div>
+          <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv,.docx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style={{ display: 'none' }}
+            onClick={event => event.stopPropagation()}
+            onChange={event => {
+              const file = event.target.files?.[0];
+              event.target.value = '';
+              if (file) void processFile(file);
+              else logImport('FILE_PICKER_CANCELLED');
+            }} />
           {/* Template download */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'var(--primary-light)', border: '1px solid rgba(79,110,247,0.2)', borderRadius: 'var(--r-md)', marginBottom: 'var(--sp-4)' }}>
             <FileSpreadsheet size={18} style={{ color: 'var(--primary)', flexShrink: 0 }} />
@@ -208,7 +234,8 @@ export default function ImportModal({ open, format, onImport, onBeforeImport, on
             }}
             role="button"
             tabIndex={0}
-            aria-label="Pilih file Excel, CSV, atau Word untuk diimport">
+            aria-label="Pilih file Excel, CSV, atau Word untuk diimport"
+            aria-busy={loading}>
             <Upload size={32} style={{ color: 'var(--primary)', margin: '0 auto var(--sp-3)' }} />
             <p style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
               {loading ? 'Memproses file...' : 'Drag & drop file atau klik untuk pilih'}
@@ -216,14 +243,6 @@ export default function ImportModal({ open, format, onImport, onBeforeImport, on
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
               Format: .xlsx, .xls, .csv, .docx — Maks. 5 MB, 200 soal
             </p>
-            <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv,.docx" style={{ display: 'none' }}
-              onChange={event => {
-                const file = event.target.files?.[0];
-                // Reset value agar file yang sama dapat dipilih lagi setelah error.
-                event.target.value = '';
-                if (file) void processFile(file);
-                else logImport('FILE_PICKER_CANCELLED');
-              }} />
           </div>
 
           {error && (
