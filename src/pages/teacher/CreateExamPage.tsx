@@ -117,7 +117,11 @@ export default function CreateExamPage() {
   useEffect(() => {
     if (sessionStorage.getItem(IMPORT_SESSION_KEY) !== '1') return;
     sessionStorage.removeItem(IMPORT_SESSION_KEY);
-    addToast({ type: 'info', title: 'Draft ujian dipulihkan', message: 'Anda kembali ke langkah terakhir sebelum import file.' });
+    addToast({
+      type: 'warning',
+      title: 'Import file terhenti',
+      message: 'Draft ujian tetap aman, tetapi file belum diimport. Buka Import File lalu pilih ulang file.',
+    });
   }, [addToast]);
   useEffect(() => {
     if (createdExam) return;

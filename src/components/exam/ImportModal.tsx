@@ -4,7 +4,6 @@
 import { useState, useRef } from 'react';
 import { Upload, Download, CheckCircle, AlertCircle, FileSpreadsheet, Eye, Info } from 'lucide-react';
 import { Modal } from '../ui';
-import { parseExcelFile, parseCSVFile, parseWordFile, downloadExcelTemplate, downloadInvalidRows } from '../../utils/importParser';
 import type { ImportResult, ExamFormat, Question } from '../../types';
 
 interface Props {
@@ -95,6 +94,9 @@ export default function ImportModal({ open, format, onImport, onBeforeImport, on
         return;
       }
 
+      // Muat parser setelah Android mengembalikan file. Ini mengurangi tekanan
+      // memori saat browser berpindah sementara ke aplikasi Files/Excel.
+      const { parseExcelFile, parseCSVFile, parseWordFile } = await import('../../utils/importParser');
       let res: ImportResult;
       if (extension === 'csv') res = await parseCSVFile(file);
       else if (extension === 'xlsx' || extension === 'xls') res = await parseExcelFile(file, stage => logImport(stage));
@@ -168,11 +170,18 @@ export default function ImportModal({ open, format, onImport, onBeforeImport, on
     }
   };
 
-  const handleTemplateDownload = (event: React.MouseEvent<HTMLButtonElement>) => {
+  const handleTemplateDownload = async (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
     setShowFormat(false);
+    const { downloadExcelTemplate } = await import('../../utils/importParser');
     downloadExcelTemplate();
+  };
+
+  const handleInvalidRowsDownload = async () => {
+    if (!result?.invalid.length) return;
+    const { downloadInvalidRows } = await import('../../utils/importParser');
+    downloadInvalidRows(result.invalid);
   };
 
   return (
@@ -185,9 +194,13 @@ export default function ImportModal({ open, format, onImport, onBeforeImport, on
             onClick={event => event.stopPropagation()}
             onChange={event => {
               const file = event.target.files?.[0];
-              event.target.value = '';
-              if (file) void processFile(file);
-              else logImport('FILE_PICKER_CANCELLED');
+              const input = event.currentTarget;
+              if (file) {
+                void processFile(file).finally(() => { input.value = ''; });
+              } else {
+                input.value = '';
+                logImport('FILE_PICKER_CANCELLED');
+              }
             }} />
           {/* Template download */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'var(--primary-light)', border: '1px solid rgba(79,110,247,0.2)', borderRadius: 'var(--r-md)', marginBottom: 'var(--sp-4)' }}>
@@ -371,7 +384,7 @@ export default function ImportModal({ open, format, onImport, onBeforeImport, on
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'var(--sp-5)', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button type="button" className="btn btn-secondary" onClick={reset}>Perbaiki File Dulu</button>
-              {result.invalid.length > 0 && <button type="button" className="btn btn-ghost" onClick={() => downloadInvalidRows(result.invalid)}><Download size={14} /> Download Soal Bermasalah</button>}
+              {result.invalid.length > 0 && <button type="button" className="btn btn-ghost" onClick={() => void handleInvalidRowsDownload()}><Download size={14} /> Download Soal Bermasalah</button>}
             </div>
             <button type="button" className="btn btn-primary" disabled={result.valid.length === 0} onClick={handleConfirmImport}>Import {result.valid.length} Soal Valid</button>
           </div>
