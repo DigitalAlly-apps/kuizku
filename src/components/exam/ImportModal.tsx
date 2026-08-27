@@ -34,6 +34,15 @@ function describeImportError(value: unknown): string {
   return 'File tidak dapat dibaca. Pastikan file tidak rusak dan gunakan format Excel/CSV/Word yang didukung.';
 }
 
+function safeSessionStorage(action: 'set' | 'remove'): void {
+  try {
+    if (action === 'set') sessionStorage.setItem(IMPORT_SESSION_KEY, '1');
+    else sessionStorage.removeItem(IMPORT_SESSION_KEY);
+  } catch {
+    // Private mode/PWA tertentu dapat memblokir sessionStorage. Import tetap boleh berjalan.
+  }
+}
+
 export default function ImportModal({ open, format, onImport, onBeforeImport, onClose }: Props) {
   const [step, setStep] = useState<Step>('upload');
   const [result, setResult] = useState<ImportResult | null>(null);
@@ -43,7 +52,7 @@ export default function ImportModal({ open, format, onImport, onBeforeImport, on
   const [showFormat, setShowFormat] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const clearImportSession = () => sessionStorage.removeItem(IMPORT_SESSION_KEY);
+  const clearImportSession = () => safeSessionStorage('remove');
   const reset = () => { clearImportSession(); setStep('upload'); setResult(null); setError(''); setShowFormat(false); };
   const handleClose = () => { reset(); onClose(); };
 
@@ -54,8 +63,6 @@ export default function ImportModal({ open, format, onImport, onBeforeImport, on
   };
 
   const processFile = async (file: File) => {
-    onBeforeImport?.();
-    sessionStorage.setItem(IMPORT_SESSION_KEY, '1');
     setLoading(true);
     setError('');
     let openedPreview = false;
@@ -63,6 +70,8 @@ export default function ImportModal({ open, format, onImport, onBeforeImport, on
     logImport('IMPORT_START');
     logImport('FILE_SELECTED', { name: file.name, size: file.size, type: file.type || 'unknown', extension });
     try {
+      onBeforeImport?.();
+      safeSessionStorage('set');
       if (file.size === 0) {
         setError('File kosong dan tidak dapat diimport. Pilih file Excel yang berisi soal.');
         return;
@@ -92,7 +101,7 @@ export default function ImportModal({ open, format, onImport, onBeforeImport, on
       logImport('IMPORT_ERROR', { message: e instanceof Error ? e.message : String(e) });
       setError(describeImportError(e));
     } finally {
-      if (!openedPreview) clearImportSession();
+      if (!openedPreview) safeSessionStorage('remove');
       setLoading(false);
     }
   };
