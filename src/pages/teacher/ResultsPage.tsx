@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Download, User, Edit2, BarChart2, RotateCcw, MessageSquare, RefreshCcw, Zap, ArrowLeft, ArrowRight, Sparkles, CheckCircle2, XCircle, Trash2 } from 'lucide-react';
 import { useApp, useToast } from '../../context/AppContext';
 import { EmptyState, FormatBadge, StatusBadge, SectionHeader, Modal } from '../../components/ui';
+import NumericInput from '../../components/ui/NumericInput';
 import { calcMaxMCScore, calcMaxEssayScore, formatDateTime } from '../../utils/helpers';
 import { getPassingScore } from '../../utils/examSettings';
 import { storage } from '../../utils/storage';
@@ -860,12 +861,11 @@ export default function ResultsPage() {
                             <div className="grading-input-row" style={{ display: 'flex', gap: 'var(--sp-3)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
                               <div className="form-group" style={{ width: 120 }}>
                                 <label className="form-label">Nilai (maks. {q.weight})</label>
-                                <input type="number" className="form-input" min={0} max={q.weight}
-                                  value={gradingScores[q.id]?.score ?? ''}
-                                  onChange={e => {
-                                    const raw = e.target.value;
-                                    const score = raw === '' ? 0 : parseFloat(raw);
-                                    setGradingScores(prev => ({ ...prev, [q.id]: { ...prev[q.id], score: isNaN(score) ? 0 : score } }));
+                                <NumericInput className="form-input" min={0} max={q.weight} step="any" inputMode="decimal" fallbackValue={0}
+                                  value={gradingScores[q.id]?.score}
+                                  onValueChange={score => {
+                                    if (score == null) return;
+                                    setGradingScores(prev => ({ ...prev, [q.id]: { ...prev[q.id], score } }));
                                   }} />
                               </div>
                               <div className="form-group" style={{ flex: 1 }}>

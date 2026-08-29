@@ -4,6 +4,7 @@
 import { useState, useMemo } from 'react';
 import { Search, CheckSquare, Square, Plus, BookOpen } from 'lucide-react';
 import { Modal, EmptyState } from '../ui';
+import NumericInput from '../ui/NumericInput';
 import { useBank } from '../../context/AppContext';
 import type { ExamFormat, Question, BankQuestion } from '../../types';
 
@@ -121,8 +122,8 @@ export default function BankModal({ open, format, onAdd, onClose }: Props) {
           </div>
 
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <input className="form-input" type="number" min={1} max={filtered.length || 1} style={{ width: 90, fontSize: '0.8rem' }}
-              value={randomCount} onChange={e => setRandomCount(parseInt(e.target.value) || 1)} />
+            <NumericInput className="form-input" min={1} max={filtered.length || 1} inputMode="numeric" integer fallbackValue={1} style={{ width: 90, fontSize: '0.8rem' }}
+              value={randomCount} onValueChange={value => { if (value != null) setRandomCount(value); }} aria-label="Jumlah soal yang dipilih secara acak" />
             <button className="btn btn-secondary btn-sm" disabled={filtered.length === 0} onClick={selectRandom}>Pilih Acak dari Filter</button>
           </div>
 

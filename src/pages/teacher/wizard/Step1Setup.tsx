@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Toggle } from '../../../components/ui';
 import DateTime24Input from '../../../components/ui/DateTime24Input';
+import NumericInput from '../../../components/ui/NumericInput';
 import type { ExamSettings, ExamType, PreloadedStudent } from '../../../types';
 
 interface Props {
@@ -109,8 +110,8 @@ export default function Step1Setup({ initial, onNext }: Props) {
         <div>
           <label className="form-label" style={{ display: 'block', marginBottom: 'var(--sp-2)' }}>Mode Timer</label>
           <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>{([['NONE', 'Tanpa Timer'], ['WHOLE_EXAM', 'Keseluruhan Ujian'], ['PER_QUESTION', 'Per Soal']] as const).map(([v, l]) => (<button key={v} type="button" className={`btn btn-sm ${settings.timerMode === v ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSetting('timerMode', v)}>{l}</button>))}</div>
-          {settings.timerMode === 'WHOLE_EXAM' && <div className="form-group compact-form-group" style={{ marginTop: 'var(--sp-3)', maxWidth: 200 }}><label className="form-label" htmlFor="s1-timer">Durasi Total (menit)</label><input id="s1-timer" type="number" className="form-input" min={5} max={300} value={Math.round((settings.wholExamTimerSeconds ?? 3600) / 60)} onChange={e => setSetting('wholExamTimerSeconds', parseInt(e.target.value) * 60)} /></div>}
-          {settings.timerMode === 'PER_QUESTION' && <div className="form-group compact-form-group" style={{ marginTop: 'var(--sp-3)', maxWidth: 240 }}><label className="form-label" htmlFor="s1-perq-timer">Default Timer per Soal (detik)</label><input id="s1-perq-timer" type="number" className="form-input" min={10} max={3600} value={settings.perQuestionDefaultSeconds ?? 60} onChange={e => setSetting('perQuestionDefaultSeconds', parseInt(e.target.value) || 60)} /><span className="form-hint">Dipakai jika soal tidak punya timer khusus.</span></div>}
+          {settings.timerMode === 'WHOLE_EXAM' && <div className="form-group compact-form-group" style={{ marginTop: 'var(--sp-3)', maxWidth: 200 }}><label className="form-label" htmlFor="s1-timer">Durasi Total (menit)</label><NumericInput id="s1-timer" className="form-input" min={5} max={300} inputMode="numeric" integer fallbackValue={60} value={Math.round((settings.wholExamTimerSeconds ?? 3600) / 60)} onValueChange={value => setSetting('wholExamTimerSeconds', value == null ? undefined : value * 60)} /></div>}
+          {settings.timerMode === 'PER_QUESTION' && <div className="form-group compact-form-group" style={{ marginTop: 'var(--sp-3)', maxWidth: 240 }}><label className="form-label" htmlFor="s1-perq-timer">Default Timer per Soal (detik)</label><NumericInput id="s1-perq-timer" className="form-input" min={10} max={3600} inputMode="numeric" integer fallbackValue={60} value={settings.perQuestionDefaultSeconds ?? 60} onValueChange={value => setSetting('perQuestionDefaultSeconds', value)} /><span className="form-hint">Dipakai jika soal tidak punya timer khusus.</span></div>}
         </div>
         <section className="card" style={{ padding: 'var(--sp-4)' }}>
           <h3 style={{ fontSize: '1rem', marginBottom: 'var(--sp-3)' }}>Waktu &amp; Percobaan</h3>
@@ -128,7 +129,7 @@ export default function Step1Setup({ initial, onNext }: Props) {
         </section>
         <section className="card" style={{ padding: 'var(--sp-4)' }}>
           <h3 style={{ fontSize: '1rem', marginBottom: 'var(--sp-3)' }}>Penilaian</h3>
-          <div className="form-group compact-form-group" style={{ maxWidth: 240 }}><label className="form-label" htmlFor="s1-passing-score">Batas Ketuntasan / KKM</label><input id="s1-passing-score" type="number" min={0} max={100} inputMode="numeric" className={`form-input ${errors.passingScore ? 'error' : ''}`} value={settings.passingScore ?? 70} onChange={e => setSetting('passingScore', Number(e.target.value))} /><span className="form-hint">Nilai minimum agar peserta dinyatakan tuntas.</span>{errors.passingScore && <span className="form-error">{errors.passingScore}</span>}</div>
+          <div className="form-group compact-form-group" style={{ maxWidth: 240 }}><label className="form-label" htmlFor="s1-passing-score">Batas Ketuntasan / KKM</label><NumericInput id="s1-passing-score" min={0} max={100} inputMode="numeric" integer fallbackValue={70} className={`form-input ${errors.passingScore ? 'error' : ''}`} value={settings.passingScore ?? 70} onValueChange={value => { setSetting('passingScore', value); setErrors(current => ({ ...current, passingScore: '' })); }} aria-invalid={!!errors.passingScore} /><span className="form-hint">Nilai minimum agar peserta dinyatakan tuntas.</span>{errors.passingScore && <span className="form-error">{errors.passingScore}</span>}</div>
         </section>
         <section className="card" style={{ padding: 'var(--sp-4)' }}>
           <h3 style={{ fontSize: '1rem', marginBottom: 'var(--sp-3)' }}>Setelah Mengumpulkan</h3>

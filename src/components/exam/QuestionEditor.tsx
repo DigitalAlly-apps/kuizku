@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { Plus, Trash2, CheckCircle } from 'lucide-react';
 import { TagInput } from '../ui';
+import NumericInput from '../ui/NumericInput';
 import { generateId, validateQuestion } from '../../utils/helpers';
 import type { Question, QuestionType, ExamFormat } from '../../types';
 
@@ -180,13 +181,13 @@ export default function QuestionEditor({ format, initial, onSave, onCancel }: Pr
       <div className="form-row form-row-2" style={{ marginBottom: 'var(--sp-4)' }}>
         <div className="form-group">
           <label className="form-label" htmlFor="q-weight">Bobot Nilai <span style={{ color: 'var(--danger)' }}>*</span></label>
-          <input id="q-weight" type="number" className="form-input" min={1} max={100}
-            value={q.weight ?? ''} onChange={e => setField('weight', e.target.value === '' ? undefined : parseInt(e.target.value))} />
+          <NumericInput id="q-weight" className="form-input" min={1} max={100} inputMode="numeric" integer fallbackValue={1}
+            value={q.weight} onValueChange={value => setField('weight', value)} />
         </div>
         <div className="form-group">
           <label className="form-label" htmlFor="q-timer">Timer per Soal (detik, opsional)</label>
-          <input id="q-timer" type="number" className="form-input" min={0} placeholder="0 = tidak ada"
-            value={q.timerSeconds ?? ''} onChange={e => setField('timerSeconds', e.target.value ? parseInt(e.target.value) : undefined)} />
+          <NumericInput id="q-timer" className="form-input" min={0} inputMode="numeric" integer placeholder="0 = tidak ada"
+            value={q.timerSeconds} onValueChange={value => setField('timerSeconds', value)} />
           <span className="form-hint">Kosongkan untuk memakai default timer ujian.</span>
         </div>
       </div>
