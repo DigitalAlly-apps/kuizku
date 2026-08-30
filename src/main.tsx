@@ -20,7 +20,7 @@ registerSW({ immediate: true })
 // (termasuk parser file) tidak boleh menyebabkan reload seluruh wizard.
 const isStaleAssetError = (value: unknown) => {
   const message = value instanceof Error ? value.message : String(value ?? '')
-  return /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|Loading chunk|CSS chunk|vite:preloadError/i.test(message)
+  return /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|Loading chunk|CSS chunk|vite:preloadError|Cannot read properties of undefined \(reading ['"]default['"]\)/i.test(message)
 }
 
 const isImportInProgress = () => sessionStorage.getItem('kuizku_import_in_progress') === '1'
