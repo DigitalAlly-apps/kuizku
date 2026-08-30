@@ -85,7 +85,7 @@ export default function ExamWorkspacePage() {
 
       {tab === 'ringkasan' && <SummaryTab exam={exam} submissions={examSubmissions} finalCount={finalCount} essayCount={essayCount} onOpenTab={openTab} maxAttempts={maxAttempts} savingAttempts={savingAttempts} onChangeAttempts={setAttemptOverride} onSaveAttempts={saveAttemptLimit} />}
       {tab === 'soal' && <QuestionsTab exam={exam} onEdit={() => navigate(`/guru/ujian/${exam.id}/edit-soal`)} onPreview={() => navigate(`/guru/ujian/${exam.id}/preview`)} />}
-      {tab === 'peserta' && <ParticipantsTab submissions={examSubmissions} essayCount={essayCount} />}
+      {tab === 'peserta' && <ParticipantsTab exam={exam} submissions={examSubmissions} essayCount={essayCount} />}
       {tab === 'hasil' && <ResultsTab exam={exam} submissions={examSubmissions} essayCount={essayCount} onGrade={() => navigate(`/guru/hasil?exam=${exam.id}`)} />}
       {tab === 'pengaturan' && (
         <section className="card">
@@ -143,7 +143,13 @@ function QuestionsTab({ exam, onEdit, onPreview }: { exam: NonNullable<ReturnTyp
   </section>;
 }
 
-function ParticipantsTab({ submissions, essayCount }: { submissions: Submission[]; essayCount: number }) {
+function ParticipantsTab({ exam, submissions, essayCount }: { exam: NonNullable<ReturnType<typeof useApp>['exams']>[number]; submissions: Submission[]; essayCount: number }) {
+  const personalRoster = exam.settings.participantMode === 'PERSONAL_ROSTER';
+  if (personalRoster) {
+    const completedById = new Map(submissions.map(submission => [submission.nis, submission]));
+    const submittedCount = exam.preloadedStudents.filter(student => completedById.has(student.nis)).length;
+    return <section className="card"><SectionHeader title="Peserta" subtitle={`${submittedCount}/${exam.preloadedStudents.length} jawaban terkumpul`} /><div className="workspace-participant-list">{exam.preloadedStudents.map(student => { const submission = completedById.get(student.nis); return <div className="workspace-participant-row" key={student.nis}><div><strong>{student.name}</strong><span>{submission ? `Dikumpulkan ${submission.submittedAt ? formatDateTime(submission.submittedAt) : ''}` : 'Belum mengumpulkan'}</span></div><span className={`workspace-status ${submission ? 'status-final' : 'status-pending'}`}>{submission ? 'Terkumpul' : 'Belum mengumpulkan'}</span><span>{submission ? (essayStatus(submission, essayCount) === 'PENDING' ? 'Menunggu koreksi' : `${submission.totalScore ?? 0} poin`) : '—'}</span></div>; })}</div></section>;
+  }
   return <section className="card"><SectionHeader title="Peserta" subtitle={`${submissions.length} jawaban yang sudah masuk`} /><div className="workspace-participant-list">{submissions.length === 0 ? <EmptyState icon={<Users size={40} />} title="Belum ada peserta" description="Bagikan kode ujian kepada murid." /> : submissions.map(sub => <div className="workspace-participant-row" key={sub.id}><div><strong>{sub.studentName}</strong><span>NIS {sub.nis} · Percobaan ke-{sub.attemptNumber}</span></div><span className={`workspace-status status-${essayStatus(sub, essayCount).toLowerCase()}`}>{essayStatus(sub, essayCount) === 'NONE' ? 'Nilai Final' : essayStatus(sub, essayCount) === 'FINAL' ? 'Nilai Final' : essayStatus(sub, essayCount) === 'PARTIAL' ? 'Dinilai Sebagian' : 'Menunggu Koreksi'}</span><span>{sub.submittedAt ? formatDateTime(sub.submittedAt) : '—'}</span></div>)}</div></section>;
 }
 

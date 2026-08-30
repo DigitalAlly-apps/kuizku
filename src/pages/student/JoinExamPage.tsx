@@ -94,6 +94,8 @@ export default function JoinExamPage() {
     }
   };
 
+  const personalRoster = foundExam?.settings.participantMode === 'PERSONAL_ROSTER';
+
   const handleStartExam = () => {
     if (!foundExam) return;
     const now = Date.now();
@@ -275,21 +277,21 @@ export default function JoinExamPage() {
               </div>
             </div>
 
-            <h2 style={{ marginBottom: 4, fontSize: '1.2rem' }}>Data Diri untuk Mengerjakan</h2>
-            <p style={styles.subtitle}>Data ini dipakai untuk memverifikasi akses dan menyimpan jawaban Anda.</p>
+            <h2 style={{ marginBottom: 4, fontSize: '1.2rem' }}>{personalRoster ? 'Pilih Nama' : 'Data Diri untuk Mengerjakan'}</h2>
+            <p style={styles.subtitle}>{personalRoster ? 'Pilih nama Anda dari daftar peserta.' : 'Data ini dipakai untuk memverifikasi akses dan menyimpan jawaban Anda.'}</p>
 
             <form onSubmit={handleIdentitySubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
-              <div className="form-group">
+              {!personalRoster && <div className="form-group">
                 <label className="form-label" htmlFor="student-name">Nama Lengkap <span style={{ color: 'var(--danger)' }}>*</span></label>
                 <div style={{ position: 'relative' }}>
                   <User size={16} style={iconStyle} />
                   <input id="student-name" className="form-input" placeholder="Nama sesuai absen..."
                     style={{ paddingLeft: 40 }} value={name} onChange={e => { setName(e.target.value); setError(''); }} autoFocus />
                 </div>
-              </div>
+              </div>}
 
               {/* Toggle: NISN vs No Absen */}
-              <div className="form-group">
+              {!personalRoster && <div className="form-group">
                 <label className="form-label">Identitas Nomor <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 400 }}>(opsional)</span></label>
                 <div style={styles.toggleWrap}>
                   <button
@@ -334,13 +336,13 @@ export default function JoinExamPage() {
                   </div>
                 )}
                 <span className="form-hint">Jika tidak diisi, nama Anda akan digunakan sebagai identitas.</span>
-              </div>
+              </div>}
 
               {/* Pre-loaded student list */}
               {foundExam.preloadedStudents.length > 0 && (
                 <div>
-                  <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 6 }}>Atau pilih nama dari daftar:</p>
-                  <div style={{ maxHeight: 140, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--r-md)' }}>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 6 }}>{personalRoster ? 'Pilih nama Anda:' : 'Atau pilih nama dari daftar:'}</p>
+                  {personalRoster ? <select className="form-select" value={nis} onChange={event => { const selected = foundExam.preloadedStudents.find(student => student.nis === event.target.value); setNis(selected?.nis ?? ''); setName(selected?.name ?? ''); setError(''); }} autoFocus><option value="">Pilih nama</option>{foundExam.preloadedStudents.map(student => <option key={student.nis} value={student.nis}>{student.name}</option>)}</select> : <div style={{ maxHeight: 140, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--r-md)' }}>
                     {foundExam.preloadedStudents.map(s => (
                       <button key={s.nis} type="button"
                         style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', width: '100%', background: nis === s.nis ? 'var(--primary-light)' : 'none', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', fontSize: '0.875rem', borderBottom: '1px solid var(--border)', textAlign: 'left' }}
@@ -350,7 +352,7 @@ export default function JoinExamPage() {
                         <span style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{s.nis}</span>
                       </button>
                     ))}
-                  </div>
+                  </div>}
                 </div>
               )}
 

@@ -6,6 +6,8 @@ import { FormatBadge, ExamTypeBadge, EmptyState, ConfirmDialog, Modal } from '..
 import DateTime24Input from '../../components/ui/DateTime24Input';
 import { formatDateTime, formatRelative, isoToLocalDateTimeInput } from '../../utils/helpers';
 import type { Exam, ExamType } from '../../types';
+import { usePersonalExam } from '../../features/personal-exam/PersonalExamContext';
+import { PersonalDataModal } from '../../features/personal-exam/PersonalDataModal';
 
 type ExamAvailability = 'DRAFT' | 'UPCOMING' | 'ACTIVE' | 'FINISHED' | 'ARCHIVED';
 
@@ -49,6 +51,8 @@ export default function ExamListPage() {
   const { currentTeacher, exams, questionCollections, copyExamQuestionsToBank, updateExam, deleteExam, duplicateExam, publishExam, archiveExam, endExam, submissions } = useApp();
   const { addToast } = useToast();
   const navigate = useNavigate();
+  const { enabled: personalExamEnabled } = usePersonalExam();
+  const [showPersonalData, setShowPersonalData] = useState(false);
   const [searchParams] = useSearchParams();
 
   const [search, setSearch] = useState('');
@@ -444,6 +448,8 @@ export default function ExamListPage() {
           </button>
         </div>
       </div>
+      {personalExamEnabled && <button className="btn btn-secondary" style={{ position: 'fixed', right: 24, bottom: 24, zIndex: 10 }} onClick={() => setShowPersonalData(true)}><Users size={16} /> Kelola murid & mapel</button>}
+      {showPersonalData && <PersonalDataModal onClose={() => setShowPersonalData(false)} />}
 
       {/* Filters */}
       <div className="filter-bar exam-filter-panel">

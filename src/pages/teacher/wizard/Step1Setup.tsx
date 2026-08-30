@@ -4,6 +4,7 @@ import { Toggle } from '../../../components/ui';
 import DateTime24Input from '../../../components/ui/DateTime24Input';
 import NumericInput from '../../../components/ui/NumericInput';
 import type { ExamSettings, ExamType, PreloadedStudent } from '../../../types';
+import { usePersonalExam } from '../../../features/personal-exam/PersonalExamContext';
 
 interface Props {
   initial: {
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export default function Step1Setup({ initial, onNext }: Props) {
+  const { enabled: personalMode, subjects, groups, students } = usePersonalExam();
   const [title, setTitle] = useState(initial.title);
   const [description, setDescription] = useState(initial.description);
   const [subject, setSubject] = useState(initial.subject);
@@ -26,6 +28,7 @@ export default function Step1Setup({ initial, onNext }: Props) {
   const [studentList, setStudentList] = useState(initial.preloadedStudents.map(s => `${s.name}, ${s.nis}`).join('\n'));
   const [accessMode, setAccessMode] = useState<'OPEN' | 'LIST'>(initial.preloadedStudents.length > 0 ? 'LIST' : 'OPEN');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const selectedPersonalGroup = groups.find(group => group.id === className || group.name === className);
   const setSetting = <K extends keyof ExamSettings>(k: K, v: ExamSettings[K]) => {
     setSettings(s => ({ ...s, [k]: v }));
   };
@@ -34,12 +37,14 @@ export default function Step1Setup({ initial, onNext }: Props) {
     const e: Record<string, string> = {};
     if (!title.trim()) e.title = 'Judul ujian wajib diisi';
     if (!subject) e.subject = 'Mata pelajaran wajib dipilih';
+    if (personalMode && !className) e.className = 'Pilih grup murid terlebih dahulu';
+    if (personalMode && selectedPersonalGroup && !students.some(student => student.groupId === selectedPersonalGroup.id)) e.className = 'Grup ini belum memiliki murid.';
     if (activeFrom && activeTo && new Date(activeFrom).getTime() >= new Date(activeTo).getTime()) {
       e.schedule = 'Waktu selesai harus lebih akhir dari waktu mulai. Jika selesai pukul 00.00 malam berikutnya, ubah tanggal selesai ke hari berikutnya.';
     }
-    const students = parseStudents(studentList);
-    if (accessMode === 'LIST' && students.students.length === 0) e.students = 'Tambahkan minimal satu peserta atau pilih akses terbuka.';
-    if (accessMode === 'LIST' && students.duplicates.length > 0) e.students = `NIS/ID duplikat: ${students.duplicates.join(', ')}`;
+    const parsedStudents = parseStudents(studentList);
+    if (accessMode === 'LIST' && parsedStudents.students.length === 0) e.students = 'Tambahkan minimal satu peserta atau pilih akses terbuka.';
+    if (accessMode === 'LIST' && parsedStudents.duplicates.length > 0) e.students = `NIS/ID duplikat: ${parsedStudents.duplicates.join(', ')}`;
     const passingScore = Number(settings.passingScore ?? 70);
     if (!Number.isFinite(passingScore) || passingScore < 0 || passingScore > 100) e.passingScore = 'KKM harus bernilai 0 sampai 100.';
     return e;
@@ -48,7 +53,8 @@ export default function Step1Setup({ initial, onNext }: Props) {
   const handleNext = () => {
     const e = validate();
     if (Object.keys(e).length) { setErrors(e); return; }
-    onNext({ title, description, subject, className, activeFrom, activeTo, settings, examType, preloadedStudents: accessMode === 'LIST' ? parseStudents(studentList).students : [] });
+    const rosterStudents = students.filter(student => student.groupId === selectedPersonalGroup?.id).map(student => ({ name: student.name, nis: student.id }));
+    onNext({ title, description, subject, className: personalMode ? (selectedPersonalGroup?.name ?? '') : className, activeFrom, activeTo, settings: { ...settings, participantMode: personalMode ? 'PERSONAL_ROSTER' : 'MANUAL' }, examType, preloadedStudents: personalMode ? rosterStudents : accessMode === 'LIST' ? parseStudents(studentList).students : [] });
   };
 
   const parseStudents = (raw: string): { students: PreloadedStudent[]; duplicates: string[] } => {
@@ -91,17 +97,18 @@ export default function Step1Setup({ initial, onNext }: Props) {
         </div>
         <div className="form-group"><label className="form-label" htmlFor="s1-desc">Deskripsi (opsional)</label><textarea id="s1-desc" className="form-textarea" rows={2} placeholder="Instruksi umum atau deskripsi singkat ujian..." value={description} onChange={e => setDescription(e.target.value)} /></div>
         <div className="form-row form-row-2">
-          <div className="form-group"><label className="form-label" htmlFor="s1-subject">Mata Pelajaran <span style={{ color: 'var(--danger)' }}>*</span></label><input id="s1-subject" className={`form-input ${errors.subject ? 'error' : ''}`} placeholder="Contoh: Matematika, Bahasa Indonesia..." value={subject} onChange={e => { setSubject(e.target.value); setErrors(er => ({ ...er, subject: '' })); }} />{errors.subject && <span className="form-error">{errors.subject}</span>}</div>
-          <div className="form-group"><label className="form-label" htmlFor="s1-class">Kelas (opsional)</label><input id="s1-class" className="form-input" placeholder="Contoh: Kelas 10A, Kelas 12 IPA..." value={className} onChange={e => setClassName(e.target.value)} /></div>
+          <div className="form-group"><label className="form-label" htmlFor="s1-subject">Mata Pelajaran <span style={{ color: 'var(--danger)' }}>*</span></label>{personalMode ? <select id="s1-subject" className={`form-select ${errors.subject ? 'error' : ''}`} value={subject} onChange={e => { setSubject(e.target.value); setErrors(er => ({ ...er, subject: '' })); }}><option value="">Pilih mapel</option>{subjects.map(item => <option key={item.id} value={item.name}>{item.name}</option>)}</select> : <input id="s1-subject" className={`form-input ${errors.subject ? 'error' : ''}`} placeholder="Contoh: Matematika, Bahasa Indonesia..." value={subject} onChange={e => { setSubject(e.target.value); setErrors(er => ({ ...er, subject: '' })); }} />}{errors.subject && <span className="form-error">{errors.subject}</span>}</div>
+          <div className="form-group"><label className="form-label" htmlFor="s1-class">{personalMode ? 'Grup murid' : 'Kelas (opsional)'}</label>{personalMode ? <select id="s1-class" className={`form-select ${errors.className ? 'error' : ''}`} value={selectedPersonalGroup?.id ?? ''} onChange={e => { setClassName(e.target.value); setErrors(er => ({ ...er, className: '' })); }}><option value="">Pilih grup</option>{groups.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select> : <input id="s1-class" className="form-input" placeholder="Contoh: Kelas 10A, Kelas 12 IPA..." value={className} onChange={e => setClassName(e.target.value)} />}{errors.className && <span className="form-error">{errors.className}</span>}</div>
         </div>
-        <div className="form-group">
+        {!personalMode && <div className="form-group">
           <label className="form-label">Akses Peserta</label>
           <div className="student-access-choice" role="radiogroup" aria-label="Akses peserta ujian">
             <button type="button" role="radio" aria-checked={accessMode === 'OPEN'} className={accessMode === 'OPEN' ? 'is-active' : ''} onClick={() => { setAccessMode('OPEN'); setErrors(er => ({ ...er, students: '' })); }}><strong>Terbuka untuk semua</strong><span>Siapa pun yang punya kode dapat masuk.</span></button>
             <button type="button" role="radio" aria-checked={accessMode === 'LIST'} className={accessMode === 'LIST' ? 'is-active' : ''} onClick={() => setAccessMode('LIST')}><strong>Hanya daftar peserta</strong><span>Nama atau NIS/ID harus cocok dengan daftar guru.</span></button>
           </div>
           {accessMode === 'LIST' && <><label className="form-label" htmlFor="s1-students" style={{ marginTop: 'var(--sp-3)' }}>Daftar Peserta</label><textarea id="s1-students" className={`form-textarea ${errors.students ? 'error' : ''}`} rows={5} placeholder={'Satu peserta per baris. Format: Nama, NIS\nContoh:\nAhmad Fauzi, 1001\nSiti Aminah, 1002'} value={studentList} onChange={e => { setStudentList(e.target.value); setErrors(er => ({ ...er, students: '' })); }} />{errors.students && <span className="form-error">{errors.students}</span>}<span className="form-hint">Bisa paste dari CSV/Excel. Murid boleh masuk menggunakan nama yang cocok atau NIS/ID yang cocok.</span></>}
-        </div>
+        </div>}
+        {personalMode && <div className="form-hint">Peserta otomatis diambil dari grup yang dipilih. Murid cukup memilih namanya saat membuka ujian.</div>}
         <div className="form-row form-row-2">
           <div className="form-group"><label className="form-label" htmlFor="s1-from">Aktif Mulai (opsional)</label><DateTime24Input id="s1-from" value={activeFrom} onChange={value => { setActiveFrom(value); setErrors(er => ({ ...er, schedule: '' })); }} /><span className="form-hint">Gunakan format 24 jam, misalnya 16:30.</span></div>
           <div className="form-group"><label className="form-label" htmlFor="s1-to">Aktif Hingga (opsional)</label><DateTime24Input id="s1-to" value={activeTo} onChange={value => { setActiveTo(value); setErrors(er => ({ ...er, schedule: '' })); }} /><span className="form-hint">Gunakan format 24 jam, misalnya 16:30. Pukul 00.00 adalah awal hari, jadi untuk tengah malam setelah ujian pilih tanggal berikutnya.</span></div>

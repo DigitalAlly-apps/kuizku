@@ -339,7 +339,7 @@ export const storage = {
       return { exam: null, error: classifyExamLookupError(error) };
     }
     if (!data) return { exam: null, error: { type: 'NOT_FOUND', message: 'Kode ujian tidak ditemukan. Periksa kembali kode dari guru Anda.' } };
-    return { exam: dbToExam({ ...data, questions: [], preloaded_students: [] }) };
+    return { exam: dbToExam({ ...data, questions: [], preloaded_students: data.preloaded_students ?? [] }) };
   },
 
   async getStudentExamByCode(code: string, name: string, identifier: string): Promise<StudentExamLookupResult> {

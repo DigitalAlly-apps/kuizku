@@ -78,6 +78,10 @@ export interface FeatureAccess {
   canAddBankQuestion: boolean;
 }
 
+export interface PersonalExamSubject { id: string; teacherId: string; name: string; }
+export interface PersonalExamGroup { id: string; teacherId: string; name: string; }
+export interface PersonalExamStudent { id: string; teacherId: string; groupId: string; name: string; }
+
 // ---- Question Option (for Multiple Choice) ----
 export interface QuestionOption {
   id: string;
@@ -125,6 +129,8 @@ export interface ExamSettings {
   explanationReleaseMode?: 'IMMEDIATE' | 'AFTER_EXAM_END' | 'NEVER';
   showRankingAfterSubmit?: boolean;
   autoSubmitOnTimeUp?: boolean;
+  /** Available only to the private personal-exam module. */
+  participantMode?: 'MANUAL' | 'PERSONAL_ROSTER';
 }
 
 // ---- Pre-loaded Student List ----
