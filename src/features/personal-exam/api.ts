@@ -22,5 +22,6 @@ export const personalExamApi = {
   async saveSubject(teacherId: string, name: string) { const { error } = await supabase.from('personal_exam_subjects').insert({ teacher_id: teacherId, name: name.trim() }); return error?.message; },
   async saveGroup(teacherId: string, name: string) { const { error } = await supabase.from('personal_exam_groups').insert({ teacher_id: teacherId, name: name.trim() }); return error?.message; },
   async saveStudent(teacherId: string, groupId: string, name: string) { const { error } = await supabase.from('personal_exam_students').insert({ teacher_id: teacherId, group_id: groupId, name: name.trim() }); return error?.message; },
+  async saveStudents(teacherId: string, groupId: string, names: string[]) { const { error } = await supabase.from('personal_exam_students').insert(names.map(name => ({ teacher_id: teacherId, group_id: groupId, name }))); return error?.message; },
   async delete(kind: 'subject' | 'group' | 'student', id: string) { const table = `personal_exam_${kind === 'subject' ? 'subjects' : kind === 'group' ? 'groups' : 'students'}`; const { error } = await supabase.from(table).delete().eq('id', id); return error?.message; },
 };
