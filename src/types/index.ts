@@ -136,8 +136,10 @@ export interface ExamSettings {
 // ---- Pre-loaded Student List ----
 export interface PreloadedStudent {
   name: string;
-  /** Legacy backend identifier. New exams use the attendance number here. */
-  nis: string;
+  /** Internal participant UUID. Never shown or entered by a student. */
+  participantId?: string;
+  /** Legacy compatibility value for existing exams only. */
+  nis?: string;
   /** Human-facing number shown to teachers and students. */
   attendanceNo?: number;
 }
@@ -227,7 +229,10 @@ export interface Submission {
   id: string;
   examId: string;
   studentName: string;
-  nis: string;
+  /** Stable per-exam participant identity. Nullable only for legacy rows. */
+  participantId?: string;
+  /** Legacy compatibility value. New submissions do not use this identity. */
+  nis?: string;
   attemptNumber: number;
   answers: StudentAnswer[];
   mcScore: number;         // auto-calculated

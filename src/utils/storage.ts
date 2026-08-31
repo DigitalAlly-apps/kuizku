@@ -74,6 +74,7 @@ async function describeAiFunctionError(error: unknown): Promise<string> {
 }
 
 export interface StudentExamLookupResult extends ExamLookupResult {
+  participantId?: string;
   attemptNumber?: number;
   attemptCount?: number;
   maxAttempts?: number;
@@ -342,12 +343,13 @@ export const storage = {
     return { exam: dbToExam({ ...data, questions: [], preloaded_students: data.preloaded_students ?? [] }) };
   },
 
-  async getStudentExamByCode(code: string, name: string, identifier: string): Promise<StudentExamLookupResult> {
-    const { data, error } = await supabase.rpc('get_student_exam', { p_code: code, p_name: name, p_identifier: identifier });
+  async getStudentExamByCode(code: string, name: string, participantId = ''): Promise<StudentExamLookupResult> {
+    const { data, error } = await supabase.rpc('get_student_exam', { p_code: code, p_name: name, p_participant_id: participantId || null });
     if (error) return { exam: null, error: classifyExamLookupError(error) };
     if (!data?.allowed) return { exam: null, error: describeStudentAccessDenial(data) };
     return {
       exam: dbToExam(data.exam),
+      participantId: typeof data.participant_id === 'string' ? data.participant_id : undefined,
       attemptNumber: Number(data.next_attempt_number ?? 1),
       attemptCount: Number(data.attempt_count ?? 0),
       maxAttempts: Number(data.max_attempts ?? data.exam?.settings?.maxAttempts ?? 1),
@@ -396,7 +398,9 @@ export const storage = {
 
     const studentsPayload = (exam.preloadedStudents || []).map(s => ({
       name: s.name,
-      nis: s.nis,
+      participant_id: s.participantId ?? null,
+      // Kept solely so editing an old exam does not discard legacy data.
+      nis: s.nis ?? '',
       attendance_no: s.attendanceNo ?? null,
     }));
 
@@ -483,21 +487,21 @@ export const storage = {
   },
 
   // Portal murid hanya perlu melihat submission miliknya sendiri untuk menghitung attempt/resume.
-  async getStudentSubmissionsByExam(examId: string, nis: string): Promise<Submission[]> {
+  async getStudentSubmissionsByExam(examId: string, participantId: string): Promise<Submission[]> {
     const { data, error } = await supabase.from('submissions')
       .select('*, student_answers(*)')
       .eq('exam_id', examId)
-      .eq('nis', nis);
+      .eq('participant_id', participantId);
     if (error) throw new Error(`Gagal memuat riwayat murid: ${error.message}`);
     if (!data) return [];
     return data.map(dbToSubmission);
   },
 
-  async getStudentRanking(examCode: string, submissionId: string, nis: string): Promise<StudentRanking> {
+  async getStudentRanking(examCode: string, submissionId: string, participantId: string): Promise<StudentRanking> {
     const { data, error } = await supabase.rpc('get_student_exam_ranking', {
       p_exam_code: examCode,
       p_submission_id: submissionId,
-      p_identifier: nis,
+      p_participant_id: participantId,
     });
     if (error) {
       console.error('Error loading student ranking:', error);
@@ -518,11 +522,11 @@ export const storage = {
     };
   },
 
-  async getStudentRankingVisitor(examCode: string, name = '', identifier = ''): Promise<StudentRanking> {
+  async getStudentRankingVisitor(examCode: string, name = '', participantId = ''): Promise<StudentRanking> {
     const { data, error } = await supabase.rpc('get_student_exam_ranking_visitor', {
       p_exam_code: examCode,
       p_name: name,
-      p_identifier: identifier,
+      p_participant_id: participantId || null,
     });
     if (error) {
       console.error('Error loading visitor student ranking:', error);
@@ -544,7 +548,7 @@ export const storage = {
   async saveSubmission(sub: Submission): Promise<SaveSubmissionResult> {
     const { data, error } = await supabase.rpc('save_student_submission', {
       p_submission: {
-        id: sub.id, exam_id: sub.examId, student_name: sub.studentName, nis: sub.nis,
+        id: sub.id, exam_id: sub.examId, student_name: sub.studentName, participant_id: sub.participantId ?? null, nis: sub.nis ?? '',
         attempt_number: sub.attemptNumber, started_at: sub.startedAt, is_complete: sub.isComplete,
         answers: sub.answers.map(answer => ({ question_id: answer.questionId, question_type: answer.questionType, selected_option_id: answer.selectedOptionId ?? null, essay_text: answer.essayText ?? null, short_answer: answer.shortAnswer ?? null, time_taken_seconds: answer.timeTakenSeconds ?? null })),
         anti_cheat_events: sub.antiCheatEvents ?? [],
@@ -770,7 +774,7 @@ function dbToExam(db: any): Exam {
     activeTo: db.active_to,
     createdAt: db.created_at,
     updatedAt: db.updated_at,
-    preloadedStudents: db.preloaded_students?.map((s: any) => ({ name: s.name, nis: s.nis, attendanceNo: s.attendance_no == null ? undefined : Number(s.attendance_no) })) || [],
+    preloadedStudents: db.preloaded_students?.map((s: any) => ({ name: s.name, participantId: s.participant_id ?? s.id, nis: s.nis || undefined, attendanceNo: s.attendance_no == null ? undefined : Number(s.attendance_no) })) || [],
     questions: (db.questions || []).map((q: any) => ({
       id: q.id,
       type: q.type,
@@ -814,7 +818,8 @@ function dbToSubmission(db: any): Submission {
     id: db.id,
     examId: db.exam_id,
     studentName: db.student_name,
-    nis: db.nis,
+    participantId: db.participant_id ?? undefined,
+    nis: db.nis || undefined,
     attemptNumber: db.attempt_number,
     mcScore: db.mc_score,
     totalScore: db.total_score,

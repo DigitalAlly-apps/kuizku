@@ -91,11 +91,10 @@ function mergeAnswers(serverAnswers: StudentAnswer[], localAnswers: StudentAnswe
   return Array.from(merged.values());
 }
 
-function hydrateServerDraft(exam: any, name: string, identifier: string, draft: any): void {
+function hydrateServerDraft(exam: any, name: string, participantId: string, draft: any): void {
   if (!draft?.id || !draft?.attempt_number || !draft?.started_at) return;
 
-  const nis = identifier.trim() || name.trim();
-  const existingLocal = loadSession(exam.code, nis);
+  const existingLocal = loadSession(exam.code, participantId);
   const startedAt = String(draft.started_at);
   const wholeDuration = Number(exam.settings?.wholExamTimerSeconds ?? 3600);
   const elapsed = Math.max(0, Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000));
@@ -112,7 +111,7 @@ function hydrateServerDraft(exam: any, name: string, identifier: string, draft: 
     examId: exam.id,
     examCode: exam.code,
     studentName: name.trim(),
-    nis,
+    participantId,
     attemptNumber: Number(draft.attempt_number),
     answers: mergeAnswers(serverAnswers, localAnswers),
     startedAt,
@@ -140,8 +139,8 @@ storage.getExamByCode = async (code: string) => {
 };
 
 const originalGetStudentExamByCode = storage.getStudentExamByCode.bind(storage);
-storage.getStudentExamByCode = async (code: string, name: string, identifier: string) => {
-  const result = await originalGetStudentExamByCode(code, name, identifier);
+storage.getStudentExamByCode = async (code: string, name: string, participantId: string) => {
+  const result = await originalGetStudentExamByCode(code, name, participantId);
 
   if (!result.exam) {
     // The structured mapper already includes schedule and attempt metadata.
@@ -170,11 +169,11 @@ storage.getStudentExamByCode = async (code: string, name: string, identifier: st
   const { data, error } = await supabase.rpc('get_student_exam', {
     p_code: code,
     p_name: name,
-    p_identifier: identifier,
+    p_participant_id: result.participantId ?? (participantId || null),
   });
 
   if (!error && data?.allowed && data?.resume === true && data?.resume_submission) {
-    hydrateServerDraft(result.exam, name, identifier, data.resume_submission);
+    hydrateServerDraft(result.exam, name, result.participantId ?? participantId, data.resume_submission);
   }
 
   return result;

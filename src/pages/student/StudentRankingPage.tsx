@@ -6,7 +6,7 @@ import { storage } from '../../utils/storage';
 import type { StudentRanking } from '../../types';
 import { studentSubmissionMessages } from '../../utils/studentMessages';
 
-type LocationState = { studentName?: string; nis?: string };
+type LocationState = { studentName?: string; participantId?: string };
 
 const reasonMessage: Record<string, string> = {
   IDENTITY_REQUIRED: 'Ujian ini memakai daftar peserta. Isi nama Anda untuk melihat ranking.',
@@ -28,10 +28,10 @@ export default function StudentRankingPage() {
   const [error, setError] = useState('');
   const [needsIdentity, setNeedsIdentity] = useState(false);
 
-  const loadRanking = async (studentName = name, identifier = initial.nis ?? '') => {
+  const loadRanking = async (studentName = name, participantId = initial.participantId ?? '') => {
     setLoading(true);
     setError('');
-    const result = await storage.getStudentRankingVisitor(code, studentName.trim(), identifier.trim());
+    const result = await storage.getStudentRankingVisitor(code, studentName.trim(), participantId);
     setLoading(false);
     setRanking(result);
     if (result.available) {
@@ -44,7 +44,7 @@ export default function StudentRankingPage() {
   };
 
   useEffect(() => {
-    if (code.length === 6) void loadRanking(initial.studentName ?? '', initial.nis ?? '');
+    if (code.length === 6) void loadRanking(initial.studentName ?? '', initial.participantId ?? '');
   }, [code]);
 
   const submitIdentity = (event: React.FormEvent) => {

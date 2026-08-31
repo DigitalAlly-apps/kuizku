@@ -6,14 +6,14 @@
 import type { Exam, Submission, StudentAnswer } from '../types';
 import { generateId, calcMCScore } from './helpers';
 
-const SESSION_KEY = (code: string, nis: string) => `kuizku_session_${code}_${nis}`;
+const SESSION_KEY = (code: string, participantId: string) => `kuizku_session_${code}_${participantId}`;
 
 export interface ExamSession {
   submissionId: string;
   examId: string;
   examCode: string;
   studentName: string;
-  nis: string;
+  participantId: string;
   attemptNumber: number;
   answers: StudentAnswer[];
   startedAt: string;
@@ -27,16 +27,16 @@ export interface ExamSession {
 // ---- Save session to localStorage ----
 export function saveSession(session: ExamSession): void {
   try {
-    localStorage.setItem(SESSION_KEY(session.examCode, session.nis), JSON.stringify(session));
+    localStorage.setItem(SESSION_KEY(session.examCode, session.participantId), JSON.stringify(session));
   } catch {
     console.warn('Failed to save session');
   }
 }
 
 // ---- Load existing session ----
-export function loadSession(code: string, nis: string): ExamSession | null {
+export function loadSession(code: string, participantId: string): ExamSession | null {
   try {
-    const raw = localStorage.getItem(SESSION_KEY(code, nis));
+    const raw = localStorage.getItem(SESSION_KEY(code, participantId));
     if (!raw) return null;
     return JSON.parse(raw) as ExamSession;
   } catch {
@@ -45,8 +45,8 @@ export function loadSession(code: string, nis: string): ExamSession | null {
 }
 
 // ---- Clear session after submit ----
-export function clearSession(code: string, nis: string): void {
-  localStorage.removeItem(SESSION_KEY(code, nis));
+export function clearSession(code: string, participantId: string): void {
+  localStorage.removeItem(SESSION_KEY(code, participantId));
 }
 
 export function clearSessionBySubmissionId(submissionId: string): void {
@@ -64,7 +64,7 @@ export function clearSessionBySubmissionId(submissionId: string): void {
 export function createSession(
   exam: Exam,
   studentName: string,
-  nis: string,
+  participantId: string,
   attemptNumber: number,
 ): ExamSession {
   const session: ExamSession = {
@@ -72,7 +72,7 @@ export function createSession(
     examId: exam.id,
     examCode: exam.code,
     studentName,
-    nis,
+    participantId,
     attemptNumber,
     answers: [],
     startedAt: new Date().toISOString(),
@@ -123,7 +123,7 @@ export function buildSubmission(session: ExamSession, exam: Exam): Submission {
     id: session.submissionId,
     examId: exam.id,
     studentName: session.studentName,
-    nis: session.nis,
+    participantId: session.participantId,
     attemptNumber: session.attemptNumber,
     answers: session.answers,
     mcScore,
@@ -141,7 +141,7 @@ export function buildDraftSubmission(session: ExamSession, exam: Exam): Submissi
     id: session.submissionId,
     examId: exam.id,
     studentName: session.studentName,
-    nis: session.nis,
+    participantId: session.participantId,
     attemptNumber: session.attemptNumber,
     answers: session.answers,
     mcScore,
@@ -161,7 +161,7 @@ export interface AccessResult {
 
 export function validateExamAccess(
   exam: Exam,
-  nis: string,
+  participantId: string,
   existingSubmissions: import('../types').Submission[],
 ): AccessResult {
   if (exam.status !== 'ACTIVE') {
@@ -177,10 +177,10 @@ export function validateExamAccess(
     return { allowed: false, reason: 'Ujian sudah ditutup.' };
   }
 
-  // Count previous complete attempts by this NIS
+  // Count previous complete attempts by stable participant identity.
   // Fix #4: Exclude submissions yang isReturned (dikembalikan untuk revisi)
   const prevAttempts = existingSubmissions.filter(
-    s => s.examId === exam.id && s.nis === nis && s.isComplete && !s.isReturned,
+    s => s.examId === exam.id && s.participantId === participantId && s.isComplete && !s.isReturned,
   );
 
   const maxAttempts = exam.settings.maxAttempts; // 0 = unlimited
@@ -192,7 +192,7 @@ export function validateExamAccess(
   }
 
   // Check for in-progress (unsubmitted) session
-  const existingSession = loadSession(exam.code, nis);
+  const existingSession = loadSession(exam.code, participantId);
   if (existingSession && !existingSession.isSubmitted) {
     return {
       allowed: true,

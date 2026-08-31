@@ -17,7 +17,7 @@ export default function JoinExamPage() {
   const [step, setStep] = useState<Step>('code');
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
-  const [nis, setNis] = useState('');
+  const [participantId, setParticipantId] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [foundExam, setFoundExam] = useState<Exam | null>(null);
@@ -72,23 +72,26 @@ export default function JoinExamPage() {
     if (!name.trim()) { setError('Masukkan nama lengkap agar jawaban dan hasil ujian dapat dikenali.'); return; }
     if (!foundExam) return;
 
-    // Gunakan nis sebagai identifier — bisa NISN, no absen, atau fallback ke nama
-    const identifier = nis.trim() || name.trim();
-
     setLoading(true);
-    const access = await storage.getStudentExamByCode(foundExam.code, name.trim(), identifier);
+    const access = await storage.getStudentExamByCode(foundExam.code, name.trim(), participantId);
     setLoading(false);
 
     if (!access.exam) {
       setError(access.error?.message ?? getStudentAccessMessage());
       return;
     }
-    if (loadSession(foundExam.code, identifier)) {
+    const resolvedParticipantId = access.participantId;
+    if (!resolvedParticipantId) {
+      setError('Peserta belum dapat dikenali. Silakan pilih nama Anda dari daftar peserta.');
+      return;
+    }
+    setParticipantId(resolvedParticipantId);
+    if (loadSession(foundExam.code, resolvedParticipantId)) {
       setHasResume(true);
       setStep('resume');
     } else {
       navigate(`/ujian/${foundExam.code}/instruksi`, {
-        state: { examId: access.exam.id, studentName: name.trim(), nis: identifier, attemptNumber: access.attemptNumber }
+        state: { examId: access.exam.id, studentName: name.trim(), participantId: resolvedParticipantId, attemptNumber: access.attemptNumber }
       });
     }
   };
@@ -121,9 +124,9 @@ export default function JoinExamPage() {
       setStep('identity');
       return;
     }
-    const identifier = nis.trim() || name.trim();
+    if (!participantId) { setStep('identity'); return; }
     navigate(`/ujian/${foundExam.code}/kerjakan`, {
-      state: { examId: foundExam.id, studentName: name.trim(), nis: identifier, resume: true }
+      state: { examId: foundExam.id, studentName: name.trim(), participantId, resume: true }
     });
   };
 
@@ -293,11 +296,11 @@ export default function JoinExamPage() {
               {foundExam.preloadedStudents.length > 0 && (
                 <div>
                   <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 6 }}>{personalRoster ? 'Pilih nama Anda:' : 'Atau pilih nama dari daftar:'}</p>
-                  {personalRoster ? <select className="form-select" value={nis} onChange={event => { const selected = foundExam.preloadedStudents.find(student => student.nis === event.target.value); setNis(selected?.nis ?? ''); setName(selected?.name ?? ''); setError(''); }} autoFocus><option value="">Pilih nama</option>{foundExam.preloadedStudents.map((student, index) => <option key={student.nis} value={student.nis}>{String(student.attendanceNo ?? index + 1).padStart(2, '0')} — {student.name}</option>)}</select> : <div style={{ maxHeight: 140, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--r-md)' }}>
+                  {personalRoster ? <select className="form-select" value={participantId} onChange={event => { const selected = foundExam.preloadedStudents.find(student => student.participantId === event.target.value); setParticipantId(selected?.participantId ?? ''); setName(selected?.name ?? ''); setError(''); }} autoFocus><option value="">Pilih nama</option>{foundExam.preloadedStudents.map((student, index) => <option key={student.participantId ?? index} value={student.participantId}>{String(student.attendanceNo ?? index + 1).padStart(2, '0')} — {student.name}</option>)}</select> : <div style={{ maxHeight: 140, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--r-md)' }}>
                     {foundExam.preloadedStudents.map((s, index) => (
-                      <button key={s.nis} type="button"
-                        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', width: '100%', background: nis === s.nis ? 'var(--primary-light)' : 'none', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', fontSize: '0.875rem', borderBottom: '1px solid var(--border)', textAlign: 'left' }}
-                        onClick={() => { setName(s.name); setNis(s.nis); setError(''); }}>
+                      <button key={s.participantId ?? index} type="button"
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', width: '100%', background: participantId === s.participantId ? 'var(--primary-light)' : 'none', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', fontSize: '0.875rem', borderBottom: '1px solid var(--border)', textAlign: 'left' }}
+                        onClick={() => { setName(s.name); setParticipantId(s.participantId ?? ''); setError(''); }}>
                         <User size={13} style={{ color: 'var(--text-muted)' }} />
                         <span style={{ flex: 1 }}>{s.name}</span>
                         <span style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--text-muted)' }}>No. {String(s.attendanceNo ?? index + 1).padStart(2, '0')}</span>

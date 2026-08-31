@@ -35,9 +35,12 @@ export default function ResultScreen({ exam, submission, studentName }: Props) {
   useEffect(() => {
     if (!showRanking) return;
     let cancelled = false;
-    const loadRanking = () => storage.getStudentRanking(exam.code, submission.id, submission.nis).then(result => {
+    const loadRanking = () => {
+      if (!submission.participantId) return;
+      return storage.getStudentRanking(exam.code, submission.id, submission.participantId).then(result => {
       if (!cancelled) setRanking(result);
-    });
+      });
+    };
 
     // Essay scores may be completed after this page is opened. Refresh the
     // small ranking payload periodically without exposing it while grading is pending.
@@ -47,7 +50,7 @@ export default function ResultScreen({ exam, submission, studentName }: Props) {
       cancelled = true;
       window.clearInterval(refreshId);
     };
-  }, [exam.code, submission.id, submission.nis, showRanking]);
+  }, [exam.code, submission.id, submission.participantId, showRanking]);
 
   // ---- Save local student history ----
   useEffect(() => {
@@ -63,7 +66,7 @@ export default function ResultScreen({ exam, submission, studentName }: Props) {
         examCode: exam.code,
         examType: exam.examType,
         studentName,
-        nis: submission.nis,
+        participantId: submission.participantId,
         submittedAt: submission.submittedAt,
         mcScore: submission.mcScore,
         totalScore: submission.totalScore,

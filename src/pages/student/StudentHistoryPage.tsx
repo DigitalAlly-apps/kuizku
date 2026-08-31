@@ -15,7 +15,7 @@ interface HistoryEntry {
   examCode: string;
   examType?: string;
   studentName: string;
-  nis: string;
+  participantId?: string;
   submittedAt?: string;
   mcScore: number;
   totalScore?: number;
@@ -94,7 +94,7 @@ export default function StudentHistoryPage() {
                 <button type="button" className="btn btn-ghost btn-sm" aria-label={`Hapus riwayat ${entry.examTitle}`} onClick={() => removeEntry(entry)} style={{ color: 'var(--danger)', padding: 6 }}><Trash2 size={15} /></button>
               </div>
               <div style={{ display: 'flex', gap: 'var(--sp-3)', flexWrap: 'wrap', color: 'var(--text-muted)', fontSize: '0.78rem', margin: 'var(--sp-3) 0' }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Award size={13} /> Skor: {displayScore}/{maxScore}</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Clock size={13} /> {entry.submittedAt ? formatDateTime(entry.submittedAt) : '—'}</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><FileText size={13} /> {entry.studentName}</span>{entry.totalScore != null && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><BookOpen size={13} /> Nilai final</span>}</div>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => navigate(`/ujian/${entry.examCode}/ranking`, { state: { studentName: entry.studentName, nis: entry.nis } })}><Trophy size={14} /> Lihat Ranking</button>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => navigate(`/ujian/${entry.examCode}/ranking`, { state: { studentName: entry.studentName, participantId: entry.participantId } })}><Trophy size={14} /> Lihat Ranking</button>
             </article>;
           })}
           <button type="button" className="btn btn-ghost" style={{ justifyContent: 'center' }} onClick={() => navigate('/ujian')}><RotateCcw size={15} /> Gunakan Kode Ujian Lain</button>

@@ -9,7 +9,7 @@ import type { Exam } from '../../types';
 interface LocationState {
   examId: string;
   studentName: string;
-  nis: string;
+  participantId: string;
   attemptNumber: number;
 }
 
@@ -27,7 +27,7 @@ export default function InstructionsPage() {
     if (!state?.examId || !code) { navigate('/ujian'); return; }
 
     // Query langsung ke Supabase by code — murid tidak butuh login
-    storage.getStudentExamByCode(code, state.studentName, state.nis).then(({ exam: found }) => {
+    storage.getStudentExamByCode(code, state.studentName, state.participantId).then(({ exam: found }) => {
       if (!found || found.id !== state.examId) { navigate('/ujian'); return; }
       setExam(found);
     });
@@ -47,9 +47,9 @@ export default function InstructionsPage() {
 
   const handleStart = () => {
     setStarting(true);
-    createSession(exam, state.studentName, state.nis, state.attemptNumber);
+    createSession(exam, state.studentName, state.participantId, state.attemptNumber);
     navigate(`/ujian/${code}/kerjakan`, {
-      state: { examId: exam.id, studentName: state.studentName, nis: state.nis, resume: false }
+      state: { examId: exam.id, studentName: state.studentName, participantId: state.participantId, resume: false }
     });
   };
 

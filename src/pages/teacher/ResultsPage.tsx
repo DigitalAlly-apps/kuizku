@@ -120,7 +120,7 @@ export default function ResultsPage() {
 
   const grantExtraAttempt = async () => {
     if (!selectedExam || !attemptTarget) return;
-    const identifier = attemptTarget.nis.trim() || attemptTarget.studentName.trim();
+    const identifier = attemptTarget.participantId ?? (attemptTarget.nis?.trim() || attemptTarget.studentName.trim());
     setGrantingAttempt(true);
     const result = await storage.grantStudentExtraAttempt(selectedExam.id, identifier);
     setGrantingAttempt(false);
@@ -157,11 +157,11 @@ export default function ResultsPage() {
     return !sub.isReturned && sub.totalScore != null && (status === 'NONE' || status === 'FINAL');
   };
   // Identitas peserta stabil disimpan internal; UI hanya menampilkan nomor absen.
-  const participantKey = (sub: Submission) => (sub.nis?.trim() ? `nis:${sub.nis.trim().toLowerCase()}` : `name:${sub.studentName.trim().toLowerCase()}`);
+  const participantKey = (sub: Submission) => sub.participantId ? `participant:${sub.participantId}` : (sub.nis?.trim() ? `nis:${sub.nis.trim().toLowerCase()}` : `name:${sub.studentName.trim().toLowerCase()}`);
   const attendanceNoFor = (sub: Submission) => {
-    const rosterStudent = selectedExam?.preloadedStudents.find(student => student.nis === sub.nis);
+    const rosterStudent = selectedExam?.preloadedStudents.find(student => student.participantId === sub.participantId || (!!sub.nis && student.nis === sub.nis));
     if (rosterStudent?.attendanceNo != null) return rosterStudent.attendanceNo;
-    return /^\d+$/.test(sub.nis.trim()) ? Number(sub.nis) : undefined;
+    return /^\d+$/.test(sub.nis ?? '') ? Number(sub.nis) : undefined;
   };
 
   const uniqueParticipantCount = useMemo(() => new Set(examSubs.map(participantKey)).size, [examSubs]);
@@ -445,10 +445,14 @@ export default function ResultsPage() {
     if (!selectedExam) return;
 
     const normalizeName = (value: string) => value.trim().toLocaleLowerCase('id-ID');
-    const rosterKey = (student: { name: string; nis: string }) => student.nis.trim()
+    const rosterKey = (student: { name: string; nis?: string; participantId?: string }) => student.participantId
+      ? `participant:${student.participantId}`
+      : student.nis?.trim()
       ? `nis:${student.nis.trim().toLowerCase()}`
       : `name:${normalizeName(student.name)}`;
-    const submissionKey = (submission: Submission) => submission.nis.trim()
+    const submissionKey = (submission: Submission) => submission.participantId
+      ? `participant:${submission.participantId}`
+      : submission.nis?.trim()
       ? `nis:${submission.nis.trim().toLowerCase()}`
       : `name:${normalizeName(submission.studentName)}`;
     const sortSubmissions = (items: Submission[]) => [...items].sort((a, b) =>

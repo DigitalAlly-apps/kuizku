@@ -25,7 +25,7 @@ import ResultScreen from './exam/ResultScreen';
 interface LocationState {
   examId: string;
   studentName: string;
-  nis: string;
+  participantId: string;
   resume?: boolean;
 }
 
@@ -65,7 +65,7 @@ export default function ExamTakingPage() {
 
     if (!state?.examId || !code) { navigate('/ujian'); return; }
 
-    storage.getStudentExamByCode(code, state.studentName, state.nis).then(async ({ exam: found, error: lookupError, attemptNumber }) => {
+    storage.getStudentExamByCode(code, state.studentName, state.participantId).then(async ({ exam: found, error: lookupError, attemptNumber }) => {
       if (!found && lookupError?.type !== 'NOT_FOUND') {
         setLoadError(lookupError?.message ?? 'Ujian belum dapat dimuat. Silakan coba lagi.');
         return;
@@ -93,13 +93,13 @@ export default function ExamTakingPage() {
       setExam(found);
 
       // Load or create session
-      const existing = loadSession(code, state.nis);
+      const existing = loadSession(code, state.participantId);
       if (existing && state.resume) {
         setSession(existing);
         setCurrentIdx(existing.currentQuestionIndex);
       } else {
         // Attempt number berasal dari submission COMPLETE di server. Draft/autosave tidak memakan jatah.
-        const newSession = createSession(found, state.studentName, state.nis, attemptNumber ?? 1);
+        const newSession = createSession(found, state.studentName, state.participantId, attemptNumber ?? 1);
         setSession(newSession);
         setCurrentIdx(0);
       }
@@ -123,7 +123,7 @@ export default function ExamTakingPage() {
 
     if (saveResult.saved) {
       // Session baru dihapus setelah server mengonfirmasi submission COMPLETE.
-      clearSession(session.examCode, session.nis);
+      clearSession(session.examCode, session.participantId);
       setSubmittedData({ ...sub, mcScore: saveResult.mcScore ?? sub.mcScore, totalScore: saveResult.totalScore });
       setSubmitted(true);
       setSubmitPending(false);
