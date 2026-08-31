@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Download, User, Edit2, BarChart2, RotateCcw, MessageSquare, RefreshCcw, Zap, ArrowLeft, ArrowRight, Sparkles, CheckCircle2, XCircle, Trash2 } from 'lucide-react';
+import { Copy, Download, User, Edit2, BarChart2, RotateCcw, MessageSquare, RefreshCcw, Zap, ArrowLeft, ArrowRight, Sparkles, CheckCircle2, XCircle, Trash2 } from 'lucide-react';
 import { useApp, useToast } from '../../context/AppContext';
 import { EmptyState, FormatBadge, StatusBadge, SectionHeader, Modal } from '../../components/ui';
 import NumericInput from '../../components/ui/NumericInput';
@@ -45,6 +45,32 @@ function getEmptyAnalysisMessage(filter: AnalysisFilter): string {
   if (filter === 'CORRECT') return 'Tidak ada jawaban benar.';
   if (filter === 'ESSAY') return 'Tidak ada soal essay.';
   return 'Belum ada soal untuk dianalisis.';
+}
+
+function clipboardCell(value: string): string {
+  return value.replace(/[\t\r\n]+/g, ' ').trim();
+}
+
+async function copyTextToClipboard(text: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch {
+      // Browser tertentu hanya mengekspos Clipboard API pada konteks yang diizinkan.
+    }
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand('copy');
+  document.body.removeChild(textarea);
+  if (!copied) throw new Error('Browser tidak dapat menyalin data.');
 }
 
 
@@ -410,6 +436,62 @@ export default function ResultsPage() {
     addToast({ type: 'success', title: 'Rekap diexport ke Excel!' });
   };
 
+  const copyGradesToSpreadsheet = async () => {
+    if (!selectedExam) return;
+
+    const normalizeName = (value: string) => value.trim().toLocaleLowerCase('id-ID');
+    const rosterKey = (student: { name: string; nis: string }) => student.nis.trim()
+      ? `nis:${student.nis.trim().toLowerCase()}`
+      : `name:${normalizeName(student.name)}`;
+    const submissionKey = (submission: Submission) => submission.nis.trim()
+      ? `nis:${submission.nis.trim().toLowerCase()}`
+      : `name:${normalizeName(submission.studentName)}`;
+    const sortSubmissions = (items: Submission[]) => [...items].sort((a, b) =>
+      a.attemptNumber - b.attemptNumber
+      || (a.submittedAt ?? '').localeCompare(b.submittedAt ?? '')
+      || a.studentName.localeCompare(b.studentName, 'id-ID'));
+    const isFinal = (submission: Submission) => isFinalSubmission(submission);
+    const rowForSubmission = (submission: Submission) => {
+      if (!isFinal(submission) || submission.totalScore == null) {
+        return [clipboardCell(submission.studentName), '', 'Belum ada nilai'];
+      }
+      const score = toPercent(submission.totalScore);
+      return [clipboardCell(submission.studentName), String(score), score >= passingScore ? 'Lulus' : 'Tidak Lulus'];
+    };
+
+    const unassigned = new Map(examSubs.map(submission => [submission.id, submission]));
+    const rows: string[][] = [];
+
+    if (selectedExam.preloadedStudents.length > 0) {
+      selectedExam.preloadedStudents.forEach(student => {
+        const key = rosterKey(student);
+        const matched = sortSubmissions(examSubs.filter(submission => submissionKey(submission) === key));
+        matched.forEach(submission => unassigned.delete(submission.id));
+        if (matched.length) {
+          matched.forEach(submission => rows.push(rowForSubmission(submission)));
+        } else {
+          rows.push([clipboardCell(student.name), '', 'Belum ada nilai']);
+        }
+      });
+      sortSubmissions([...unassigned.values()])
+        .sort((a, b) => a.studentName.localeCompare(b.studentName, 'id-ID') || a.attemptNumber - b.attemptNumber)
+        .forEach(submission => rows.push(rowForSubmission(submission)));
+    } else {
+      [...examSubs]
+        .sort((a, b) => a.studentName.localeCompare(b.studentName, 'id-ID') || a.attemptNumber - b.attemptNumber)
+        .forEach(submission => rows.push(rowForSubmission(submission)));
+    }
+
+    if (!rows.length) return;
+    try {
+      await copyTextToClipboard(rows.map(row => row.join('\t')).join('\n'));
+      addToast({ type: 'success', title: 'Nilai siap ditempel!', message: `${rows.length} baris nama, nilai, dan status telah disalin.` });
+    } catch (error) {
+      console.error('Gagal menyalin nilai:', error);
+      addToast({ type: 'error', title: 'Nilai gagal disalin', message: 'Izinkan akses clipboard, lalu coba lagi.' });
+    }
+  };
+
   // Question analytics
   const questionAnalytics = useMemo(() => {
     if (!selectedExam) return [];
@@ -445,6 +527,11 @@ export default function ResultsPage() {
           <select className="form-select results-exam-select" value={selectedExamId} onChange={e => setSelectedExamId(e.target.value)} id="result-exam-select">
             {myExams.map(e => <option key={e.id} value={e.id}>{e.title}</option>)}
           </select>
+          {selectedExam && (examSubs.length > 0 || selectedExam.preloadedStudents.length > 0) && (
+            <button className="btn btn-secondary results-export-button" type="button" onClick={() => void copyGradesToSpreadsheet()} title="Salin nama, nilai, dan status untuk ditempel ke Excel atau Google Sheets">
+              <Copy size={15} /> Copy untuk Spreadsheet
+            </button>
+          )}
           {examSubs.length > 0 && (
             <button className="btn btn-secondary results-export-button" onClick={exportExcel}><Download size={15} /> Export Excel</button>
           )}

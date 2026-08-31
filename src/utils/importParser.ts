@@ -14,7 +14,6 @@ import { formatDateTime, generateId } from './helpers';
 // Essay ditandai: [Essay] di depan soal
 
 export async function parseWordFile(file: File): Promise<ImportResult> {
-  // @ts-ignore — mammoth is installed but might not have types
   const mammoth = await import('mammoth');
   try {
     const arrayBuffer = await file.arrayBuffer();
@@ -41,8 +40,8 @@ function parseWordText(text: string): ImportResult {
 
     rowIndex++;
     const errors: string[] = [];
-    const isEssay = /^\[?essay\]?/i.test(lines[0]) || (lines.length <= 2 && !/^\*?[A-F][\.\)]/i.test(lines[1] ?? ''));
-    const rawQ = lines[0].replace(/^\[?essay\]?\s*/i, '').replace(/^\d+[\.\)]\s*/, '').trim();
+    const isEssay = /^\[?essay\]?/i.test(lines[0]) || (lines.length <= 2 && !/^\*?[A-F][.)]/i.test(lines[1] ?? ''));
+    const rawQ = lines[0].replace(/^\[?essay\]?\s*/i, '').replace(/^\d+[.)]\s*/, '').trim();
     if (!rawQ) errors.push('Teks soal kosong');
 
     const bobotLine = lines.find(l => /^bobot\s*:/i.test(l));
@@ -72,11 +71,11 @@ function parseWordText(text: string): ImportResult {
       continue;
     }
 
-    const optionLines = lines.slice(1).filter(l => /^\*?[A-F][\.\)]/i.test(l));
+    const optionLines = lines.slice(1).filter(l => /^\*?[A-F][.)]/i.test(l));
     const optionsWithLetters = optionLines.map(l => ({
       id: generateId(),
       letter: l.replace(/^\*/, '').charAt(0).toUpperCase(),
-      text: l.replace(/^\*?[A-F][\.\)]\s*/i, '').trim(),
+      text: l.replace(/^\*?[A-F][.)]\s*/i, '').trim(),
       isCorrect: l.startsWith('*'),
     })).filter(o => o.text !== '');
 

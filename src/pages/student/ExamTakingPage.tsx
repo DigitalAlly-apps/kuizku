@@ -109,7 +109,7 @@ export default function ExamTakingPage() {
     });
   }, []);
 
-  const handleSubmit = useCallback(async (_autoSubmit = false) => {
+  const handleSubmit = useCallback(async () => {
     if (submitRef.current || !session || !exam) return;
     submitRef.current = true;
 
@@ -166,7 +166,7 @@ export default function ExamTakingPage() {
           setTimeout(() => setShowViolationWarning(false), 5000);
           // Fix #2: Kasih warning 3 detik sebelum auto-submit agar murid tahu
           if (next >= maxViolations) {
-            setTimeout(() => handleSubmit(true), 3000);
+            setTimeout(() => handleSubmit(), 3000);
           }
           return next;
         });
@@ -191,7 +191,7 @@ export default function ExamTakingPage() {
     initialSeconds: initialWholeSeconds,
     autoStart: wholeTimerEnabled && !!session && !submitted,
     onExpire: useCallback(() => {
-      if (exam && shouldAutoSubmitOnTimeUp(exam.settings)) void handleSubmit(true);
+      if (exam && shouldAutoSubmitOnTimeUp(exam.settings)) void handleSubmit();
       else {
         setTimeExpired(true);
         setShowSubmit(true);
@@ -234,7 +234,7 @@ export default function ExamTakingPage() {
     autoStart: perQEnabled && !!session && !submitted,
     onExpire: useCallback(() => {
       if (currentIdx < questions.length - 1) goNext();
-      else handleSubmit(true);
+      else handleSubmit();
     }, [currentIdx, questions.length, goNext, handleSubmit]),
   });
   const perQCurrentRemainingRef = useRef(perQTimer.remaining);
@@ -328,7 +328,7 @@ export default function ExamTakingPage() {
           <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>📥</div>
           <h1 style={{ marginBottom: 8 }}>Jawaban Belum Terkirim</h1>
           <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>{studentSubmissionMessages.offline}</p>
-          <button className="btn btn-primary" style={{ marginTop: 20 }} onClick={() => { setSubmitPending(false); void handleSubmit(false); }}>Coba Kirim Sekarang</button>
+          <button className="btn btn-primary" style={{ marginTop: 20 }} onClick={() => { setSubmitPending(false); void handleSubmit(); }}>Coba Kirim Sekarang</button>
         </div>
       </div>
     );
@@ -427,7 +427,7 @@ export default function ExamTakingPage() {
         open={showSubmit}
         questions={questions}
         answeredIds={answeredIds}
-        onConfirm={() => handleSubmit(false)}
+        onConfirm={() => handleSubmit()}
         onCancel={() => { if (!timeExpired) setShowSubmit(false); }}
       />
     </div>
