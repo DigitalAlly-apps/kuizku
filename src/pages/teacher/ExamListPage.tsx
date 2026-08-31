@@ -152,7 +152,7 @@ export default function ExamListPage() {
     setEditType(exam.examType ?? 'UJIAN');
     setEditFrom(isoToLocalDateTimeInput(exam.activeFrom));
     setEditTo(isoToLocalDateTimeInput(exam.activeTo));
-    setEditStudents((exam.preloadedStudents || []).map(s => `${s.name}, ${s.nis}`).join('\n'));
+    setEditStudents((exam.preloadedStudents || []).map(s => s.name).join('\n'));
     setEditAccessMode((exam.preloadedStudents || []).length > 0 ? 'LIST' : 'OPEN');
     setOpenMenuId(null);
   };
@@ -162,9 +162,9 @@ export default function ExamListPage() {
     if (!editTitle.trim()) { addToast({ type: 'error', title: 'Judul tidak boleh kosong' }); return; }
     setEditSaving(true);
     // Parse daftar peserta dari textarea
-    const parsedStudents = editStudents.split(/\r?\n/).map(line => line.trim()).filter(Boolean).map(line => {
-      const [nameRaw, nisRaw] = line.split(/[,;\t]/).map(p => p.trim());
-      return { name: nameRaw || '', nis: nisRaw || nameRaw || '' };
+    const parsedStudents = editStudents.split(/\r?\n/).map(line => line.trim()).filter(Boolean).map((line, index) => {
+      const [nameRaw] = line.split(/[,;\t]/).map(p => p.trim());
+      return { name: nameRaw || '', nis: String(index + 1), attendanceNo: index + 1 };
     }).filter(s => s.name);
     if (editAccessMode === 'LIST' && parsedStudents.length === 0) {
       addToast({ type: 'error', title: 'Daftar peserta masih kosong', message: 'Tambahkan peserta atau pilih akses terbuka.' });
@@ -619,14 +619,14 @@ export default function ExamListPage() {
                   <strong>Terbuka untuk semua</strong><span>Siapa pun yang punya kode dapat masuk.</span>
                 </button>
                 <button type="button" role="radio" aria-checked={editAccessMode === 'LIST'} className={editAccessMode === 'LIST' ? 'is-active' : ''} onClick={() => setEditAccessMode('LIST')}>
-                  <strong>Hanya daftar peserta</strong><span>Nama atau NIS/ID harus cocok.</span>
+                  <strong>Hanya daftar peserta</strong><span>Peserta memilih namanya dari daftar guru.</span>
                 </button>
               </div>
               {editAccessMode === 'LIST' && <>
                 <textarea className="form-textarea" rows={4} style={{ marginTop: 'var(--sp-3)' }}
-                  placeholder={'Satu peserta per baris. Format: Nama, NIS'}
+                  placeholder={'Satu nama per baris. Nomor absen dibuat otomatis sesuai urutan.'}
                   value={editStudents} onChange={e => setEditStudents(e.target.value)} />
-                <span className="form-hint">Satu peserta per baris. Contoh: Ahmad Fauzi, 1001</span>
+                <span className="form-hint">Bisa paste satu kolom nama dari Excel. Nomor absen mengikuti urutan baris.</span>
               </>}
             </div>
           </div>

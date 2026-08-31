@@ -25,7 +25,7 @@ export default function Step1Setup({ initial, onNext }: Props) {
   const [activeTo, setActiveTo] = useState(initial.activeTo);
   const [settings, setSettings] = useState<ExamSettings>(initial.settings);
   const [examType, setExamType] = useState<ExamType>(initial.examType);
-  const [studentList, setStudentList] = useState(initial.preloadedStudents.map(s => `${s.name}, ${s.nis}`).join('\n'));
+  const [studentList, setStudentList] = useState(initial.preloadedStudents.map(s => s.name).join('\n'));
   const [accessMode, setAccessMode] = useState<'OPEN' | 'LIST'>(initial.preloadedStudents.length > 0 ? 'LIST' : 'OPEN');
   const [useSavedRoster, setUseSavedRoster] = useState(initial.settings.participantMode === 'PERSONAL_ROSTER');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -46,7 +46,7 @@ export default function Step1Setup({ initial, onNext }: Props) {
     }
     const parsedStudents = parseStudents(studentList);
     if (accessMode === 'LIST' && parsedStudents.students.length === 0) e.students = 'Tambahkan minimal satu peserta atau pilih akses terbuka.';
-    if (accessMode === 'LIST' && parsedStudents.duplicates.length > 0) e.students = `NIS/ID duplikat: ${parsedStudents.duplicates.join(', ')}`;
+    if (accessMode === 'LIST' && parsedStudents.duplicates.length > 0) e.students = `Nama duplikat: ${parsedStudents.duplicates.join(', ')}`;
     const passingScore = Number(settings.passingScore ?? 70);
     if (!Number.isFinite(passingScore) || passingScore < 0 || passingScore > 100) e.passingScore = 'KKM harus bernilai 0 sampai 100.';
     return e;
@@ -59,20 +59,20 @@ export default function Step1Setup({ initial, onNext }: Props) {
       const error = await addSubject(subject);
       if (error) { setErrors(current => ({ ...current, subject: error })); return; }
     }
-    const rosterStudents = students.filter(student => student.groupId === selectedPersonalGroup?.id).map(student => ({ name: student.name, nis: student.id }));
+    const rosterStudents = students.filter(student => student.groupId === selectedPersonalGroup?.id).map((student, index) => ({ name: student.name, nis: String(index + 1), attendanceNo: index + 1 }));
     onNext({ title, description, subject, className: personalRosterMode ? (selectedPersonalGroup?.name ?? '') : className, activeFrom, activeTo, settings: { ...settings, participantMode: personalRosterMode ? 'PERSONAL_ROSTER' : 'MANUAL' }, examType, preloadedStudents: personalRosterMode ? rosterStudents : accessMode === 'LIST' ? parseStudents(studentList).students : [] });
   };
 
   const parseStudents = (raw: string): { students: PreloadedStudent[]; duplicates: string[] } => {
     const seen = new Set<string>();
     const duplicates = new Set<string>();
-    const students = raw.split(/\r?\n/).map(line => line.trim()).filter(Boolean).map(line => {
-      const [nameRaw, nisRaw] = line.split(/[,;\t]/).map(part => part.trim());
+    const students = raw.split(/\r?\n/).map(line => line.trim()).filter(Boolean).map((line, index) => {
+      const [nameRaw] = line.split(/[,;\t]/).map(part => part.trim());
       const name = nameRaw || '';
-      const nis = nisRaw || name;
-      if (seen.has(nis)) duplicates.add(nis);
-      seen.add(nis);
-      return { name, nis };
+      const nis = String(index + 1);
+      if (seen.has(name.toLocaleLowerCase())) duplicates.add(name);
+      seen.add(name.toLocaleLowerCase());
+      return { name, nis, attendanceNo: index + 1 };
     }).filter(s => s.name);
     return { students, duplicates: [...duplicates] };
   };
@@ -111,9 +111,9 @@ export default function Step1Setup({ initial, onNext }: Props) {
           <label className="form-label">Akses Peserta</label>
           <div className="student-access-choice" role="radiogroup" aria-label="Akses peserta ujian">
             <button type="button" role="radio" aria-checked={accessMode === 'OPEN'} className={accessMode === 'OPEN' ? 'is-active' : ''} onClick={() => { setAccessMode('OPEN'); setErrors(er => ({ ...er, students: '' })); }}><strong>Terbuka untuk semua</strong><span>Siapa pun yang punya kode dapat masuk.</span></button>
-            <button type="button" role="radio" aria-checked={accessMode === 'LIST'} className={accessMode === 'LIST' ? 'is-active' : ''} onClick={() => setAccessMode('LIST')}><strong>Hanya daftar peserta</strong><span>Nama atau NIS/ID harus cocok dengan daftar guru.</span></button>
+            <button type="button" role="radio" aria-checked={accessMode === 'LIST'} className={accessMode === 'LIST' ? 'is-active' : ''} onClick={() => setAccessMode('LIST')}><strong>Hanya daftar peserta</strong><span>Peserta memilih namanya dari daftar guru.</span></button>
           </div>
-          {accessMode === 'LIST' && <><label className="form-label" htmlFor="s1-students" style={{ marginTop: 'var(--sp-3)' }}>Daftar Peserta</label><textarea id="s1-students" className={`form-textarea ${errors.students ? 'error' : ''}`} rows={5} placeholder={'Satu peserta per baris. Format: Nama, NIS\nContoh:\nAhmad Fauzi, 1001\nSiti Aminah, 1002'} value={studentList} onChange={e => { setStudentList(e.target.value); setErrors(er => ({ ...er, students: '' })); }} />{errors.students && <span className="form-error">{errors.students}</span>}<span className="form-hint">Bisa paste dari CSV/Excel. Murid boleh masuk menggunakan nama yang cocok atau NIS/ID yang cocok.</span></>}
+          {accessMode === 'LIST' && <><label className="form-label" htmlFor="s1-students" style={{ marginTop: 'var(--sp-3)' }}>Daftar Peserta</label><textarea id="s1-students" className={`form-textarea ${errors.students ? 'error' : ''}`} rows={5} placeholder={'Satu nama per baris. Nomor absen dibuat otomatis sesuai urutan.\nContoh:\nAhmad Fauzi\nSiti Aminah'} value={studentList} onChange={e => { setStudentList(e.target.value); setErrors(er => ({ ...er, students: '' })); }} />{errors.students && <span className="form-error">{errors.students}</span>}<span className="form-hint">Bisa paste satu kolom nama dari Excel. Nomor absen mengikuti urutan baris.</span></>}
         </div>}
         {personalRosterMode && <div className="form-hint">Peserta otomatis diambil dari grup yang dipilih. Murid cukup memilih namanya saat membuka ujian.</div>}
         <div className="form-row form-row-2">

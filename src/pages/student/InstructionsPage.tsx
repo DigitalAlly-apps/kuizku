@@ -71,7 +71,6 @@ export default function InstructionsPage() {
 
         <section className="student-identity-summary" aria-label="Identitas peserta">
           <div><span>Peserta</span><strong>{state.studentName}</strong></div>
-          {state.nis !== state.studentName && <div><span>NIS / ID</span><strong>{state.nis}</strong></div>}
           <div><span>Percobaan</span><strong>{state.attemptNumber} dari {exam.settings.maxAttempts === 0 ? '∞' : exam.settings.maxAttempts}</strong></div>
         </section>
 

@@ -91,7 +91,7 @@ export default function ResultScreen({ exam, submission, studentName }: Props) {
 
           {/* Student info */}
           <div style={{ padding: 'var(--sp-3) var(--sp-4)', background: 'var(--surface-2)', borderRadius: 'var(--r-md)', marginBottom: 'var(--sp-6)', fontSize: '0.875rem', textAlign: 'left' }}>
-            {[['Nama', studentName], ['NIS', submission.nis || '—'], ['Waktu Kumpul', submission.submittedAt ? formatDateTime(submission.submittedAt) : '—']].map(([label, val]) => (
+            {[['Nama', studentName], ['Waktu Kumpul', submission.submittedAt ? formatDateTime(submission.submittedAt) : '—']].map(([label, val]) => (
               <div key={label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                 <span style={{ color: 'var(--text-muted)' }}>{label}</span>
                 <span style={{ fontWeight: 600 }}>{val}</span>

@@ -156,8 +156,13 @@ export default function ResultsPage() {
     const status = essayStatus(sub);
     return !sub.isReturned && sub.totalScore != null && (status === 'NONE' || status === 'FINAL');
   };
-  // Identitas peserta stabil: NIS, fallback nama (lowercase) bila NIS kosong
+  // Identitas peserta stabil disimpan internal; UI hanya menampilkan nomor absen.
   const participantKey = (sub: Submission) => (sub.nis?.trim() ? `nis:${sub.nis.trim().toLowerCase()}` : `name:${sub.studentName.trim().toLowerCase()}`);
+  const attendanceNoFor = (sub: Submission) => {
+    const rosterStudent = selectedExam?.preloadedStudents.find(student => student.nis === sub.nis);
+    if (rosterStudent?.attendanceNo != null) return rosterStudent.attendanceNo;
+    return /^\d+$/.test(sub.nis.trim()) ? Number(sub.nis) : undefined;
+  };
 
   const uniqueParticipantCount = useMemo(() => new Set(examSubs.map(participantKey)).size, [examSubs]);
 
@@ -423,11 +428,11 @@ export default function ResultsPage() {
         const comment = q.type === 'ESSAY' ? grade?.comment ?? '' : '';
         return [`${qIdx + 1}. ${answerText}`, score, comment];
       });
-      return [i + 1, s.studentName, s.nis, s.attemptNumber, s.submittedAt ? formatDateTime(s.submittedAt) : '-', s.mcScore, essayTotal || '', isFinal ? s.totalScore : '', isFinal && s.totalScore != null ? toPercent(s.totalScore) : '', isFinal ? 'FINAL' : gradingStatus === 'PARTIAL' ? 'DINILAI SEBAGIAN' : 'MENUNGGU PENILAIAN', maxMC, maxEssay, maxTotal, s.antiCheatEvents?.length ?? 0, ...details];
+      return [i + 1, s.studentName, attendanceNoFor(s) ?? '', s.attemptNumber, s.submittedAt ? formatDateTime(s.submittedAt) : '-', s.mcScore, essayTotal || '', isFinal ? s.totalScore : '', isFinal && s.totalScore != null ? toPercent(s.totalScore) : '', isFinal ? 'FINAL' : gradingStatus === 'PARTIAL' ? 'DINILAI SEBAGIAN' : 'MENUNGGU PENILAIAN', maxMC, maxEssay, maxTotal, s.antiCheatEvents?.length ?? 0, ...details];
     });
     const detailHeaders = selectedExam.questions.flatMap((_, i) => [`S${i + 1} Jawaban`, `S${i + 1} Skor`, `S${i + 1} Komentar`]);
     const ws = XLSX.utils.aoa_to_sheet([
-      ['No','Nama','NIS','Percobaan','Waktu Submit','Skor PG','Skor Essay','Total','Nilai (0-100)','Status Nilai','Maks PG','Maks Essay','Maks Total','Pelanggaran Anti-cheat', ...detailHeaders],
+      ['No','Nama','No. Absen','Percobaan','Waktu Submit','Skor PG','Skor Essay','Total','Nilai (0-100)','Status Nilai','Maks PG','Maks Essay','Maks Total','Pelanggaran Anti-cheat', ...detailHeaders],
       ...rows,
     ]);
     const wb = XLSX.utils.book_new();
@@ -633,7 +638,7 @@ export default function ResultsPage() {
               <table>
                 <thead>
                   <tr>
-                    <th>No</th><th>Nama</th><th>NIS</th><th>Percobaan</th>
+                    <th>No</th><th>Nama</th><th>No. Absen</th><th>Percobaan</th>
                     {selectedExam.format !== 'ESSAY_ONLY' && <th>Skor PG</th>}
                     {selectedExam.format !== 'PG_ONLY' && <th>Skor Essay</th>}
                     <th>Nilai (0–100)</th><th>Waktu Submit</th><th>Aksi</th>
@@ -651,7 +656,7 @@ export default function ResultsPage() {
                       <tr key={sub.id}>
                         <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{i + 1}</td>
                         <td style={{ fontWeight: 600 }}>{sub.studentName}</td>
-                        <td style={{ color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: '0.85rem' }}>{sub.nis}</td>
+                        <td style={{ color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: '0.85rem' }}>{attendanceNoFor(sub) ?? '—'}</td>
                         <td style={{ textAlign: 'center' }}>{sub.attemptNumber}</td>
                         {selectedExam.format !== 'ESSAY_ONLY' && (
                           <td style={{ textAlign: 'center', fontWeight: 600, color: 'var(--primary)' }}>

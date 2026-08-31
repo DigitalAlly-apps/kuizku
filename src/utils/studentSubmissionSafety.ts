@@ -58,7 +58,7 @@ function friendlyAccessMessage(message?: string, maxAttempts?: number): string {
     return 'Ujian sedang tidak tersedia. Silakan hubungi guru.';
   }
   if (normalized.includes('tidak ditemukan dalam daftar peserta') || normalized.includes('student_not_registered') || normalized.includes('nama/nis tidak terdaftar')) {
-    return 'Data kamu tidak ditemukan pada ujian ini. Periksa kembali nama atau NIS. Jika sudah benar, hubungi guru.';
+    return 'Data kamu tidak ditemukan pada ujian ini. Periksa kembali nama. Jika sudah benar, hubungi guru.';
   }
   if (normalized.includes('kode ujian tidak ditemukan') || normalized.includes('not_found')) {
     return 'Ujian tidak ditemukan. Periksa kembali kode atau tautan yang diberikan guru.';

@@ -398,7 +398,7 @@ export function exportResultsToExcel(
   exam: import('../types').Exam,
 ): void {
   const headers = [
-    'No', 'Nama', 'NIS', 'Percobaan', 'Waktu Submit',
+    'No', 'Nama', 'No. Absen', 'Percobaan', 'Waktu Submit',
     'Skor PG (Otomatis)', 'Skor Essay (Manual)', 'Total Skor',
     'Skor Maks PG', 'Skor Maks Essay', 'Skor Maks Total',
   ];

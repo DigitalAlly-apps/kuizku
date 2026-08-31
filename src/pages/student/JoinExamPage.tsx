@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Hash, User, CreditCard, ListOrdered, Search, AlertCircle, ArrowRight, Clock, FileText, Calendar, History, Trophy, Play, BookOpen } from 'lucide-react';
+import { Hash, User, Search, AlertCircle, ArrowRight, Clock, FileText, Calendar, History, Trophy, Play, BookOpen } from 'lucide-react';
 import { storage } from '../../utils/storage';
 import { loadSession } from '../../utils/examSession';
 import { formatDateTime, formatExamFormat, formatTimerMode } from '../../utils/helpers';
@@ -18,7 +18,6 @@ export default function JoinExamPage() {
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [nis, setNis] = useState('');
-  const [identityMode, setIdentityMode] = useState<'nisn' | 'noabsen'>('nisn');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [foundExam, setFoundExam] = useState<Exam | null>(null);
@@ -290,66 +289,18 @@ export default function JoinExamPage() {
                 </div>
               </div>}
 
-              {/* Toggle: NISN vs No Absen */}
-              {!personalRoster && <div className="form-group">
-                <label className="form-label">Identitas Nomor <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 400 }}>(opsional)</span></label>
-                <div style={styles.toggleWrap}>
-                  <button
-                    type="button"
-                    style={{ ...styles.toggleBtn, ...(identityMode === 'nisn' ? styles.toggleBtnActive : {}) }}
-                    onClick={() => { setIdentityMode('nisn'); setNis(''); setError(''); }}
-                  >
-                    <CreditCard size={13} /> NISN
-                  </button>
-                  <button
-                    type="button"
-                    style={{ ...styles.toggleBtn, ...(identityMode === 'noabsen' ? styles.toggleBtnActive : {}) }}
-                    onClick={() => { setIdentityMode('noabsen'); setNis(''); setError(''); }}
-                  >
-                    <ListOrdered size={13} /> No Absen
-                  </button>
-                </div>
-
-                {identityMode === 'nisn' ? (
-                  <div style={{ position: 'relative', marginTop: 8 }}>
-                    <CreditCard size={16} style={iconStyle} />
-                    <input
-                      id="student-nis"
-                      className="form-input"
-                      placeholder="Contoh: 0012345678 (opsional)"
-                      style={{ paddingLeft: 40 }}
-                      value={nis}
-                      onChange={e => { setNis(e.target.value.replace(/\D/g, '')); setError(''); }}
-                    />
-                  </div>
-                ) : (
-                  <div style={{ position: 'relative', marginTop: 8 }}>
-                    <ListOrdered size={16} style={iconStyle} />
-                    <input
-                      id="student-noabsen"
-                      className="form-input"
-                      placeholder="Contoh: 15 (opsional)"
-                      style={{ paddingLeft: 40 }}
-                      value={nis}
-                      onChange={e => { setNis(e.target.value.replace(/\D/g, '')); setError(''); }}
-                    />
-                  </div>
-                )}
-                <span className="form-hint">Jika tidak diisi, nama Anda akan digunakan sebagai identitas.</span>
-              </div>}
-
               {/* Pre-loaded student list */}
               {foundExam.preloadedStudents.length > 0 && (
                 <div>
                   <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 6 }}>{personalRoster ? 'Pilih nama Anda:' : 'Atau pilih nama dari daftar:'}</p>
-                  {personalRoster ? <select className="form-select" value={nis} onChange={event => { const selected = foundExam.preloadedStudents.find(student => student.nis === event.target.value); setNis(selected?.nis ?? ''); setName(selected?.name ?? ''); setError(''); }} autoFocus><option value="">Pilih nama</option>{foundExam.preloadedStudents.map(student => <option key={student.nis} value={student.nis}>{student.name}</option>)}</select> : <div style={{ maxHeight: 140, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--r-md)' }}>
-                    {foundExam.preloadedStudents.map(s => (
+                  {personalRoster ? <select className="form-select" value={nis} onChange={event => { const selected = foundExam.preloadedStudents.find(student => student.nis === event.target.value); setNis(selected?.nis ?? ''); setName(selected?.name ?? ''); setError(''); }} autoFocus><option value="">Pilih nama</option>{foundExam.preloadedStudents.map((student, index) => <option key={student.nis} value={student.nis}>{String(student.attendanceNo ?? index + 1).padStart(2, '0')} — {student.name}</option>)}</select> : <div style={{ maxHeight: 140, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--r-md)' }}>
+                    {foundExam.preloadedStudents.map((s, index) => (
                       <button key={s.nis} type="button"
                         style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', width: '100%', background: nis === s.nis ? 'var(--primary-light)' : 'none', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', fontSize: '0.875rem', borderBottom: '1px solid var(--border)', textAlign: 'left' }}
                         onClick={() => { setName(s.name); setNis(s.nis); setError(''); }}>
                         <User size={13} style={{ color: 'var(--text-muted)' }} />
                         <span style={{ flex: 1 }}>{s.name}</span>
-                        <span style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{s.nis}</span>
+                        <span style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--text-muted)' }}>No. {String(s.attendanceNo ?? index + 1).padStart(2, '0')}</span>
                       </button>
                     ))}
                   </div>}
@@ -417,8 +368,5 @@ const styles: Record<string, React.CSSProperties> = {
   hint: { textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 'var(--sp-5)' },
   examPreview: { padding: 'var(--sp-4)', background: 'var(--surface-2)', borderRadius: 'var(--r-lg)', marginBottom: 'var(--sp-5)', border: '1px solid var(--border)' },
   metaItem: { display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.78rem', color: 'var(--text-muted)' },
-  toggleWrap: { display: 'flex', gap: 6, marginBottom: 4 },
-  toggleBtn: { display: 'inline-flex', alignItems: 'center', gap: 5, minHeight: 40, padding: '6px 14px', borderRadius: 'var(--r-md)', border: '1.5px solid var(--border-strong)', background: 'var(--surface-2)', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s ease' },
-  toggleBtnActive: { borderColor: 'var(--primary)', background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 600 },
   resumeIcon: { width: 56, height: 56, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', background: 'var(--primary-light)', borderRadius: 'var(--r-lg)', marginBottom: 'var(--sp-3)' },
 };

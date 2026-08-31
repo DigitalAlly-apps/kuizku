@@ -80,7 +80,7 @@ export interface FeatureAccess {
 
 export interface PersonalExamSubject { id: string; teacherId: string; name: string; }
 export interface PersonalExamGroup { id: string; teacherId: string; name: string; }
-export interface PersonalExamStudent { id: string; teacherId: string; groupId: string; name: string; }
+export interface PersonalExamStudent { id: string; teacherId: string; groupId: string; name: string; sortOrder: number; }
 
 // ---- Question Option (for Multiple Choice) ----
 export interface QuestionOption {
@@ -136,7 +136,10 @@ export interface ExamSettings {
 // ---- Pre-loaded Student List ----
 export interface PreloadedStudent {
   name: string;
+  /** Legacy backend identifier. New exams use the attendance number here. */
   nis: string;
+  /** Human-facing number shown to teachers and students. */
+  attendanceNo?: number;
 }
 
 // ---- Exam ----

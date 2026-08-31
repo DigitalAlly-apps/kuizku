@@ -89,7 +89,7 @@ export default function Step5Publish({ exam, onFinish }: Props) {
       <div style={{ maxWidth: 420, margin: '0 auto var(--sp-8)', padding: 'var(--sp-4)', background: 'var(--primary-light)', borderRadius: 'var(--r-lg)', border: '1px solid rgba(79,110,247,0.2)', textAlign: 'left' }}>
         <p style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--primary)', marginBottom: 'var(--sp-2)' }}>💡 Tips Berbagi ke Murid</p>
         <ul style={{ paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {['Bagikan kode 6 digit via WhatsApp atau papan tulis', 'Atau bagikan link di atas langsung ke murid', 'Murid tidak perlu daftar akun — cukup input nama & NIS'].map(tip => (
+          {['Bagikan kode 6 digit via WhatsApp atau papan tulis', 'Atau bagikan link di atas langsung ke murid', 'Murid tidak perlu daftar akun — cukup input atau memilih nama'].map(tip => (
             <li key={tip} style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{tip}</li>
           ))}
         </ul>

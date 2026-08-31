@@ -397,6 +397,7 @@ export const storage = {
     const studentsPayload = (exam.preloadedStudents || []).map(s => ({
       name: s.name,
       nis: s.nis,
+      attendance_no: s.attendanceNo ?? null,
     }));
 
     const { error } = await supabase.rpc('save_exam_full', {
@@ -769,7 +770,7 @@ function dbToExam(db: any): Exam {
     activeTo: db.active_to,
     createdAt: db.created_at,
     updatedAt: db.updated_at,
-    preloadedStudents: db.preloaded_students?.map((s: any) => ({ name: s.name, nis: s.nis })) || [],
+    preloadedStudents: db.preloaded_students?.map((s: any) => ({ name: s.name, nis: s.nis, attendanceNo: s.attendance_no == null ? undefined : Number(s.attendance_no) })) || [],
     questions: (db.questions || []).map((q: any) => ({
       id: q.id,
       type: q.type,

@@ -9,8 +9,8 @@ import { studentSubmissionMessages } from '../../utils/studentMessages';
 type LocationState = { studentName?: string; nis?: string };
 
 const reasonMessage: Record<string, string> = {
-  IDENTITY_REQUIRED: 'Ujian ini memakai daftar peserta. Isi nama dan NIS/nomor absen Anda untuk melihat ranking.',
-  STUDENT_NOT_REGISTERED: 'Data Anda belum ditemukan di daftar peserta. Periksa kembali nama dan nomor identitas, atau minta guru memeriksa daftar peserta ujian.',
+  IDENTITY_REQUIRED: 'Ujian ini memakai daftar peserta. Isi nama Anda untuk melihat ranking.',
+  STUDENT_NOT_REGISTERED: 'Data Anda belum ditemukan di daftar peserta. Periksa kembali nama, atau minta guru memeriksa daftar peserta ujian.',
   NOT_RELEASED: studentSubmissionMessages.rankingNotReleased,
   ESSAY_PENDING: studentSubmissionMessages.essayPending,
   NOT_FOUND: 'Ujian tidak ditemukan atau belum dapat menampilkan ranking.',
@@ -23,13 +23,12 @@ export default function StudentRankingPage() {
   const { code = '' } = useParams<{ code: string }>();
   const initial = (location.state ?? {}) as LocationState;
   const [name, setName] = useState(initial.studentName ?? '');
-  const [nis, setNis] = useState(initial.nis ?? '');
   const [ranking, setRanking] = useState<StudentRanking | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [needsIdentity, setNeedsIdentity] = useState(false);
 
-  const loadRanking = async (studentName = name, identifier = nis) => {
+  const loadRanking = async (studentName = name, identifier = initial.nis ?? '') => {
     setLoading(true);
     setError('');
     const result = await storage.getStudentRankingVisitor(code, studentName.trim(), identifier.trim());
@@ -90,8 +89,6 @@ export default function StudentRankingPage() {
               <User size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input id="ranking-name" className="form-input" value={name} onChange={event => setName(event.target.value)} placeholder="Nama sesuai absen" style={{ paddingLeft: 40 }} autoFocus />
             </div>
-            <label className="form-label" htmlFor="ranking-nis">NIS/NISN/nomor absen <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(bila ada)</span></label>
-            <input id="ranking-nis" className="form-input" value={nis} onChange={event => setNis(event.target.value)} placeholder="Contoh: 15" inputMode="numeric" />
             {error && <p style={{ color: 'var(--danger)', fontSize: '0.82rem', margin: 'var(--sp-3) 0 0' }}>{error}</p>}
             <button type="submit" className="btn btn-primary w-full" style={{ justifyContent: 'center', marginTop: 'var(--sp-4)' }}><Search size={16} /> Lihat Ranking</button>
           </form>
