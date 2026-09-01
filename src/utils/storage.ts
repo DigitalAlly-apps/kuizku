@@ -39,6 +39,11 @@ export interface MutationResult {
   essayCount?: number;
 }
 
+export interface StudentAttemptOverview {
+  participantId: string;
+  extraAttempts: number;
+}
+
 const AI_GRADING_ERROR_MESSAGES: Record<string, string> = {
   unauthorized: 'Sesi guru sudah berakhir. Silakan login ulang lalu coba lagi.',
   forbidden: 'Ujian ini tidak dapat dinilai oleh akun guru yang sedang login.',
@@ -577,6 +582,20 @@ export const storage = {
       return { error: 'Kesempatan tambahan belum dapat diberikan. Silakan coba lagi.' };
     }
     return { extraAttempts: Number(data.extra_attempts ?? 0) };
+  },
+
+  async getTeacherAttemptOverview(examId: string): Promise<{ overrides: StudentAttemptOverview[]; error?: string }> {
+    const { data, error } = await supabase.rpc('get_teacher_attempt_overview', { p_exam_id: examId });
+    if (error) {
+      console.error('getTeacherAttemptOverview error:', error);
+      return { overrides: [], error: 'Data kesempatan belum dapat dimuat.' };
+    }
+    return {
+      overrides: (data ?? []).map((row: { participant_id: string; extra_attempts: number }) => ({
+        participantId: row.participant_id,
+        extraAttempts: Number(row.extra_attempts ?? 0),
+      })),
+    };
   },
 
   async saveSubmissionGrading(submissionId: string, grades: Array<{ questionId: string; score: number; comment?: string }>, feedback: string): Promise<MutationResult> {

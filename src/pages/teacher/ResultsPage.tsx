@@ -15,6 +15,14 @@ interface QuickEssayTarget {
   question: Question;
 }
 
+interface AttemptTarget {
+  studentName: string;
+  participantId?: string;
+  nis?: string;
+  usedAttempts: number;
+  extraAttempts: number;
+}
+
 type AnalysisFilter = 'ALL' | 'WRONG' | 'CORRECT' | 'ESSAY';
 
 interface QuestionAnalysisItem {
@@ -100,9 +108,26 @@ export default function ResultsPage() {
   const [quickComment, setQuickComment] = useState('');
   const [analysisFilter, setAnalysisFilter] = useState<AnalysisFilter>('ALL');
   const [deletingSubmissionId, setDeletingSubmissionId] = useState<string | null>(null);
-  const [attemptTarget, setAttemptTarget] = useState<Submission | null>(null);
+  const [attemptTarget, setAttemptTarget] = useState<AttemptTarget | null>(null);
   const [grantingAttempt, setGrantingAttempt] = useState(false);
+  const [attemptExtras, setAttemptExtras] = useState<Record<string, number>>({});
   const quickRequested = searchParams.get('quick') === '1';
+
+  const selectedExam = useMemo(() => myExams.find(e => e.id === selectedExamId), [myExams, selectedExamId]);
+
+  useEffect(() => {
+    let current = true;
+    if (!selectedExam) {
+      setAttemptExtras({});
+      return () => { current = false; };
+    }
+    void storage.getTeacherAttemptOverview(selectedExam.id).then(result => {
+      if (!current) return;
+      setAttemptExtras(Object.fromEntries(result.overrides.map(item => [item.participantId, item.extraAttempts])));
+      if (result.error) addToast({ type: 'error', title: 'Kesempatan belum dimuat', message: result.error });
+    });
+    return () => { current = false; };
+  }, [selectedExam?.id]);
 
   const handleDeleteSubmission = async (submission: Submission) => {
     const confirmed = window.confirm(`Hapus submission ${submission.studentName} (percobaan ke-${submission.attemptNumber})? Jawaban dan nilai submission ini akan dihapus permanen.`);
@@ -128,11 +153,13 @@ export default function ResultsPage() {
       addToast({ type: 'error', title: 'Kesempatan belum ditambahkan', message: result.error });
       return;
     }
+    if (attemptTarget.participantId) {
+      setAttemptExtras(previous => ({ ...previous, [attemptTarget.participantId!]: result.extraAttempts ?? attemptTarget.extraAttempts + 1 }));
+    }
     setAttemptTarget(null);
     addToast({ type: 'success', title: 'Kesempatan ditambahkan', message: `1 kesempatan tambahan diberikan kepada ${attemptTarget.studentName}.` });
   };
 
-  const selectedExam = useMemo(() => myExams.find(e => e.id === selectedExamId), [myExams, selectedExamId]);
   const examSubs = useMemo(() => submissions.filter(s => s.examId === selectedExamId && s.isComplete), [submissions, selectedExamId]);
   const essayQuestionIds = useMemo(() => selectedExam?.questions.filter(q => q.type === 'ESSAY').map(q => q.id) ?? [], [selectedExam]);
   const allEssayGuidesAvailable = useMemo(() => !!selectedExam && selectedExam.questions.filter(q => q.type === 'ESSAY').every(q => !!q.answerGuide?.trim()), [selectedExam]);
@@ -158,6 +185,7 @@ export default function ResultsPage() {
   };
   // Identitas peserta stabil disimpan internal; UI hanya menampilkan nomor absen.
   const participantKey = (sub: Submission) => sub.participantId ? `participant:${sub.participantId}` : (sub.nis?.trim() ? `nis:${sub.nis.trim().toLowerCase()}` : `name:${sub.studentName.trim().toLowerCase()}`);
+  const participantKeyFromDetails = (details: Pick<AttemptTarget, 'participantId' | 'nis' | 'studentName'>) => details.participantId ? `participant:${details.participantId}` : (details.nis?.trim() ? `nis:${details.nis.trim().toLowerCase()}` : `name:${details.studentName.trim().toLowerCase()}`);
   const attendanceNoFor = (sub: Submission) => {
     const rosterStudent = selectedExam?.preloadedStudents.find(student => student.participantId === sub.participantId || (!!sub.nis && student.nis === sub.nis));
     if (rosterStudent?.attendanceNo != null) return rosterStudent.attendanceNo;
@@ -165,6 +193,24 @@ export default function ResultsPage() {
   };
 
   const uniqueParticipantCount = useMemo(() => new Set(examSubs.map(participantKey)).size, [examSubs]);
+  const completedAttemptsByParticipant = useMemo(() => {
+    const counts = new Map<string, number>();
+    examSubs.filter(sub => !sub.isReturned).forEach(sub => {
+      const key = participantKey(sub);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    });
+    return counts;
+  }, [examSubs]);
+  const attemptDetailsFor = (details: Pick<AttemptTarget, 'participantId' | 'nis' | 'studentName'>) => {
+    const usedAttempts = completedAttemptsByParticipant.get(participantKeyFromDetails(details)) ?? 0;
+    const extraAttempts = details.participantId ? attemptExtras[details.participantId] ?? 0 : 0;
+    const baseAttempts = selectedExam?.settings.maxAttempts ?? 1;
+    const totalAttempts = baseAttempts === 0 ? null : baseAttempts + extraAttempts;
+    return { usedAttempts, extraAttempts, totalAttempts };
+  };
+  const openAttemptDialog = (details: Pick<AttemptTarget, 'participantId' | 'nis' | 'studentName'>) => {
+    setAttemptTarget({ ...details, ...attemptDetailsFor(details) });
+  };
 
   // Attempt FINAL terbaik per peserta — dipakai untuk statistik & ranking
   const bestFinalPerParticipant = useMemo(() => {
@@ -642,7 +688,7 @@ export default function ResultsPage() {
               <table>
                 <thead>
                   <tr>
-                    <th>No</th><th>Nama</th><th>No. Absen</th><th>Percobaan</th>
+                    <th>No</th><th>Nama</th><th>No. Absen</th><th>Kesempatan</th>
                     {selectedExam.format !== 'ESSAY_ONLY' && <th>Skor PG</th>}
                     {selectedExam.format !== 'PG_ONLY' && <th>Skor Essay</th>}
                     <th>Nilai (0–100)</th><th>Waktu Submit</th><th>Aksi</th>
@@ -656,12 +702,19 @@ export default function ResultsPage() {
                     const total = sub.totalScore;
                     const isFinal = isFinalSubmission(sub);
                     const provisional = sub.mcScore + essayTotal;
+                    const attemptDetails = attemptDetailsFor({ participantId: sub.participantId, nis: sub.nis, studentName: sub.studentName });
+                    const remainingAttempts = attemptDetails.totalAttempts == null ? null : Math.max(0, attemptDetails.totalAttempts - attemptDetails.usedAttempts);
                     return (
                       <tr key={sub.id}>
                         <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{i + 1}</td>
                         <td style={{ fontWeight: 600 }}>{sub.studentName}</td>
                         <td style={{ color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: '0.85rem' }}>{attendanceNoFor(sub) ?? '—'}</td>
-                        <td style={{ textAlign: 'center' }}>{sub.attemptNumber}</td>
+                        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontWeight: 700 }}>{attemptDetails.usedAttempts} / {attemptDetails.totalAttempts ?? '∞'}</div>
+                          <div style={{ fontSize: '0.72rem', color: remainingAttempts == null ? 'var(--success)' : remainingAttempts > 0 ? 'var(--text-muted)' : 'var(--warning)' }}>
+                            {remainingAttempts == null ? 'Tidak terbatas' : `Sisa ${remainingAttempts}`}{attemptDetails.extraAttempts > 0 ? ` · +${attemptDetails.extraAttempts}` : ''}
+                          </div>
+                        </td>
                         {selectedExam.format !== 'ESSAY_ONLY' && (
                           <td style={{ textAlign: 'center', fontWeight: 600, color: 'var(--primary)' }}>
                             {sub.mcScore}<span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>/{maxMC}</span>
@@ -711,7 +764,7 @@ export default function ResultsPage() {
                                 <Edit2 size={14} aria-hidden="true" />
                               </button>
                             )}
-                            <button className="btn btn-ghost btn-sm" type="button" aria-label={`Tambah satu kesempatan untuk ${sub.studentName}`} title="Tambah 1 kesempatan" onClick={() => setAttemptTarget(sub)}>
+                            <button className="btn btn-ghost btn-sm" type="button" aria-label={`Tambah satu kesempatan untuk ${sub.studentName}`} title="Tambah 1 kesempatan" onClick={() => openAttemptDialog({ participantId: sub.participantId, nis: sub.nis, studentName: sub.studentName })}>
                               +1 <span className="results-analysis-action">Kesempatan</span>
                             </button>
                             <button
@@ -733,6 +786,41 @@ export default function ResultsPage() {
                 </tbody>
               </table>
             </div>
+          )}
+
+          {selectedExam.preloadedStudents.length > 0 && (
+            <>
+              <SectionHeader title="Kesempatan Peserta" subtitle="Pantau pemakaian dan tambahkan kesempatan sebelum atau sesudah murid mengerjakan." />
+              <div className="card" style={{ marginBottom: 'var(--sp-8)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 'var(--sp-3)' }}>
+                  {[...selectedExam.preloadedStudents]
+                    .sort((a, b) => (a.attendanceNo ?? Number.MAX_SAFE_INTEGER) - (b.attendanceNo ?? Number.MAX_SAFE_INTEGER) || a.name.localeCompare(b.name, 'id-ID'))
+                    .map(student => {
+                      const studentDetails = { participantId: student.participantId, nis: student.nis, studentName: student.name };
+                      const attemptDetails = attemptDetailsFor(studentDetails);
+                      const remainingAttempts = attemptDetails.totalAttempts == null ? null : Math.max(0, attemptDetails.totalAttempts - attemptDetails.usedAttempts);
+                      return (
+                        <div key={student.participantId ?? `${student.nis ?? ''}-${student.name}`} style={{ padding: 'var(--sp-4)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', background: 'var(--surface-2)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--sp-2)', alignItems: 'flex-start' }}>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{student.name}</div>
+                              <div style={{ marginTop: 3, fontSize: '0.75rem', color: 'var(--text-muted)' }}>{student.attendanceNo != null ? `No. absen ${student.attendanceNo}` : 'Peserta terdaftar'}</div>
+                            </div>
+                            <button className="btn btn-ghost btn-sm" type="button" aria-label={`Tambah satu kesempatan untuk ${student.name}`} title="Tambah 1 kesempatan" onClick={() => openAttemptDialog(studentDetails)}>+1</button>
+                          </div>
+                          <div style={{ marginTop: 'var(--sp-3)', display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                            <strong style={{ fontSize: '1.05rem', color: 'var(--primary)' }}>{attemptDetails.usedAttempts} / {attemptDetails.totalAttempts ?? '∞'}</strong>
+                            <span style={{ fontSize: '0.75rem', color: remainingAttempts == null ? 'var(--success)' : remainingAttempts > 0 ? 'var(--text-muted)' : 'var(--warning)' }}>
+                              {remainingAttempts == null ? 'Tidak terbatas' : `sisa ${remainingAttempts}`}
+                            </span>
+                          </div>
+                          {attemptDetails.extraAttempts > 0 && <div style={{ marginTop: 3, fontSize: '0.72rem', color: 'var(--success)' }}>+{attemptDetails.extraAttempts} tambahan dari guru</div>}
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            </>
           )}
 
           {/* Analytics */}
@@ -774,8 +862,8 @@ export default function ResultsPage() {
         footer={<><button className="btn btn-secondary" disabled={grantingAttempt} onClick={() => setAttemptTarget(null)}>Batal</button><button className="btn btn-primary" disabled={grantingAttempt} onClick={() => void grantExtraAttempt()}>{grantingAttempt ? 'Menambahkan...' : 'Tambah Kesempatan'}</button></>}
       >
         {attemptTarget && <div style={{ padding: '0 var(--sp-6) var(--sp-2)' }}>
-          <p style={{ margin: 0, color: 'var(--text-secondary)' }}>Saat ini peserta sudah memakai <strong>{attemptTarget.attemptNumber}</strong> percobaan pada submission ini.</p>
-          <p style={{ margin: 'var(--sp-3) 0 0', color: 'var(--text-secondary)' }}>Setelah ditambah, batas efektifnya menjadi <strong>{(selectedExam?.settings.maxAttempts ?? 1) + 1}</strong> atau lebih jika sebelumnya sudah pernah diberi tambahan.</p>
+          <p style={{ margin: 0, color: 'var(--text-secondary)' }}>Saat ini peserta sudah memakai <strong>{attemptTarget.usedAttempts}</strong> percobaan.</p>
+          <p style={{ margin: 'var(--sp-3) 0 0', color: 'var(--text-secondary)' }}>{selectedExam?.settings.maxAttempts === 0 ? 'Ujian ini tidak memiliki batas percobaan.' : <>Setelah ditambah, batas efektifnya menjadi <strong>{(selectedExam?.settings.maxAttempts ?? 1) + attemptTarget.extraAttempts + 1}</strong>.</>}</p>
         </div>}
       </Modal>
       <Modal open={!!detailSub} onClose={() => { void discardAiSuggestions(); setDetailSub(null); setGradingMode(false); setAnalysisFilter('ALL'); }}

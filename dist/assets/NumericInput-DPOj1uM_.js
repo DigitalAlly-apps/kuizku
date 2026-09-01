@@ -1,6 +1,0 @@
-import{c as D,r as p,j}from"./index-SC_QYEU9.js";/**
- * @license lucide-react v0.378.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */const k=D("Download",[["path",{d:"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4",key:"ih7n3h"}],["polyline",{points:"7 10 12 15 17 10",key:"2ggqvy"}],["line",{x1:"12",x2:"12",y1:"15",y2:"3",key:"1vk2je"}]]),b=e=>typeof e=="number"&&Number.isFinite(e)?String(e):"";function l({value:e,onValueChange:i,fallbackValue:m,integer:d=!1,min:n,max:f,step:N,onFocus:o,onBlur:c,...h}){const[u,s]=p.useState(()=>b(e)),a=p.useRef(!1);p.useEffect(()=>{a.current||s(b(e))},[e]);const x=r=>{a.current=!0,o==null||o(r)},v=r=>{a.current=!1;let t=u===""?m:Number(u);(typeof t!="number"||!Number.isFinite(t))&&(t=m),typeof t=="number"?(d&&(t=Math.trunc(t)),typeof n=="number"&&(t=Math.max(n,t)),typeof f=="number"&&(t=Math.min(f,t)),s(String(t)),i(t)):(s(""),i(void 0)),c==null||c(r)};return j.jsx("input",{...h,type:"number",min:n,max:f,step:N??(d?1:void 0),value:u,onFocus:x,onBlur:v,onChange:r=>{const t=r.target.value;if(s(t),t===""){i(void 0);return}const y=Number(t);Number.isFinite(y)&&i(y)}})}export{k as D,l as N};
