@@ -47,7 +47,7 @@ export default function ExamTakingPage() {
   const [submitPending, setSubmitPending] = useState(false);
   const [timeExpired, setTimeExpired] = useState(false);
   const [submittedData, setSubmittedData] = useState<ReturnType<typeof buildSubmission> | null>(null);
-  const [error] = useState('');
+  const [error, setError] = useState('');
   const submitRef = useRef(false);
 
   // ---- Anti-cheat ----
@@ -139,7 +139,10 @@ export default function ExamTakingPage() {
       // memakai ID yang sama. Retry aman/idempotent dan tidak menambah attempt.
       setSubmitPending(true);
     } else {
-      setLoadError(saveResult.error ?? 'Jawaban belum dapat disimpan. Silakan coba lagi.');
+      // Jangan alihkan ke error pemuatan: ujian dan jawaban yang sudah
+      // dikerjakan masih tersedia, sehingga siswa harus dapat mencoba kirim
+      // ulang tanpa kehilangan pekerjaannya.
+      setError(saveResult.error ?? 'Jawaban belum dapat disimpan. Silakan coba lagi.');
     }
   }, [session, exam]);
 
@@ -277,10 +280,7 @@ export default function ExamTakingPage() {
     if (sequential && idx > maxAvailableIdx) return;
     setCurrentIdx(idx);
     setSession(s => s ? updateCurrentIndex(s, idx) : s);
-    if (perQEnabled && questions[idx]?.timerSeconds) {
-      perQTimer.reset(questions[idx].timerSeconds!);
-    }
-  }, [perQEnabled, questions, sequential, maxAvailableIdx]);
+  }, [sequential, maxAvailableIdx]);
 
   const goPrev = () => goTo(Math.max(currentIdx - 1, 0));
   const goNextBtn = () => goNext();
@@ -310,9 +310,12 @@ export default function ExamTakingPage() {
 
   if (error) {
     return (
-      <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
-        <p style={{ color: 'var(--danger)' }}>{error}</p>
-        <button className="btn btn-secondary" onClick={() => navigate('/ujian')}>Kembali</button>
+      <div role="alert" aria-live="assertive" style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, padding: 'var(--sp-6)' }}>
+        <p style={{ color: 'var(--danger)', fontWeight: 600, textAlign: 'center' }}>{error}</p>
+        <div style={{ display: 'flex', gap: 'var(--sp-3)', flexWrap: 'wrap', justifyContent: 'center' }}>
+          <button className="btn btn-primary" onClick={() => { setError(''); void handleSubmit(); }}>Coba kirim lagi</button>
+          <button className="btn btn-secondary" onClick={() => setError('')}>Kembali ke ujian</button>
+        </div>
       </div>
     );
   }

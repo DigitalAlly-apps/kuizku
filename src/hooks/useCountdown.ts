@@ -12,6 +12,7 @@ interface TimerOptions {
 export function useCountdown({ initialSeconds, onExpire, autoStart = true }: TimerOptions) {
   const [remaining, setRemaining] = useState(initialSeconds);
   const [running, setRunning] = useState(false);
+  const [scheduleVersion, setScheduleVersion] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const deadlineRef = useRef<number | null>(null);
   const expiredRef = useRef(false);
@@ -20,11 +21,26 @@ export function useCountdown({ initialSeconds, onExpire, autoStart = true }: Tim
 
   // Start saat autoStart true dan initialSeconds > 0
   useEffect(() => {
-    if (!autoStart) return;
+    if (!autoStart) {
+      // Saat ujian dikumpulkan atau timer dinonaktifkan, pastikan interval
+      // yang aktif berhenti. Tanpa ini timer per-soal masih dapat berjalan
+      // dan memanggil onExpire setelah submit berhasil.
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      setRunning(false);
+      deadlineRef.current = null;
+      return;
+    }
+
     const seconds = Math.max(0, Math.floor(initialSeconds));
     expiredRef.current = false;
     setRemaining(seconds);
     deadlineRef.current = Date.now() + seconds * 1000;
+    // Memaksa efek interval membuat jadwal baru jika timer diaktifkan lagi
+    // dengan status `running` yang masih true.
+    setScheduleVersion(version => version + 1);
     if (seconds > 0) setRunning(true);
     else {
       setRunning(false);
@@ -43,15 +59,15 @@ export function useCountdown({ initialSeconds, onExpire, autoStart = true }: Tim
   }, []);
 
   const reset = useCallback((seconds: number) => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
     expiredRef.current = false;
     const normalized = Math.max(0, Math.floor(seconds));
     setRemaining(normalized);
     deadlineRef.current = Date.now() + normalized * 1000;
     setRunning(normalized > 0);
+    // `running` bisa sudah true saat murid berpindah soal. Versi jadwal
+    // memastikan efek interval dibersihkan dan dimulai lagi untuk deadline
+    // yang baru, bukan berhenti setelah interval sebelumnya dibersihkan.
+    setScheduleVersion(version => version + 1);
     if (normalized === 0) {
       expiredRef.current = true;
       setTimeout(() => onExpireRef.current(), 0);
@@ -85,7 +101,7 @@ export function useCountdown({ initialSeconds, onExpire, autoStart = true }: Tim
         intervalRef.current = null;
       }
     };
-  }, [running]);
+  }, [running, scheduleVersion]);
 
   const urgency = remaining <= 30 ? 'critical' : remaining <= 120 ? 'warning' : 'normal';
 
