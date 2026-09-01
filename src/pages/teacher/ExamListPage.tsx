@@ -81,6 +81,8 @@ export default function ExamListPage() {
   const [editStudents, setEditStudents] = useState('');
   const [editAccessMode, setEditAccessMode] = useState<'OPEN' | 'LIST'>('OPEN');
   const [editSaving, setEditSaving] = useState(false);
+  const [selectedRosterLines, setSelectedRosterLines] = useState<Set<number>>(new Set());
+  const [rosterDeleteMode, setRosterDeleteMode] = useState<'selected' | 'all' | null>(null);
 
   useEffect(() => {
     if (!openMenuId) return;
@@ -155,7 +157,27 @@ export default function ExamListPage() {
     setEditTo(isoToLocalDateTimeInput(exam.activeTo));
     setEditStudents((exam.preloadedStudents || []).map(s => s.name).join('\n'));
     setEditAccessMode((exam.preloadedStudents || []).length > 0 ? 'LIST' : 'OPEN');
+    setSelectedRosterLines(new Set());
+    setRosterDeleteMode(null);
     setOpenMenuId(null);
+  };
+
+  const rosterLines = editStudents.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  const toggleRosterLine = (index: number) => {
+    setSelectedRosterLines(current => {
+      const next = new Set(current);
+      next.has(index) ? next.delete(index) : next.add(index);
+      return next;
+    });
+  };
+  const deleteRosterLines = () => {
+    if (rosterDeleteMode === 'all') {
+      setEditStudents('');
+    } else if (rosterDeleteMode === 'selected') {
+      setEditStudents(rosterLines.filter((_, index) => !selectedRosterLines.has(index)).join('\n'));
+    }
+    setSelectedRosterLines(new Set());
+    setRosterDeleteMode(null);
   };
 
   const handleSaveEdit = async () => {
@@ -564,7 +586,7 @@ export default function ExamListPage() {
       <Modal open={!!editExam} onClose={() => setEditExam(null)} title={`Edit — ${editExam?.title ?? ''}`} size="lg"
         footer={
           <>
-            <button className="btn btn-secondary" onClick={() => setEditExam(null)}><X size={15} /> Batal</button>
+            <button className="btn btn-secondary" onClick={() => { setEditExam(null); setSelectedRosterLines(new Set()); }}><X size={15} /> Batal</button>
             <button className="btn btn-primary" onClick={handleSaveEdit} disabled={editSaving}>
               {editSaving ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> Menyimpan...</> : <><Save size={15} /> Simpan</>}
             </button>
@@ -642,8 +664,28 @@ export default function ExamListPage() {
               {editAccessMode === 'LIST' && <>
                 <textarea className="form-textarea" rows={4} style={{ marginTop: 'var(--sp-3)' }}
                   placeholder={'Satu nama per baris. Nomor absen dibuat otomatis sesuai urutan.'}
-                  value={editStudents} onChange={e => setEditStudents(e.target.value)} />
+                  value={editStudents} onChange={e => { setEditStudents(e.target.value); setSelectedRosterLines(new Set()); }} />
                 <span className="form-hint">Bisa paste satu kolom nama dari Excel. Nomor absen mengikuti urutan baris.</span>
+                {rosterLines.length > 0 && <div style={{ marginTop: 'var(--sp-4)', paddingTop: 'var(--sp-3)', borderTop: '1px solid var(--border)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--sp-3)', alignItems: 'center', marginBottom: 'var(--sp-2)', flexWrap: 'wrap' }}>
+                    <strong style={{ fontSize: '0.82rem' }}>Hapus peserta</strong>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <button type="button" className="btn btn-ghost btn-sm" disabled={selectedRosterLines.size === 0} onClick={() => setRosterDeleteMode('selected')}>
+                        <Trash2 size={13} /> Hapus {selectedRosterLines.size || ''} dipilih
+                      </button>
+                      <button type="button" className="btn btn-danger btn-sm" onClick={() => setRosterDeleteMode('all')}>
+                        <Trash2 size={13} /> Hapus semua peserta
+                      </button>
+                    </div>
+                  </div>
+                  <div style={{ maxHeight: 154, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2, padding: 2, border: '1px solid var(--border)', borderRadius: 'var(--r-md)', background: 'var(--surface-2)' }}>
+                    {rosterLines.map((name, index) => <label key={`${name}-${index}`} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 9px', cursor: 'pointer', borderRadius: 'var(--r-sm)', background: selectedRosterLines.has(index) ? 'var(--danger-light)' : 'transparent' }}>
+                      <input type="checkbox" checked={selectedRosterLines.has(index)} onChange={() => toggleRosterLine(index)} aria-label={`Pilih ${name}`} />
+                      <span style={{ fontSize: '0.82rem', flex: 1 }}>{index + 1}. {name}</span>
+                    </label>)}
+                  </div>
+                  <span className="form-hint">Hapus semua akan mengosongkan roster. Pilih “Terbuka untuk semua” bila ujian tetap ingin dapat diakses tanpa daftar nama.</span>
+                </div>}
               </>}
             </div>
           </div>
@@ -695,6 +737,10 @@ export default function ExamListPage() {
       <ConfirmDialog open={!!deleteId} title="Hapus Ujian?"
         message="Semua data ujian ini akan dihapus permanen. Tindakan ini tidak bisa dibatalkan."
         confirmLabel="Hapus" danger onConfirm={handleDelete} onCancel={() => setDeleteId(null)} />
+      <ConfirmDialog open={rosterDeleteMode !== null}
+        title={rosterDeleteMode === 'all' ? 'Hapus semua peserta?' : `Hapus ${selectedRosterLines.size} peserta?`}
+        message={rosterDeleteMode === 'all' ? 'Seluruh nama akan dihapus dari daftar roster di modal ini. Klik Simpan untuk menerapkan perubahan.' : 'Nama yang dipilih akan dihapus dari daftar roster di modal ini. Klik Simpan untuk menerapkan perubahan.'}
+        confirmLabel="Hapus dari daftar" danger onConfirm={deleteRosterLines} onCancel={() => setRosterDeleteMode(null)} />
     </div>
   );
 }
