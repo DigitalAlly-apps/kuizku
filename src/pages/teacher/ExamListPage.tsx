@@ -5,6 +5,7 @@ import { useApp, useToast } from '../../context/AppContext';
 import { FormatBadge, ExamTypeBadge, EmptyState, ConfirmDialog, Modal } from '../../components/ui';
 import DateTime24Input from '../../components/ui/DateTime24Input';
 import { formatDateTime, formatRelative, isoToLocalDateTimeInput } from '../../utils/helpers';
+import { matchRosterToCompletedSubmissions } from '../../utils/participantAttendance';
 import type { Exam, ExamType } from '../../types';
 import { usePersonalExam } from '../../features/personal-exam/PersonalExamContext';
 import { PersonalDataModal } from '../../features/personal-exam/PersonalDataModal';
@@ -162,9 +163,25 @@ export default function ExamListPage() {
     if (!editTitle.trim()) { addToast({ type: 'error', title: 'Judul tidak boleh kosong' }); return; }
     setEditSaving(true);
     // Parse daftar peserta dari textarea
+    const existingByName = new Map<string, typeof editExam.preloadedStudents>();
+    const submittedParticipantIds = new Set(
+      submissions
+        .filter(submission => submission.examId === editExam.id && submission.isComplete && !submission.isReturned)
+        .map(submission => submission.participantId)
+        .filter((participantId): participantId is string => !!participantId),
+    );
+    editExam.preloadedStudents.forEach(student => {
+      const key = student.name.trim().toLocaleLowerCase('id-ID').replace(/\s+/g, ' ');
+      const matches = [...(existingByName.get(key) ?? []), student]
+        .sort((a, b) => Number(submittedParticipantIds.has(b.participantId ?? '')) - Number(submittedParticipantIds.has(a.participantId ?? '')));
+      existingByName.set(key, matches);
+    });
     const parsedStudents = editStudents.split(/\r?\n/).map(line => line.trim()).filter(Boolean).map((line, index) => {
       const [nameRaw] = line.split(/[,;\t]/).map(p => p.trim());
-      return { name: nameRaw || '', nis: String(index + 1), attendanceNo: index + 1 };
+      const name = nameRaw || '';
+      const key = name.toLocaleLowerCase('id-ID').replace(/\s+/g, ' ');
+      const existing = existingByName.get(key)?.shift();
+      return { name, participantId: existing?.participantId, nis: existing?.nis ?? String(index + 1), attendanceNo: index + 1 };
     }).filter(s => s.name);
     if (editAccessMode === 'LIST' && parsedStudents.length === 0) {
       addToast({ type: 'error', title: 'Daftar peserta masih kosong', message: 'Tambahkan peserta atau pilih akses terbuka.' });
@@ -299,7 +316,7 @@ export default function ExamListPage() {
   const ExamCard = ({ exam }: { exam: Exam }) => {
     const examSubs = submissions.filter(s => s.examId === exam.id && s.isComplete);
     const preloadedCount = exam.preloadedStudents?.length ?? 0;
-    const submittedCount = examSubs.length;
+    const submittedCount = matchRosterToCompletedSubmissions(exam.preloadedStudents, examSubs).filter(Boolean).length;
     const notSubmitted = preloadedCount > 0 ? preloadedCount - submittedCount : null;
     const availability = getAvailability(exam);
     const isDraftPastStart = availability === 'DRAFT' && !!exam.activeFrom && new Date(exam.activeFrom).getTime() < Date.now();
@@ -333,12 +350,11 @@ export default function ExamListPage() {
             <button className="btn btn-ghost btn-sm btn-icon" title="Edit" onClick={e => { e.stopPropagation(); openEdit(exam); }}>
               <Edit2 size={14} />
             </button>
-            {exam.status !== 'ARCHIVED' && (
-              <div
-                ref={openMenuId === exam.id ? activeMenuRef : undefined}
-                style={{ position: 'relative' }}
-                onClick={e => e.stopPropagation()}
-              >
+            <div
+              ref={openMenuId === exam.id ? activeMenuRef : undefined}
+              style={{ position: 'relative' }}
+              onClick={e => e.stopPropagation()}
+            >
                 <button
                   className="btn btn-ghost btn-sm btn-icon"
                   aria-label="Buka menu aksi ujian"
@@ -371,22 +387,24 @@ export default function ExamListPage() {
                     <button style={menuItemStyle} onClick={() => { navigate(`/guru/ujian/${exam.id}/preview`); setOpenMenuId(null); }}>
                       <FileText size={14} style={{ color: 'var(--secondary)' }} /> Preview
                     </button>
-                    <button style={menuItemStyle} onClick={() => { copyLink(exam.code); setOpenMenuId(null); }}>
-                      <Copy size={14} /> Salin Link
-                    </button>
-                    <button style={menuItemStyle} onClick={() => shareWhatsApp(exam.code, exam.title)}>
-                      <Share2 size={14} style={{ color: '#25D366' }} /> Share WhatsApp
-                    </button>
-                    <button style={menuItemStyle} onClick={() => { setQrExam({ code: exam.code, title: exam.title }); setOpenMenuId(null); }}>
-                      <QrCode size={14} style={{ color: 'var(--secondary)' }} /> QR Code
-                    </button>
+                    {exam.status !== 'ARCHIVED' && <>
+                      <button style={menuItemStyle} onClick={() => { copyLink(exam.code); setOpenMenuId(null); }}>
+                        <Copy size={14} /> Salin Link
+                      </button>
+                      <button style={menuItemStyle} onClick={() => shareWhatsApp(exam.code, exam.title)}>
+                        <Share2 size={14} style={{ color: '#25D366' }} /> Share WhatsApp
+                      </button>
+                      <button style={menuItemStyle} onClick={() => { setQrExam({ code: exam.code, title: exam.title }); setOpenMenuId(null); }}>
+                        <QrCode size={14} style={{ color: 'var(--secondary)' }} /> QR Code
+                      </button>
+                    </>}
                     <button style={menuItemStyle} onClick={() => handleDuplicate(exam.id)}>
                       <FileText size={14} /> Duplikasi
                     </button>
                     <button style={menuItemStyle} onClick={() => openCopyToBank(exam)}>
                       <Copy size={14} /> Simpan soal ke Bank Soal
                     </button>
-                    {exam.status !== 'DRAFT' && (
+                    {exam.status !== 'DRAFT' && exam.status !== 'ARCHIVED' && (
                       <button style={menuItemStyle} onClick={() => handleArchive(exam.id)}>
                         <Archive size={14} /> Arsipkan
                       </button>
@@ -397,8 +415,7 @@ export default function ExamListPage() {
                     </button>
                   </div>
                 )}
-              </div>
-            )}
+            </div>
           </div>
         </div>
 

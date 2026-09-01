@@ -4,6 +4,7 @@ import { Plus, FileText, BookOpen, Users, TrendingUp, Clock, CheckCircle, Messag
 import { useApp } from '../../context/AppContext';
 import { StatCard, FormatBadge, StatusBadge, ExamTypeBadge, EmptyState, SectionHeader } from '../../components/ui';
 import { formatRelative } from '../../utils/helpers';
+import { matchRosterToCompletedSubmissions } from '../../utils/participantAttendance';
 
 export default function DashboardPage() {
   const { currentTeacher, exams, submissions } = useApp();
@@ -46,7 +47,10 @@ export default function DashboardPage() {
       const preloaded = exam.preloadedStudents?.length ?? 0;
       const isExpired = exam.activeTo && new Date(exam.activeTo).getTime() < now;
       if (!preloaded || exam.status !== 'ACTIVE' || isExpired) return sum;
-      const submitted = submissions.filter(s => s.examId === exam.id && s.isComplete).length;
+      const submitted = matchRosterToCompletedSubmissions(
+        exam.preloadedStudents,
+        submissions.filter(submission => submission.examId === exam.id),
+      ).filter(Boolean).length;
       return sum + Math.max(0, preloaded - submitted);
     }, 0);
     return { activeSubmissions: activeSubmissions.length, essayPending, notSubmitted };
