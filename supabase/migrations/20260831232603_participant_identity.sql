@@ -131,7 +131,7 @@ begin
   select * into v_draft from public.submissions where exam_id = v_exam.id and participant_id = v_participant.id and not is_complete order by attempt_number desc, started_at desc limit 1;
   select count(*) into v_completed from public.submissions where exam_id = v_exam.id and participant_id = v_participant.id and is_complete and not is_returned;
   v_max := coalesce((v_exam.settings ->> 'maxAttempts')::integer, 1);
-  if found then return jsonb_build_object('allowed', true, 'participant_id', v_participant.id, 'attempt_count', v_completed, 'next_attempt_number', v_draft.attempt_number, 'resume_submission_id', v_draft.id, 'resume_started_at', v_draft.started_at, 'resume', true); end if;
+  if v_draft.id is not null then return jsonb_build_object('allowed', true, 'participant_id', v_participant.id, 'attempt_count', v_completed, 'next_attempt_number', v_draft.attempt_number, 'resume_submission_id', v_draft.id, 'resume_started_at', v_draft.started_at, 'resume', true); end if;
   if v_max > 0 and v_completed >= v_max then return jsonb_build_object('allowed', false, 'reason', 'MAX_ATTEMPTS'); end if;
   select coalesce(max(attempt_number), 0) + 1 into v_next from public.submissions where exam_id = v_exam.id and participant_id = v_participant.id;
   return jsonb_build_object('allowed', true, 'participant_id', v_participant.id, 'attempt_count', v_completed, 'next_attempt_number', v_next, 'resume', false);
