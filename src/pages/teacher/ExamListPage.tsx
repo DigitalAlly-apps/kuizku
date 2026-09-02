@@ -315,6 +315,24 @@ export default function ExamListPage() {
     setOpenMenuId(null);
   };
 
+  const handleReopen = async (id: string) => {
+    const exam = exams.find(item => item.id === id);
+    if (!exam) return;
+    const error = getPublishError(exam);
+    if (error) {
+      addToast({ type: 'error', title: 'Ujian belum dapat dibuka kembali', message: error });
+      setOpenMenuId(null);
+      return;
+    }
+    const res = await publishExam(id);
+    if (res?.error) {
+      addToast({ type: 'error', title: 'Gagal membuka kembali ujian', message: res.error });
+    } else {
+      addToast({ type: 'success', title: 'Ujian dibuka kembali', message: 'Murid dapat mengerjakan lagi sampai deadline.' });
+    }
+    setOpenMenuId(null);
+  };
+
   const handleArchive = async (id: string) => {
     const res = await archiveExam(id);
     if (res?.error) {
@@ -342,6 +360,7 @@ export default function ExamListPage() {
     const submittedCount = matchRosterToCompletedSubmissions(exam.preloadedStudents, examSubs).filter(Boolean).length;
     const notSubmitted = preloadedCount > 0 ? preloadedCount - submittedCount : null;
     const availability = getAvailability(exam);
+    const canReopen = exam.status === 'ENDED' && (!exam.activeTo || new Date(exam.activeTo).getTime() > Date.now());
     const isDraftPastStart = availability === 'DRAFT' && !!exam.activeFrom && new Date(exam.activeFrom).getTime() < Date.now();
     const availabilityStyle: Record<ExamAvailability, { label: string; color: string; bg: string }> = {
       DRAFT: { label: 'DRAFT', color: 'var(--text-muted)', bg: 'var(--surface-2)' },
@@ -399,6 +418,11 @@ export default function ExamListPage() {
                     {exam.status === 'ACTIVE' && (
                       <button style={menuItemStyle} onClick={() => handleEnd(exam.id)}>
                         <Archive size={14} /> Tutup Ujian
+                      </button>
+                    )}
+                    {canReopen && (
+                      <button style={menuItemStyle} onClick={() => handleReopen(exam.id)}>
+                        <Play size={14} style={{ color: 'var(--success)' }} /> Buka Kembali
                       </button>
                     )}
                     <button style={menuItemStyle} onClick={() => { navigate(`/guru/hasil?exam=${exam.id}`); setOpenMenuId(null); }}>
@@ -469,7 +493,10 @@ export default function ExamListPage() {
           {availability === 'DRAFT' && <button className="btn btn-primary btn-sm" onClick={() => handlePublish(exam.id)}><Play size={14} /> {isDraftPastStart ? 'Publikasikan Sekarang' : 'Publikasikan'}</button>}
           {availability === 'ACTIVE' && <><button className="btn btn-primary btn-sm" onClick={() => navigate(`/guru/ujian/${exam.id}`)}>Buka Ujian</button><button className="btn btn-secondary btn-sm" onClick={() => shareWhatsApp(exam)}><Share2 size={14} /> Bagikan</button></>}
           {availability === 'UPCOMING' && <button className="btn btn-secondary btn-sm" onClick={() => copyLink(exam.code)}><Share2 size={14} /> Bagikan</button>}
-          {availability === 'FINISHED' && <button className="btn btn-primary btn-sm" onClick={() => navigate(`/guru/hasil?exam=${exam.id}`)}><BarChart2 size={14} /> Lihat Hasil</button>}
+          {availability === 'FINISHED' && <>
+            {canReopen && <button className="btn btn-primary btn-sm" onClick={() => handleReopen(exam.id)}><Play size={14} /> Buka Kembali</button>}
+            <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/guru/hasil?exam=${exam.id}`)}><BarChart2 size={14} /> Lihat Hasil</button>
+          </>}
         </div>
       </div>
     );
