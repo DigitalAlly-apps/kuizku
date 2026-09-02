@@ -80,8 +80,8 @@ export default function ExamWorkspacePage() {
       subject: next.subject.trim(),
       className: next.className,
       examType: next.examType,
-      activeFrom: next.activeFrom,
-      activeTo: next.activeTo,
+      activeFrom: next.activeFrom || undefined,
+      activeTo: next.activeTo || undefined,
       settings: next.settings,
       preloadedStudents: next.preloadedStudents,
     });
@@ -136,8 +136,8 @@ export default function ExamWorkspacePage() {
               subject: exam.subject,
               className: exam.className,
               examType: exam.examType,
-              activeFrom: exam.activeFrom,
-              activeTo: exam.activeTo,
+              activeFrom: exam.activeFrom ?? '',
+              activeTo: exam.activeTo ?? '',
               settings: exam.settings,
               preloadedStudents: exam.preloadedStudents,
             }}
