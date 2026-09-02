@@ -492,6 +492,19 @@ export default function ResultsPage() {
     }
   };
 
+  const copyPendingRoster = async () => {
+    if (!selectedExam || !pendingRosterParticipants.length) return;
+    const names = pendingRosterParticipants.map(({ student }, index) => `${String(student.attendanceNo ?? index + 1).padStart(2, '0')}. ${student.name}`);
+    const message = `📢 Pengingat — ${selectedExam.title}\n\nBerikut murid yang belum mengumpulkan:\n${names.join('\n')}\n\nMohon segera mengerjakan dan mengumpulkan ujian.`;
+    try {
+      await copyTextToClipboard(message);
+      addToast({ type: 'success', title: 'Daftar siap dikirim', message: `${names.length} nama sudah disalin untuk dikirim ke grup.` });
+    } catch (error) {
+      console.error('Gagal menyalin daftar peserta:', error);
+      addToast({ type: 'error', title: 'Daftar gagal disalin', message: 'Izinkan akses clipboard, lalu coba lagi.' });
+    }
+  };
+
   // Question analytics
   const questionAnalytics = useMemo(() => {
     if (!selectedExam) return [];
@@ -724,7 +737,7 @@ export default function ResultsPage() {
 
           {selectedExam.preloadedStudents.length > 0 && (
             <>
-              <SectionHeader title="Belum Mengerjakan" subtitle={`${pendingRosterParticipants.length} dari ${selectedExam.preloadedStudents.length} murid belum mengumpulkan`} />
+              <SectionHeader title="Belum Mengerjakan" subtitle={`${pendingRosterParticipants.length} dari ${selectedExam.preloadedStudents.length} murid belum mengumpulkan`} action={pendingRosterParticipants.length > 0 ? <button className="btn btn-secondary btn-sm" type="button" onClick={() => void copyPendingRoster()}><Copy size={14} /> Salin untuk grup</button> : undefined} />
               <div className="card" style={{ marginBottom: 'var(--sp-8)' }}>
                 {pendingRosterParticipants.length === 0 ? <EmptyState icon={<CheckCircle2 size={40} />} title="Semua murid sudah mengumpulkan" description="Tidak ada peserta roster yang perlu dipantau." /> : <div className="roster-pending-list">{pendingRosterParticipants.map(({ student, draftSubmission }, index) => <div className="roster-pending-row" key={student.participantId ?? student.nis ?? `${student.name}-${index}`}><strong className="roster-pending-number">{String(student.attendanceNo ?? index + 1).padStart(2, '0')}</strong><span className="roster-pending-name">{student.name}</span><span className={`roster-pending-status ${draftSubmission ? 'is-draft' : ''}`}>{draftSubmission ? 'Sedang mengerjakan' : 'Belum mulai'}</span></div>)}</div>}
               </div>

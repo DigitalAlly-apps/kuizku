@@ -6,6 +6,7 @@ import { EmptyState, Modal, SectionHeader, StatusBadge } from '../../components/
 import { calcMaxMCScore, calcMaxEssayScore, formatDateTime } from '../../utils/helpers';
 import { getRosterAttendance } from '../../utils/participantAttendance';
 import { storage } from '../../utils/storage';
+import { buildExamWhatsAppMessage } from '../../utils/examShare';
 import Step1Setup from './wizard/Step1Setup';
 import type { Submission } from '../../types';
 
@@ -93,9 +94,9 @@ export default function ExamWorkspacePage() {
     await navigator.clipboard.writeText(exam.code);
     addToast({ type: 'success', title: 'Kode ujian disalin' });
   };
-  const copyLink = async () => {
-    await navigator.clipboard.writeText(`${window.location.origin}/ujian/${exam.code}`);
-    addToast({ type: 'success', title: 'Link ujian disalin' });
+  const shareWhatsApp = () => {
+    const url = `${window.location.origin}/ujian/${exam.code}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(buildExamWhatsAppMessage(exam, url))}`, '_blank');
   };
   const maxAttempts = attemptOverride ?? exam.settings.maxAttempts ?? 1;
   const saveAttemptLimit = async () => {
@@ -151,7 +152,7 @@ export default function ExamWorkspacePage() {
         </div>
         <div className="exam-workspace-actions">
           <button className="btn btn-secondary" onClick={() => void copyCode()}><Copy size={15} /> Salin Kode</button>
-          {exam.status === 'ACTIVE' && <button className="btn btn-primary" onClick={() => void copyLink()}><Users size={15} /> Bagikan</button>}
+          {exam.status === 'ACTIVE' && <button className="btn btn-primary" onClick={shareWhatsApp}><Users size={15} /> Bagikan WhatsApp</button>}
           <button className="btn btn-ghost" onClick={() => navigate(`/guru/ujian/${exam.id}/preview`)}><Eye size={15} /> Preview</button>
         </div>
       </div>

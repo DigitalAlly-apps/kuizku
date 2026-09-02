@@ -6,6 +6,7 @@ import { FormatBadge, ExamTypeBadge, EmptyState, ConfirmDialog, Modal } from '..
 import DateTime24Input from '../../components/ui/DateTime24Input';
 import { formatDateTime, formatRelative, isoToLocalDateTimeInput } from '../../utils/helpers';
 import { matchRosterToCompletedSubmissions } from '../../utils/participantAttendance';
+import { buildExamWhatsAppMessage } from '../../utils/examShare';
 import type { Exam, ExamType } from '../../types';
 import { usePersonalExam } from '../../features/personal-exam/PersonalExamContext';
 import { PersonalDataModal } from '../../features/personal-exam/PersonalDataModal';
@@ -64,7 +65,7 @@ export default function ExamListPage() {
   const activeMenuRef = useRef<HTMLDivElement | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [groupBy, setGroupBy] = useState<'kelas' | 'mapel' | 'tipe' | 'none'>('kelas');
-  const [qrExam, setQrExam] = useState<{ code: string; title: string } | null>(null);
+  const [qrExam, setQrExam] = useState<Exam | null>(null);
   const [copyExam, setCopyExam] = useState<Exam | null>(null);
   const [copyCollectionId, setCopyCollectionId] = useState('');
   const [copyingToBank, setCopyingToBank] = useState(false);
@@ -241,9 +242,9 @@ export default function ExamListPage() {
     addToast({ type: 'success', title: 'Link disalin!', message: url });
   };
 
-  const shareWhatsApp = (code: string, title: string) => {
-    const url = `${window.location.origin}/ujian/${code}`;
-    const text = encodeURIComponent(`📝 *${title}*\n\nKode: *${code}*\nLink: ${url}`);
+  const shareWhatsApp = (exam: Exam) => {
+    const url = `${window.location.origin}/ujian/${exam.code}`;
+    const text = encodeURIComponent(buildExamWhatsAppMessage(exam, url));
     window.open(`https://wa.me/?text=${text}`, '_blank');
     setOpenMenuId(null);
   };
@@ -413,10 +414,10 @@ export default function ExamListPage() {
                       <button style={menuItemStyle} onClick={() => { copyLink(exam.code); setOpenMenuId(null); }}>
                         <Copy size={14} /> Salin Link
                       </button>
-                      <button style={menuItemStyle} onClick={() => shareWhatsApp(exam.code, exam.title)}>
+                      <button style={menuItemStyle} onClick={() => shareWhatsApp(exam)}>
                         <Share2 size={14} style={{ color: '#25D366' }} /> Share WhatsApp
                       </button>
-                      <button style={menuItemStyle} onClick={() => { setQrExam({ code: exam.code, title: exam.title }); setOpenMenuId(null); }}>
+                      <button style={menuItemStyle} onClick={() => { setQrExam(exam); setOpenMenuId(null); }}>
                         <QrCode size={14} style={{ color: 'var(--secondary)' }} /> QR Code
                       </button>
                     </>}
@@ -466,7 +467,7 @@ export default function ExamListPage() {
         {isDraftPastStart && <div style={{ marginTop: 8, fontSize: '0.8rem', color: 'var(--warning)', fontWeight: 600 }}>Jadwal mulai sudah lewat. Ujian tetap belum dapat diakses karena belum dipublikasikan.</div>}
         <div style={{ display: 'flex', gap: 8, marginTop: 'var(--sp-3)', flexWrap: 'wrap' }} onClick={event => event.stopPropagation()}>
           {availability === 'DRAFT' && <button className="btn btn-primary btn-sm" onClick={() => handlePublish(exam.id)}><Play size={14} /> {isDraftPastStart ? 'Publikasikan Sekarang' : 'Publikasikan'}</button>}
-          {availability === 'ACTIVE' && <><button className="btn btn-primary btn-sm" onClick={() => navigate(`/guru/ujian/${exam.id}`)}>Buka Ujian</button><button className="btn btn-secondary btn-sm" onClick={() => shareWhatsApp(exam.code, exam.title)}><Share2 size={14} /> Bagikan</button></>}
+          {availability === 'ACTIVE' && <><button className="btn btn-primary btn-sm" onClick={() => navigate(`/guru/ujian/${exam.id}`)}>Buka Ujian</button><button className="btn btn-secondary btn-sm" onClick={() => shareWhatsApp(exam)}><Share2 size={14} /> Bagikan</button></>}
           {availability === 'UPCOMING' && <button className="btn btn-secondary btn-sm" onClick={() => copyLink(exam.code)}><Share2 size={14} /> Bagikan</button>}
           {availability === 'FINISHED' && <button className="btn btn-primary btn-sm" onClick={() => navigate(`/guru/hasil?exam=${exam.id}`)}><BarChart2 size={14} /> Lihat Hasil</button>}
         </div>
@@ -725,7 +726,7 @@ export default function ExamListPage() {
                 <button className="btn btn-secondary btn-sm" onClick={() => copyLink(qrExam.code)}>
                   <Copy size={13} /> Salin Link
                 </button>
-                <button className="btn btn-secondary btn-sm" onClick={() => shareWhatsApp(qrExam.code, qrExam.title)} style={{ color: '#25D366' }}>
+                <button className="btn btn-secondary btn-sm" onClick={() => shareWhatsApp(qrExam)} style={{ color: '#25D366' }}>
                   <Share2 size={13} /> Share WA
                 </button>
               </div>
