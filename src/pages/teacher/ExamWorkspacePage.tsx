@@ -5,6 +5,7 @@ import { useApp, useToast } from '../../context/AppContext';
 import { EmptyState, SectionHeader, StatusBadge } from '../../components/ui';
 import { calcMaxMCScore, calcMaxEssayScore, formatDateTime } from '../../utils/helpers';
 import { matchRosterToCompletedSubmissions } from '../../utils/participantAttendance';
+import Step1Setup from './wizard/Step1Setup';
 import type { Submission } from '../../types';
 
 type WorkspaceTab = 'ringkasan' | 'soal' | 'peserta' | 'hasil' | 'pengaturan';
@@ -34,6 +35,7 @@ export default function ExamWorkspacePage() {
   const finalCount = examSubmissions.filter(item => essayStatus(item, essayCount) === 'FINAL' || essayStatus(item, essayCount) === 'NONE').length;
   const [attemptOverride, setAttemptOverride] = useState<number | null>(null);
   const [savingAttempts, setSavingAttempts] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
 
   if (!exam) {
     return <div className="page-content"><EmptyState icon={<ClipboardList size={48} />} title="Ujian tidak ditemukan" description="Ujian mungkin sudah dihapus atau tidak dapat dimuat." /></div>;
@@ -59,6 +61,37 @@ export default function ExamWorkspacePage() {
     }
     setAttemptOverride(null);
     addToast({ type: 'success', title: 'Batas percobaan diperbarui', message: maxAttempts === 0 ? 'Murid sekarang boleh mengerjakan tanpa batas percobaan.' : `Maksimal ${maxAttempts} percobaan per murid.` });
+  };
+  const saveFullSettings = async (next: {
+    title: string;
+    description: string;
+    subject: string;
+    className?: string;
+    activeFrom: string;
+    activeTo: string;
+    settings: typeof exam.settings;
+    examType: typeof exam.examType;
+    preloadedStudents: typeof exam.preloadedStudents;
+  }) => {
+    setSavingSettings(true);
+    const result = await updateExam(exam.id, {
+      title: next.title.trim(),
+      description: next.description,
+      subject: next.subject.trim(),
+      className: next.className,
+      examType: next.examType,
+      activeFrom: next.activeFrom,
+      activeTo: next.activeTo,
+      settings: next.settings,
+      preloadedStudents: next.preloadedStudents,
+    });
+    setSavingSettings(false);
+    if (result.error) {
+      addToast({ type: 'error', title: 'Pengaturan belum tersimpan', message: result.error });
+      return;
+    }
+    setAttemptOverride(null);
+    addToast({ type: 'success', title: 'Pengaturan ujian diperbarui', message: 'Judul, jadwal, peserta, dan pengaturan pengerjaan sudah disimpan.' });
   };
 
   return (
@@ -90,9 +123,32 @@ export default function ExamWorkspacePage() {
       {tab === 'hasil' && <ResultsTab exam={exam} submissions={examSubmissions} essayCount={essayCount} onGrade={() => navigate(`/guru/hasil?exam=${exam.id}`)} />}
       {tab === 'pengaturan' && (
         <section className="card">
-          <SectionHeader title="Pengaturan pengerjaan" subtitle="Pengaturan ini boleh diubah meskipun ujian sedang aktif." />
-          <AttemptLimitControl currentValue={exam.settings.maxAttempts ?? 1} value={maxAttempts} saving={savingAttempts} onChange={setAttemptOverride} onSave={saveAttemptLimit} />
-          <div style={{ marginTop: 'var(--sp-4)' }}><button className="btn btn-secondary" onClick={() => navigate(`/guru/ujian/${exam.id}/edit-soal`)}>Edit Soal</button></div>
+          {examSubmissions.length > 0 && (
+            <div className="alert alert-warning" style={{ marginBottom: 'var(--sp-5)' }}>
+              Ujian ini sudah memiliki jawaban masuk. Perubahan jadwal, timer, peserta, atau aturan pengerjaan akan berlaku untuk akses berikutnya. Jawaban yang sudah terkumpul tidak dihapus.
+            </div>
+          )}
+          <Step1Setup
+            key={`${exam.id}-${exam.updatedAt}`}
+            initial={{
+              title: exam.title,
+              description: exam.description,
+              subject: exam.subject,
+              className: exam.className,
+              examType: exam.examType,
+              activeFrom: exam.activeFrom,
+              activeTo: exam.activeTo,
+              settings: exam.settings,
+              preloadedStudents: exam.preloadedStudents,
+            }}
+            onNext={data => void saveFullSettings(data)}
+            submitLabel={savingSettings ? 'Menyimpan...' : 'Simpan Perubahan'}
+            heading="Edit Pengaturan Ujian"
+            intro="Ubah judul, jadwal, peserta, timer, percobaan, penilaian, hasil, dan keamanan tanpa membuat ujian baru."
+          />
+          <div style={{ marginTop: 'var(--sp-5)', paddingTop: 'var(--sp-5)', borderTop: '1px solid var(--border)' }}>
+            <button className="btn btn-secondary" onClick={() => navigate(`/guru/ujian/${exam.id}/edit-soal`)}>Edit Soal</button>
+          </div>
         </section>
       )}
     </div>
