@@ -1,14 +1,17 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { BarChart2, BookOpen, ClipboardList, Copy, Edit2, Eye, Settings, Users } from 'lucide-react';
 import { useApp, useToast } from '../../context/AppContext';
-import { EmptyState, SectionHeader, StatusBadge } from '../../components/ui';
+import { EmptyState, Modal, SectionHeader, StatusBadge } from '../../components/ui';
 import { calcMaxMCScore, calcMaxEssayScore, formatDateTime } from '../../utils/helpers';
-import { matchRosterToCompletedSubmissions } from '../../utils/participantAttendance';
+import { getRosterAttendance } from '../../utils/participantAttendance';
+import { storage } from '../../utils/storage';
 import Step1Setup from './wizard/Step1Setup';
 import type { Submission } from '../../types';
 
 type WorkspaceTab = 'ringkasan' | 'soal' | 'peserta' | 'hasil' | 'pengaturan';
+type ParticipantFilter = 'ALL' | 'COMPLETED' | 'PENDING';
+type AttemptTarget = { studentName: string; participantId?: string; nis?: string; usedAttempts: number; extraAttempts: number };
 
 function getTab(pathname: string): WorkspaceTab {
   const value = pathname.split('/').pop();
@@ -29,13 +32,57 @@ export default function ExamWorkspacePage() {
   const { exams, submissions, updateExam } = useApp();
   const { addToast } = useToast();
   const exam = exams.find(item => item.id === id);
+  const examId = exam?.id;
+  const hasRoster = (exam?.preloadedStudents.length ?? 0) > 0;
   const tab = getTab(location.pathname);
-  const examSubmissions = useMemo(() => submissions.filter(item => item.examId === id && item.isComplete), [submissions, id]);
+  const allExamSubmissions = useMemo(() => submissions.filter(item => item.examId === id), [submissions, id]);
+  const examSubmissions = useMemo(() => allExamSubmissions.filter(item => item.isComplete), [allExamSubmissions]);
   const essayCount = exam?.questions.filter(question => question.type === 'ESSAY').length ?? 0;
   const finalCount = examSubmissions.filter(item => essayStatus(item, essayCount) === 'FINAL' || essayStatus(item, essayCount) === 'NONE').length;
   const [attemptOverride, setAttemptOverride] = useState<number | null>(null);
   const [savingAttempts, setSavingAttempts] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [attemptTarget, setAttemptTarget] = useState<AttemptTarget | null>(null);
+  const [grantingAttempt, setGrantingAttempt] = useState(false);
+  const [attemptExtras, setAttemptExtras] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    let current = true;
+    if (!examId || !hasRoster) {
+      setAttemptExtras({});
+      return () => { current = false; };
+    }
+    void storage.getTeacherAttemptOverview(examId).then(result => {
+      if (!current) return;
+      setAttemptExtras(Object.fromEntries(result.overrides.map(item => [item.participantId, item.extraAttempts])));
+      if (result.error) addToast({ type: 'error', title: 'Kesempatan belum dimuat', message: result.error });
+    });
+    return () => { current = false; };
+  }, [addToast, examId, hasRoster]);
+
+  const completedAttemptsByParticipant = useMemo(() => {
+    const counts = new Map<string, number>();
+    allExamSubmissions.filter(submission => submission.isComplete && !submission.isReturned).forEach(submission => {
+      const key = submission.participantId ?? (submission.nis?.trim() || submission.studentName.trim().toLocaleLowerCase());
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    });
+    return counts;
+  }, [allExamSubmissions]);
+  const openAttemptDialog = (details: Pick<AttemptTarget, 'studentName' | 'participantId' | 'nis'>) => {
+    const key = details.participantId ?? (details.nis?.trim() || details.studentName.trim().toLocaleLowerCase());
+    setAttemptTarget({ ...details, usedAttempts: completedAttemptsByParticipant.get(key) ?? 0, extraAttempts: details.participantId ? attemptExtras[details.participantId] ?? 0 : 0 });
+  };
+  const grantExtraAttempt = async () => {
+    if (!exam || !attemptTarget) return;
+    const identifier = attemptTarget.participantId ?? (attemptTarget.nis?.trim() || attemptTarget.studentName.trim());
+    setGrantingAttempt(true);
+    const result = await storage.grantStudentExtraAttempt(exam.id, identifier);
+    setGrantingAttempt(false);
+    if (result.error) return addToast({ type: 'error', title: 'Kesempatan belum ditambahkan', message: result.error });
+    if (attemptTarget.participantId) setAttemptExtras(current => ({ ...current, [attemptTarget.participantId!]: result.extraAttempts ?? attemptTarget.extraAttempts + 1 }));
+    addToast({ type: 'success', title: 'Kesempatan ditambahkan', message: `1 kesempatan tambahan diberikan kepada ${attemptTarget.studentName}.` });
+    setAttemptTarget(null);
+  };
 
   if (!exam) {
     return <div className="page-content"><EmptyState icon={<ClipboardList size={48} />} title="Ujian tidak ditemukan" description="Ujian mungkin sudah dihapus atau tidak dapat dimuat." /></div>;
@@ -119,7 +166,7 @@ export default function ExamWorkspacePage() {
 
       {tab === 'ringkasan' && <SummaryTab exam={exam} submissions={examSubmissions} finalCount={finalCount} essayCount={essayCount} onOpenTab={openTab} maxAttempts={maxAttempts} savingAttempts={savingAttempts} onChangeAttempts={setAttemptOverride} onSaveAttempts={saveAttemptLimit} />}
       {tab === 'soal' && <QuestionsTab exam={exam} onEdit={() => navigate(`/guru/ujian/${exam.id}/edit-soal`)} onPreview={() => navigate(`/guru/ujian/${exam.id}/preview`)} />}
-      {tab === 'peserta' && <ParticipantsTab exam={exam} submissions={examSubmissions} essayCount={essayCount} />}
+      {tab === 'peserta' && <ParticipantsTab exam={exam} submissions={allExamSubmissions} essayCount={essayCount} onAddAttempt={openAttemptDialog} />}
       {tab === 'hasil' && <ResultsTab exam={exam} submissions={examSubmissions} essayCount={essayCount} onGrade={() => navigate(`/guru/hasil?exam=${exam.id}`)} />}
       {tab === 'pengaturan' && (
         <section className="card">
@@ -151,6 +198,9 @@ export default function ExamWorkspacePage() {
           </div>
         </section>
       )}
+      <Modal open={!!attemptTarget} onClose={() => !grantingAttempt && setAttemptTarget(null)} title={`Tambah kesempatan untuk ${attemptTarget?.studentName ?? ''}`} subtitle="Perubahan ini hanya berlaku untuk peserta ini." footer={<><button className="btn btn-secondary" disabled={grantingAttempt} onClick={() => setAttemptTarget(null)}>Batal</button><button className="btn btn-primary" disabled={grantingAttempt} onClick={() => void grantExtraAttempt()}>{grantingAttempt ? 'Menambahkan...' : 'Tambah 1 Kesempatan'}</button></>}>
+        {attemptTarget && <div style={{ padding: '0 var(--sp-6) var(--sp-2)' }}><p style={{ margin: 0, color: 'var(--text-secondary)' }}>Percobaan terpakai: <strong>{attemptTarget.usedAttempts}</strong></p><p style={{ margin: 'var(--sp-3) 0 0', color: 'var(--text-secondary)' }}>{exam.settings.maxAttempts === 0 ? 'Batas normal: tidak terbatas.' : <>Batas normal: <strong>{exam.settings.maxAttempts ?? 1}</strong> · Tambahan: <strong>+{attemptTarget.extraAttempts}</strong> · Batas efektif setelah ditambah: <strong>{(exam.settings.maxAttempts ?? 1) + attemptTarget.extraAttempts + 1}</strong></>}</p></div>}
+      </Modal>
     </div>
   );
 }
@@ -200,14 +250,17 @@ function QuestionsTab({ exam, onEdit, onPreview }: { exam: NonNullable<ReturnTyp
   </section>;
 }
 
-function ParticipantsTab({ exam, submissions, essayCount }: { exam: NonNullable<ReturnType<typeof useApp>['exams']>[number]; submissions: Submission[]; essayCount: number }) {
-  const personalRoster = exam.settings.participantMode === 'PERSONAL_ROSTER';
-  if (personalRoster) {
-    const matchedSubmissions = matchRosterToCompletedSubmissions(exam.preloadedStudents, submissions);
-    const submittedCount = matchedSubmissions.filter(Boolean).length;
-    return <section className="card"><SectionHeader title="Peserta" subtitle={`${submittedCount}/${exam.preloadedStudents.length} jawaban terkumpul`} /><div className="workspace-participant-list">{exam.preloadedStudents.map((student, index) => { const submission = matchedSubmissions[index]; return <div className="workspace-participant-row" key={student.participantId ?? student.nis ?? `${student.name}-${index}`}><div><strong>{student.name}</strong><span>{submission ? `Dikumpulkan ${submission.submittedAt ? formatDateTime(submission.submittedAt) : ''}` : 'Belum mengumpulkan'}</span></div><span className={`workspace-status ${submission ? 'status-final' : 'status-pending'}`}>{submission ? 'Terkumpul' : 'Belum mengumpulkan'}</span><span>{submission ? (essayStatus(submission, essayCount) === 'PENDING' ? 'Menunggu koreksi' : `${submission.totalScore ?? 0} poin`) : '—'}</span></div>; })}</div></section>;
+function ParticipantsTab({ exam, submissions, essayCount, onAddAttempt }: { exam: NonNullable<ReturnType<typeof useApp>['exams']>[number]; submissions: Submission[]; essayCount: number; onAddAttempt: (details: Pick<AttemptTarget, 'studentName' | 'participantId' | 'nis'>) => void }) {
+  const [filter, setFilter] = useState<ParticipantFilter>('ALL');
+  if (exam.preloadedStudents.length > 0) {
+    const attendance = getRosterAttendance(exam.preloadedStudents, submissions);
+    const completedCount = attendance.filter(item => !!item.completedSubmission).length;
+    const pendingCount = attendance.length - completedCount;
+    const visible = attendance.filter(item => filter === 'ALL' || (filter === 'COMPLETED' ? !!item.completedSubmission : !item.completedSubmission));
+    return <section className="card"><SectionHeader title="Peserta" subtitle={`${completedCount}/${attendance.length} jawaban terkumpul`} /><div className="participant-filter-chips" role="group" aria-label="Filter peserta"><button type="button" className={filter === 'ALL' ? 'is-active' : ''} onClick={() => setFilter('ALL')}>Semua ({attendance.length})</button><button type="button" className={filter === 'COMPLETED' ? 'is-active' : ''} onClick={() => setFilter('COMPLETED')}>Sudah ({completedCount})</button><button type="button" className={filter === 'PENDING' ? 'is-active' : ''} onClick={() => setFilter('PENDING')}>Belum ({pendingCount})</button></div><div className="workspace-participant-list">{visible.map(({ student, completedSubmission, draftSubmission }, index) => { const status = completedSubmission ? 'Terkumpul' : draftSubmission ? 'Sedang mengerjakan' : 'Belum mulai'; return <div className="workspace-participant-row" key={student.participantId ?? student.nis ?? `${student.name}-${index}`}><div><strong>{student.attendanceNo != null ? `${String(student.attendanceNo).padStart(2, '0')} · ` : ''}{student.name}</strong><span>{completedSubmission ? `Dikumpulkan ${completedSubmission.submittedAt ? formatDateTime(completedSubmission.submittedAt) : ''}` : status}</span></div><span className={`workspace-status ${completedSubmission ? 'status-final' : 'status-pending'}`}>{status}</span><button className="btn btn-ghost btn-sm" type="button" onClick={() => onAddAttempt({ participantId: student.participantId, nis: student.nis, studentName: student.name })}>+1 Kesempatan</button></div>; })}</div></section>;
   }
-  return <section className="card"><SectionHeader title="Peserta" subtitle={`${submissions.length} jawaban yang sudah masuk`} /><div className="workspace-participant-list">{submissions.length === 0 ? <EmptyState icon={<Users size={40} />} title="Belum ada peserta" description="Bagikan kode ujian kepada murid." /> : submissions.map(sub => <div className="workspace-participant-row" key={sub.id}><div><strong>{sub.studentName}</strong><span>Percobaan ke-{sub.attemptNumber}</span></div><span className={`workspace-status status-${essayStatus(sub, essayCount).toLowerCase()}`}>{essayStatus(sub, essayCount) === 'NONE' ? 'Nilai Final' : essayStatus(sub, essayCount) === 'FINAL' ? 'Nilai Final' : essayStatus(sub, essayCount) === 'PARTIAL' ? 'Dinilai Sebagian' : 'Menunggu Koreksi'}</span><span>{sub.submittedAt ? formatDateTime(sub.submittedAt) : '—'}</span></div>)}</div></section>;
+  const completedSubmissions = submissions.filter(submission => submission.isComplete);
+  return <section className="card"><SectionHeader title="Peserta" subtitle={`${completedSubmissions.length} jawaban yang sudah masuk`} /><div className="workspace-participant-list">{completedSubmissions.length === 0 ? <EmptyState icon={<Users size={40} />} title="Belum ada peserta" description="Bagikan kode ujian ke murid agar mereka bisa mengerjakan." /> : completedSubmissions.map(sub => <div className="workspace-participant-row" key={sub.id}><div><strong>{sub.studentName}</strong><span>Percobaan ke-{sub.attemptNumber}</span></div><span className={`workspace-status status-${essayStatus(sub, essayCount).toLowerCase()}`}>{essayStatus(sub, essayCount) === 'NONE' ? 'Nilai Final' : essayStatus(sub, essayCount) === 'FINAL' ? 'Nilai Final' : essayStatus(sub, essayCount) === 'PARTIAL' ? 'Dinilai Sebagian' : 'Menunggu Koreksi'}</span><span>{sub.submittedAt ? formatDateTime(sub.submittedAt) : '—'}</span></div>)}</div></section>;
 }
 
 function ResultsTab({ exam, submissions, essayCount, onGrade }: { exam: NonNullable<ReturnType<typeof useApp>['exams']>[number]; submissions: Submission[]; essayCount: number; onGrade: () => void }) {
