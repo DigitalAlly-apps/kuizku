@@ -14,7 +14,7 @@ export const personalExamApi = {
     const [subjects, groups, students] = await Promise.all([
       supabase.from('personal_exam_subjects').select('*').eq('teacher_id', teacherId).order('name'),
       supabase.from('personal_exam_groups').select('*').eq('teacher_id', teacherId).order('name'),
-      supabase.from('personal_exam_students').select('*').eq('teacher_id', teacherId).order('sort_order').order('created_at'),
+      supabase.from('personal_exam_students').select('*').eq('teacher_id', teacherId).order('group_id').order('sort_order').order('created_at').order('id'),
     ]);
     if (subjects.error || groups.error || students.error) throw new Error(subjects.error?.message || groups.error?.message || students.error?.message || 'Gagal memuat data ujian pribadi.');
     return { subjects: (subjects.data ?? []).map(mapSubject), groups: (groups.data ?? []).map(mapGroup), students: (students.data ?? []).map(mapStudent) };
@@ -35,4 +35,14 @@ export const personalExamApi = {
     const { error } = await supabase.from('personal_exam_students').insert(names.map((name, index) => ({ teacher_id: teacherId, group_id: groupId, name, sort_order: order.next! + index }))); return error?.message;
   },
   async delete(kind: 'subject' | 'group' | 'student', id: string) { const table = `personal_exam_${kind === 'subject' ? 'subjects' : kind === 'group' ? 'groups' : 'students'}`; const { error } = await supabase.from(table).delete().eq('id', id); return error?.message; },
+  async deleteStudent(teacherId: string, studentId: string) {
+    const { data, error } = await supabase.from('personal_exam_students').delete().eq('id', studentId).eq('teacher_id', teacherId).select('id');
+    if (error) return error.message;
+    return data?.length ? undefined : 'Murid tidak dapat dihapus. Data mungkin sudah berubah atau sesi Anda tidak memiliki akses.';
+  },
+  async deleteStudentsInGroup(teacherId: string, groupId: string) {
+    const { data, error } = await supabase.from('personal_exam_students').delete().eq('group_id', groupId).eq('teacher_id', teacherId).select('id');
+    if (error) return error.message;
+    return data?.length ? undefined : 'Tidak ada murid yang dapat dihapus dari grup ini. Coba muat ulang halaman.';
+  },
 };

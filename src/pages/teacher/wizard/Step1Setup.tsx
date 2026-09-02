@@ -5,6 +5,7 @@ import DateTime24Input from '../../../components/ui/DateTime24Input';
 import NumericInput from '../../../components/ui/NumericInput';
 import type { ExamSettings, ExamType, PreloadedStudent } from '../../../types';
 import { usePersonalExam } from '../../../features/personal-exam/PersonalExamContext';
+import { orderStudentsByAttendance } from '../../../features/personal-exam/studentOrder';
 
 interface Props {
   initial: {
@@ -76,7 +77,7 @@ export default function Step1Setup({ initial, onNext, submitLabel = 'Lanjut: Pil
       const error = await addSubject(subject);
       if (error) { setErrors(current => ({ ...current, subject: error })); return; }
     }
-    const rosterStudents = students.filter(student => student.groupId === selectedPersonalGroup?.id).map((student, index) => ({ name: student.name, nis: String(index + 1), attendanceNo: index + 1 }));
+    const rosterStudents = orderStudentsByAttendance(students.filter(student => student.groupId === selectedPersonalGroup?.id)).map((student, index) => ({ name: student.name, nis: String(index + 1), attendanceNo: index + 1 }));
     onNext({ title, description, subject, className: personalRosterMode ? (selectedPersonalGroup?.name ?? '') : className, activeFrom, activeTo, settings: { ...settings, participantMode: personalRosterMode ? 'PERSONAL_ROSTER' : 'MANUAL' }, examType, preloadedStudents: personalRosterMode ? rosterStudents : accessMode === 'LIST' ? parseStudents(studentList).students : [] });
   };
 
