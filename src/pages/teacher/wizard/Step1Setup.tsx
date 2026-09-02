@@ -13,9 +13,12 @@ interface Props {
     preloadedStudents: PreloadedStudent[];
   };
   onNext: (data: Props['initial']) => void;
+  submitLabel?: string;
+  heading?: string;
+  intro?: string;
 }
 
-export default function Step1Setup({ initial, onNext }: Props) {
+export default function Step1Setup({ initial, onNext, submitLabel = 'Lanjut: Pilih Format →', heading = 'Pengaturan Ujian', intro = 'Isi informasi dasar dan tipe kegiatan ini.' }: Props) {
   const { enabled: personalMode, subjects, groups, students, addSubject } = usePersonalExam();
   const [title, setTitle] = useState(initial.title);
   const [description, setDescription] = useState(initial.description);
@@ -33,6 +36,20 @@ export default function Step1Setup({ initial, onNext }: Props) {
   const selectedPersonalGroup = groups.find(group => group.id === className || group.name === className);
   const setSetting = <K extends keyof ExamSettings>(k: K, v: ExamSettings[K]) => {
     setSettings(s => ({ ...s, [k]: v }));
+  };
+
+  const parseStudents = (raw: string): { students: PreloadedStudent[]; duplicates: string[] } => {
+    const seen = new Set<string>();
+    const duplicates = new Set<string>();
+    const parsed = raw.split(/\r?\n/).map(line => line.trim()).filter(Boolean).map((line, index) => {
+      const [nameRaw] = line.split(/[,;\t]/).map(part => part.trim());
+      const name = nameRaw || '';
+      const nis = String(index + 1);
+      if (seen.has(name.toLocaleLowerCase())) duplicates.add(name);
+      seen.add(name.toLocaleLowerCase());
+      return { name, nis, attendanceNo: index + 1 };
+    }).filter(s => s.name);
+    return { students: parsed, duplicates: [...duplicates] };
   };
 
   const validate = () => {
@@ -63,24 +80,10 @@ export default function Step1Setup({ initial, onNext }: Props) {
     onNext({ title, description, subject, className: personalRosterMode ? (selectedPersonalGroup?.name ?? '') : className, activeFrom, activeTo, settings: { ...settings, participantMode: personalRosterMode ? 'PERSONAL_ROSTER' : 'MANUAL' }, examType, preloadedStudents: personalRosterMode ? rosterStudents : accessMode === 'LIST' ? parseStudents(studentList).students : [] });
   };
 
-  const parseStudents = (raw: string): { students: PreloadedStudent[]; duplicates: string[] } => {
-    const seen = new Set<string>();
-    const duplicates = new Set<string>();
-    const students = raw.split(/\r?\n/).map(line => line.trim()).filter(Boolean).map((line, index) => {
-      const [nameRaw] = line.split(/[,;\t]/).map(part => part.trim());
-      const name = nameRaw || '';
-      const nis = String(index + 1);
-      if (seen.has(name.toLocaleLowerCase())) duplicates.add(name);
-      seen.add(name.toLocaleLowerCase());
-      return { name, nis, attendanceNo: index + 1 };
-    }).filter(s => s.name);
-    return { students, duplicates: [...duplicates] };
-  };
-
   return (
     <div>
-      <h2 style={{ marginBottom: 'var(--sp-2)' }}>Pengaturan Ujian</h2>
-      <p style={{ color: 'var(--text-muted)', marginBottom: 'var(--sp-6)' }}>Isi informasi dasar dan tipe kegiatan ini.</p>
+      <h2 style={{ marginBottom: 'var(--sp-2)' }}>{heading}</h2>
+      <p style={{ color: 'var(--text-muted)', marginBottom: 'var(--sp-6)' }}>{intro}</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-5)' }}>
         <div>
           <label className="form-label" style={{ display: 'block', marginBottom: 'var(--sp-2)' }}>Tipe Kegiatan <span style={{ color: 'var(--danger)' }}>*</span></label>
@@ -129,7 +132,7 @@ export default function Step1Setup({ initial, onNext }: Props) {
         </div>
         <section className="card" style={{ padding: 'var(--sp-4)' }}>
           <h3 style={{ fontSize: '1rem', marginBottom: 'var(--sp-3)' }}>Waktu &amp; Percobaan</h3>
-          <div className="form-group compact-form-group" style={{ maxWidth: 240 }}><label className="form-label" htmlFor="s1-attempts">Maks. Percobaan</label><select id="s1-attempts" className="form-select" value={settings.maxAttempts} onChange={e => setSetting('maxAttempts', parseInt(e.target.value))}><option value={1}>1x (default)</option><option value={2}>2x</option><option value={3}>3x</option><option value={0}>Tidak Terbatas</option></select><span className="form-hint">Guru dapat menambah satu kesempatan khusus untuk peserta tertentu di halaman Hasil.</span></div>
+          <div className="form-group compact-form-group" style={{ maxWidth: 240 }}><label className="form-label" htmlFor="s1-attempts">Maks. Percobaan</label><select id="s1-attempts" className="form-select" value={settings.maxAttempts} onChange={e => setSetting('maxAttempts', parseInt(e.target.value))}><option value={1}>1x (default)</option><option value={2}>2x</option><option value={3}>3x</option><option value={5}>5x</option><option value={0}>Tidak Terbatas</option></select><span className="form-hint">Guru dapat menambah satu kesempatan khusus untuk peserta tertentu di halaman Hasil.</span></div>
         </section>
         <section className="card" style={{ padding: 'var(--sp-4)' }}>
           <h3 style={{ fontSize: '1rem', marginBottom: 'var(--sp-2)' }}>Cara Mengerjakan</h3>
@@ -157,7 +160,7 @@ export default function Step1Setup({ initial, onNext }: Props) {
           <div className="form-group compact-form-group" style={{ marginTop: 'var(--sp-4)', maxWidth: 260 }}><label className="form-label" htmlFor="s1-anticheat">Sensitivitas Anti-cheat</label><select id="s1-anticheat" className="form-select" value={settings.antiCheatSensitivity ?? 'MEDIUM'} onChange={e => setSetting('antiCheatSensitivity', e.target.value as ExamSettings['antiCheatSensitivity'])}><option value="OFF">Nonaktif</option><option value="LOW">Rendah (5 pelanggaran)</option><option value="MEDIUM">Sedang (3 pelanggaran)</option><option value="HIGH">Tinggi (1 pelanggaran)</option></select></div>
         </div>
       </div>
-      <div className="wizard-nav-row" style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'var(--sp-8)' }}><button className="btn btn-primary btn-lg" onClick={handleNext}>Lanjut: Pilih Format →</button></div>
+      <div className="wizard-nav-row" style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'var(--sp-8)' }}><button className="btn btn-primary btn-lg" onClick={handleNext}>{submitLabel}</button></div>
     </div>
   );
 }
