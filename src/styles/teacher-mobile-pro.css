@@ -67,6 +67,17 @@
     display: none !important;
   }
 
+  /* The pending-roster action is a core mobile workflow, not a duplicate page CTA. */
+  .section-header-action.results-pending-copy-action {
+    display: flex !important;
+    width: 100%;
+  }
+
+  .section-header-action.results-pending-copy-action .btn {
+    flex: 1;
+    justify-content: center;
+  }
+
   /* ---------- Ujian Saya filters ---------- */
   .exam-filter-panel {
     padding: 0;

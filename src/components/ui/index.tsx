@@ -293,14 +293,14 @@ export function StatCard({ label, value, icon, color, bg }: StatCardProps) {
 // ============================================================
 // Section Header
 // ============================================================
-export function SectionHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: React.ReactNode }) {
+export function SectionHeader({ title, subtitle, action, actionClassName }: { title: string; subtitle?: string; action?: React.ReactNode; actionClassName?: string }) {
   return (
     <div className="section-header">
       <div>
         <h2 style={{ fontSize: '1.1rem', marginBottom: subtitle ? 2 : 0 }}>{title}</h2>
         {subtitle && <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{subtitle}</p>}
       </div>
-      {action && <div className="section-header-action">{action}</div>}
+      {action && <div className={`section-header-action${actionClassName ? ` ${actionClassName}` : ''}`}>{action}</div>}
     </div>
   );
 }
