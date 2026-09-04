@@ -793,7 +793,7 @@ function dbToExam(db: any): Exam {
     activeTo: db.active_to,
     createdAt: db.created_at,
     updatedAt: db.updated_at,
-    preloadedStudents: db.preloaded_students?.map((s: any) => ({ name: s.name, participantId: s.participant_id ?? s.id, nis: s.nis || undefined, attendanceNo: s.attendance_no == null ? undefined : Number(s.attendance_no) })) || [],
+    preloadedStudents: db.preloaded_students?.filter((s: any) => s.is_preloaded !== false).map((s: any) => ({ name: s.name, participantId: s.participant_id ?? s.id, nis: s.nis || undefined, attendanceNo: s.attendance_no == null ? undefined : Number(s.attendance_no) })) || [],
     questions: (db.questions || []).map((q: any) => ({
       id: q.id,
       type: q.type,

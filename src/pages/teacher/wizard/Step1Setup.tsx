@@ -78,7 +78,8 @@ export default function Step1Setup({ initial, onNext, submitLabel = 'Lanjut: Pil
       if (error) { setErrors(current => ({ ...current, subject: error })); return; }
     }
     const rosterStudents = orderStudentsByAttendance(students.filter(student => student.groupId === selectedPersonalGroup?.id)).map((student, index) => ({ name: student.name, nis: String(index + 1), attendanceNo: index + 1 }));
-    onNext({ title, description, subject, className: personalRosterMode ? (selectedPersonalGroup?.name ?? '') : className, activeFrom, activeTo, settings: { ...settings, participantMode: personalRosterMode ? 'PERSONAL_ROSTER' : 'MANUAL' }, examType, preloadedStudents: personalRosterMode ? rosterStudents : accessMode === 'LIST' ? parseStudents(studentList).students : [] });
+    const nextAccess = personalRosterMode || accessMode === 'LIST' ? 'ROSTER_ONLY' : 'OPEN';
+    onNext({ title, description, subject, className: personalRosterMode ? (selectedPersonalGroup?.name ?? '') : className, activeFrom, activeTo, settings: { ...settings, participantMode: personalRosterMode ? 'PERSONAL_ROSTER' : 'MANUAL', participantAccess: nextAccess }, examType, preloadedStudents: personalRosterMode ? rosterStudents : accessMode === 'LIST' ? parseStudents(studentList).students : [] });
   };
 
   return (

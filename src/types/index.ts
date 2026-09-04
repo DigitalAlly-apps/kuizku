@@ -131,6 +131,8 @@ export interface ExamSettings {
   autoSubmitOnTimeUp?: boolean;
   /** Available only to the private personal-exam module. */
   participantMode?: 'MANUAL' | 'PERSONAL_ROSTER';
+  /** Explicit access state. Missing values retain legacy roster behaviour. */
+  participantAccess?: 'OPEN' | 'ROSTER_ONLY' | 'BLOCKED';
 }
 
 // ---- Pre-loaded Student List ----

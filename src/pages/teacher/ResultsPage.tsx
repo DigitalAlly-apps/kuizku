@@ -451,41 +451,41 @@ export default function ResultsPage() {
       || (a.submittedAt ?? '').localeCompare(b.submittedAt ?? '')
       || a.studentName.localeCompare(b.studentName, 'id-ID'));
     const isFinal = (submission: Submission) => isFinalSubmission(submission);
-    const rowForSubmission = (submission: Submission) => {
+    const rowForSubmission = (attendanceNo: number | undefined, submission: Submission) => {
       if (!isFinal(submission) || submission.totalScore == null) {
-        return [clipboardCell(submission.studentName), '', 'Belum ada nilai'];
+        return [attendanceNo == null ? '' : String(attendanceNo), clipboardCell(submission.studentName), '', 'Belum ada nilai'];
       }
       const score = toPercent(submission.totalScore);
-      return [clipboardCell(submission.studentName), String(score), score >= passingScore ? 'Lulus' : 'Tidak Lulus'];
+      return [attendanceNo == null ? '' : String(attendanceNo), clipboardCell(submission.studentName), String(score), score >= passingScore ? 'Lulus' : 'Tidak Lulus'];
     };
 
     const unassigned = new Map(examSubs.map(submission => [submission.id, submission]));
     const rows: string[][] = [];
 
     if (selectedExam.preloadedStudents.length > 0) {
-      selectedExam.preloadedStudents.forEach(student => {
+      [...selectedExam.preloadedStudents].sort((a, b) => (a.attendanceNo ?? Number.MAX_SAFE_INTEGER) - (b.attendanceNo ?? Number.MAX_SAFE_INTEGER) || a.name.localeCompare(b.name, 'id-ID')).forEach(student => {
         const key = rosterKey(student);
         const matched = sortSubmissions(examSubs.filter(submission => submissionKey(submission) === key));
         matched.forEach(submission => unassigned.delete(submission.id));
         if (matched.length) {
-          matched.forEach(submission => rows.push(rowForSubmission(submission)));
+          matched.forEach(submission => rows.push(rowForSubmission(student.attendanceNo, submission)));
         } else {
-          rows.push([clipboardCell(student.name), '', 'Belum ada nilai']);
+          rows.push([student.attendanceNo == null ? '' : String(student.attendanceNo), clipboardCell(student.name), '', 'Belum ada nilai']);
         }
       });
       sortSubmissions([...unassigned.values()])
         .sort((a, b) => a.studentName.localeCompare(b.studentName, 'id-ID') || a.attemptNumber - b.attemptNumber)
-        .forEach(submission => rows.push(rowForSubmission(submission)));
+        .forEach(submission => rows.push(rowForSubmission(attendanceNoFor(submission), submission)));
     } else {
       [...examSubs]
         .sort((a, b) => a.studentName.localeCompare(b.studentName, 'id-ID') || a.attemptNumber - b.attemptNumber)
-        .forEach(submission => rows.push(rowForSubmission(submission)));
+        .forEach(submission => rows.push(rowForSubmission(attendanceNoFor(submission), submission)));
     }
 
     if (!rows.length) return;
     try {
       await copyTextToClipboard(rows.map(row => row.join('\t')).join('\n'));
-      addToast({ type: 'success', title: 'Nilai siap ditempel!', message: `${rows.length} baris nama, nilai, dan status telah disalin.` });
+      addToast({ type: 'success', title: 'Nilai siap ditempel!', message: `${rows.length} baris absen, nama, nilai, dan status telah disalin.` });
     } catch (error) {
       console.error('Gagal menyalin nilai:', error);
       addToast({ type: 'error', title: 'Nilai gagal disalin', message: 'Izinkan akses clipboard, lalu coba lagi.' });
@@ -541,7 +541,7 @@ export default function ResultsPage() {
             {myExams.map(e => <option key={e.id} value={e.id}>{e.title}</option>)}
           </select>
           {selectedExam && (examSubs.length > 0 || selectedExam.preloadedStudents.length > 0) && (
-            <button className="btn btn-secondary results-export-button" type="button" onClick={() => void copyGradesToSpreadsheet()} title="Salin nama, nilai, dan status untuk ditempel ke Excel atau Google Sheets">
+            <button className="btn btn-secondary results-export-button" type="button" onClick={() => void copyGradesToSpreadsheet()} title="Salin nomor absen, nama, nilai, dan status untuk ditempel ke Excel atau Google Sheets">
               <Copy size={15} /> Copy untuk Spreadsheet
             </button>
           )}

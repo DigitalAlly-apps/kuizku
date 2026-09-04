@@ -80,7 +80,6 @@ export default function ExamListPage() {
   const [editFrom, setEditFrom] = useState('');
   const [editTo, setEditTo] = useState('');
   const [editStudents, setEditStudents] = useState('');
-  const [editAccessMode, setEditAccessMode] = useState<'OPEN' | 'LIST'>('OPEN');
   const [editSaving, setEditSaving] = useState(false);
   const [selectedRosterLines, setSelectedRosterLines] = useState<Set<number>>(new Set());
   const [rosterDeleteMode, setRosterDeleteMode] = useState<'selected' | 'all' | null>(null);
@@ -157,7 +156,6 @@ export default function ExamListPage() {
     setEditFrom(isoToLocalDateTimeInput(exam.activeFrom));
     setEditTo(isoToLocalDateTimeInput(exam.activeTo));
     setEditStudents((exam.preloadedStudents || []).map(s => s.name).join('\n'));
-    setEditAccessMode((exam.preloadedStudents || []).length > 0 ? 'LIST' : 'OPEN');
     setSelectedRosterLines(new Set());
     setRosterDeleteMode(null);
     setOpenMenuId(null);
@@ -206,8 +204,7 @@ export default function ExamListPage() {
       const existing = existingByName.get(key)?.shift();
       return { name, participantId: existing?.participantId, nis: existing?.nis ?? String(index + 1), attendanceNo: index + 1 };
     }).filter(s => s.name);
-    if (editAccessMode === 'LIST' && parsedStudents.length === 0) {
-      addToast({ type: 'error', title: 'Daftar peserta masih kosong', message: 'Tambahkan peserta atau pilih akses terbuka.' });
+    if (parsedStudents.length === 0 && !window.confirm('Daftar peserta kosong akan memblokir semua murid untuk masuk ujian ini. Lanjutkan menyimpan?')) {
       setEditSaving(false);
       return;
     }
@@ -220,7 +217,8 @@ export default function ExamListPage() {
       examType: editType,
       activeFrom: editFrom || undefined,
       activeTo: editTo || undefined,
-      preloadedStudents: editAccessMode === 'LIST' ? parsedStudents : [],
+      settings: { ...editExam.settings, participantAccess: parsedStudents.length ? 'ROSTER_ONLY' : 'BLOCKED' },
+      preloadedStudents: parsedStudents,
     });
     setEditSaving(false);
     if (res?.error) {
@@ -678,23 +676,14 @@ export default function ExamListPage() {
                 <DateTime24Input id="edit-active-to" value={editTo} onChange={setEditTo} />
               </div>
             </div>
-            {/* Akses Peserta */}
+            {/* Roster peserta. Menyimpan roster kosong berarti akses diblokir. */}
             <div className="form-group">
-              <label className="form-label">Akses Peserta</label>
-              <div className="student-access-choice" role="radiogroup" aria-label="Akses peserta ujian">
-                <button type="button" role="radio" aria-checked={editAccessMode === 'OPEN'} className={editAccessMode === 'OPEN' ? 'is-active' : ''} onClick={() => setEditAccessMode('OPEN')}>
-                  <strong>Terbuka untuk semua</strong><span>Siapa pun yang punya kode dapat masuk.</span>
-                </button>
-                <button type="button" role="radio" aria-checked={editAccessMode === 'LIST'} className={editAccessMode === 'LIST' ? 'is-active' : ''} onClick={() => setEditAccessMode('LIST')}>
-                  <strong>Hanya daftar peserta</strong><span>Peserta memilih namanya dari daftar guru.</span>
-                </button>
-              </div>
-              {editAccessMode === 'LIST' && <>
-                <textarea className="form-textarea" rows={4} style={{ marginTop: 'var(--sp-3)' }}
-                  placeholder={'Satu nama per baris. Nomor absen dibuat otomatis sesuai urutan.'}
-                  value={editStudents} onChange={e => { setEditStudents(e.target.value); setSelectedRosterLines(new Set()); }} />
-                <span className="form-hint">Bisa paste satu kolom nama dari Excel. Nomor absen mengikuti urutan baris.</span>
-                {rosterLines.length > 0 && <div style={{ marginTop: 'var(--sp-4)', paddingTop: 'var(--sp-3)', borderTop: '1px solid var(--border)' }}>
+              <label className="form-label" htmlFor="edit-roster">Daftar Peserta Ujian</label>
+              <p className="form-hint" style={{ marginTop: 0 }}>Satu nama per baris. Urutan baris menjadi nomor absen. Jika daftar dikosongkan lalu disimpan, semua murid diblokir dari ujian ini.</p>
+              <textarea id="edit-roster" className="form-textarea" rows={4} style={{ marginTop: 'var(--sp-3)' }}
+                placeholder={'Satu nama per baris. Nomor absen dibuat otomatis sesuai urutan.'}
+                value={editStudents} onChange={e => { setEditStudents(e.target.value); setSelectedRosterLines(new Set()); }} />
+              {rosterLines.length > 0 && <div style={{ marginTop: 'var(--sp-4)', paddingTop: 'var(--sp-3)', borderTop: '1px solid var(--border)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--sp-3)', alignItems: 'center', marginBottom: 'var(--sp-2)', flexWrap: 'wrap' }}>
                     <strong style={{ fontSize: '0.82rem' }}>Hapus peserta</strong>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -712,9 +701,8 @@ export default function ExamListPage() {
                       <span style={{ fontSize: '0.82rem', flex: 1 }}>{index + 1}. {name}</span>
                     </label>)}
                   </div>
-                  <span className="form-hint">Hapus semua akan mengosongkan roster. Pilih “Terbuka untuk semua” bila ujian tetap ingin dapat diakses tanpa daftar nama.</span>
+                  <span className="form-hint">Hapus semua mengosongkan roster. Saat disimpan, akses murid akan diblokir.</span>
                 </div>}
-              </>}
             </div>
           </div>
         )}
