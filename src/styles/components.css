@@ -59,7 +59,7 @@
 }
 
 .mobile-header-kicker { color: var(--text-muted); font-size: 0.68rem; line-height: 1; margin-bottom: 3px; }
-.teacher-mobile-create { display: none; }
+.mobile-account-button { display: none; }
 .teacher-mobile-bottom-nav, .teacher-mobile-more-overlay { display: none; }
 
 .desktop-theme-toggle {
@@ -231,7 +231,7 @@
   flex-direction: column;
   gap: var(--sp-3);
   transition: all var(--transition);
-  cursor: pointer;
+  cursor: default;
 }
 
 .exam-card:hover {
@@ -267,6 +267,10 @@
 .workspace-action-list { display: grid; gap: 6px; }
 .workspace-action-list button { display: flex; align-items: center; gap: var(--sp-3); min-height: 48px; padding: 0 var(--sp-3); border: 0; border-radius: var(--r-md); background: transparent; color: var(--text-primary); text-align: left; font-weight: 600; }
 .workspace-action-list button:hover { background: var(--surface-2); color: var(--primary); }
+.workspace-settings-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
+.workspace-settings-summary > div { display: grid; gap: 5px; padding: var(--sp-3); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-2); }
+.workspace-settings-summary span { color: var(--text-muted); font-size: .75rem; }
+.workspace-settings-summary strong { color: var(--text-primary); font-size: .9rem; }
 .workspace-question-list, .workspace-participant-list, .workspace-results-list { display: flex; flex-direction: column; }
 .workspace-question-row, .workspace-participant-row, .workspace-result-row { display: grid; align-items: center; gap: var(--sp-3); min-height: 58px; padding: var(--sp-3) 0; border-bottom: 1px solid var(--border); }
 .workspace-question-row { grid-template-columns: 28px 120px minmax(0, 1fr) 70px 40px; }
@@ -295,10 +299,17 @@
 .exam-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); }
 .exam-card-badges { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
 .exam-card-title { font-weight: 700; font-size: 1rem; font-family: var(--font-heading); color: var(--text-primary); }
+.exam-card-title-button { display: block; width: fit-content; max-width: 100%; padding: 0; border: 0; background: transparent; text-align: left; cursor: pointer; }
+.exam-card-title-button:hover { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
+.exam-card-title-button:focus-visible { border-radius: 3px; outline: 3px solid var(--focus-ring); outline-offset: 3px; }
 .exam-card-subject { font-size: 0.8rem; color: var(--text-muted); margin-top: 2px; }
 .exam-card-meta { display: flex; align-items: center; gap: var(--sp-4); font-size: 0.8rem; color: var(--text-muted); flex-wrap: wrap; }
 .exam-card-meta-item { display: flex; align-items: center; gap: 4px; }
+.exam-card-code { display: inline-flex; align-items: center; gap: 5px; min-height: 34px; padding: 4px 9px; border: 1px solid color-mix(in srgb, var(--primary) 24%, var(--border)); border-radius: var(--r-md); background: var(--primary-light); color: var(--primary); font: 700 .78rem monospace; cursor: pointer; }
+.exam-card-code:hover { border-color: var(--primary); }
+.exam-card-primary-actions { display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-1); padding-top: var(--sp-3); border-top: 1px solid var(--border); }
 .exam-card-actions { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.exam-page-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
 
 /* ---- Dashboard ---- */
 .dashboard-intro { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--sp-5); margin-bottom: var(--sp-8); }
@@ -307,7 +318,11 @@
 .dashboard-intro p { color: var(--text-muted); font-size: .92rem; }
 .dashboard-attention { margin-bottom: var(--sp-8); }
 .dashboard-attention .card { border-left: 3px solid var(--warning); }
-.dashboard-quick-actions { margin-bottom: var(--sp-8); }
+.dashboard-action-row { width: 100%; min-height: 46px; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: 8px 4px; border: 0; border-bottom: 1px solid var(--border); background: transparent; font: inherit; text-align: left; cursor: pointer; }
+.dashboard-action-row:hover { background: var(--surface-2); }
+.dashboard-action-row-value { display: inline-flex; align-items: center; gap: var(--sp-2); color: var(--text-muted); }
+.dashboard-exam-card { width: 100%; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.dashboard-exam-card:hover { border-color: var(--primary); background: color-mix(in srgb, var(--primary-light) 34%, var(--surface)); }
 
 /* ---- Question List & Editor ---- */
 .question-list { display: flex; flex-direction: column; gap: var(--sp-3); }
@@ -632,7 +647,8 @@
   }
 
   .mobile-header { padding-right: var(--sp-4); }
-  .teacher-mobile-create { display: grid; place-items: center; width: 42px; height: 42px; border: 0; border-radius: var(--r-md); background: var(--primary); color: white; }
+  .mobile-account-button { display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid color-mix(in srgb, var(--primary) 28%, var(--border)); border-radius: 50%; background: var(--primary-light); color: var(--primary); font: 800 .76rem var(--font-heading); letter-spacing: .02em; cursor: pointer; }
+  .mobile-account-button[aria-current="page"] { border-color: var(--primary); }
   .teacher-mobile-bottom-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 75; display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); background: color-mix(in srgb, var(--surface) 96%, transparent); border-top: 1px solid var(--border-strong); box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.1); backdrop-filter: blur(12px); }
   .teacher-mobile-bottom-nav button { min-height: 48px; border: 0; border-radius: var(--r-md); background: transparent; color: var(--text-muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 0.68rem; }
   .teacher-mobile-bottom-nav button.active { background: var(--primary-light); color: var(--primary); font-weight: 700; }

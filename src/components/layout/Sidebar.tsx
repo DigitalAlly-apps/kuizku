@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, FileText, BookOpen, BarChart2, Settings, LogOut, Moon, Sun } from 'lucide-react';
+import { LayoutDashboard, FileText, BookOpen, BarChart2, Settings, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AppContext';
 import { APP_CONFIG } from '../../lib/appConfig';
 
@@ -7,10 +7,10 @@ const navItems = [
   { to: '/guru/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/guru/ujian', icon: FileText, label: 'Ujian Saya' },
   { to: '/guru/bank-soal', icon: BookOpen, label: 'Bank Soal' },
-  { to: '/guru/hasil', icon: BarChart2, label: 'Hasil & Nilai' },
+  { to: '/guru/hasil', icon: BarChart2, label: 'Rekap Nilai' },
 ];
 
-export default function Sidebar({ open, onClose, toggleTheme, theme }: { open?: boolean, onClose?: () => void, toggleTheme?: () => void, theme?: string }) {
+export default function Sidebar({ open, onClose }: { open?: boolean, onClose?: () => void }) {
   const { currentTeacher, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -46,14 +46,8 @@ export default function Sidebar({ open, onClose, toggleTheme, theme }: { open?: 
         <span className="sidebar-section-label" style={{ marginTop: 'var(--sp-4)' }}>Akun</span>
         <NavLink to="/guru/pengaturan" className={({ isActive }) => `sidebar-nav-item${isActive ? ' active' : ''}`} onClick={handleNavClick}>
           <Settings size={18} />
-          <span style={{ flex: 1 }}>Pengaturan</span>
+          <span style={{ flex: 1 }}>Akun & Tampilan</span>
         </NavLink>
-        
-        {/* Desktop Theme Toggle */}
-        <button className="sidebar-nav-item desktop-theme-toggle" onClick={toggleTheme}>
-          {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
-          <span style={{ flex: 1 }}>{theme === 'light' ? 'Mode Gelap' : 'Mode Terang'}</span>
-        </button>
 
         <button className="sidebar-nav-item" onClick={handleLogout} style={{ color: 'var(--danger)' }}>
           <LogOut size={18} />

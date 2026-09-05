@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { BarChart2, BookOpen, ClipboardList, Copy, Edit2, Eye, Settings, Users } from 'lucide-react';
+import { BarChart2, BookOpen, ClipboardList, Copy, Edit2, Eye, SlidersHorizontal, Users } from 'lucide-react';
 import { useApp, useToast } from '../../context/AppContext';
 import { EmptyState, Modal, SectionHeader, StatusBadge } from '../../components/ui';
 import { calcMaxMCScore, calcMaxEssayScore, formatDateTime } from '../../utils/helpers';
@@ -40,8 +40,6 @@ export default function ExamWorkspacePage() {
   const examSubmissions = useMemo(() => allExamSubmissions.filter(item => item.isComplete), [allExamSubmissions]);
   const essayCount = exam?.questions.filter(question => question.type === 'ESSAY').length ?? 0;
   const finalCount = examSubmissions.filter(item => essayStatus(item, essayCount) === 'FINAL' || essayStatus(item, essayCount) === 'NONE').length;
-  const [attemptOverride, setAttemptOverride] = useState<number | null>(null);
-  const [savingAttempts, setSavingAttempts] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const [attemptTarget, setAttemptTarget] = useState<AttemptTarget | null>(null);
   const [grantingAttempt, setGrantingAttempt] = useState(false);
@@ -98,18 +96,6 @@ export default function ExamWorkspacePage() {
     const url = `${window.location.origin}/ujian/${exam.code}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(buildExamWhatsAppMessage(exam, url))}`, '_blank');
   };
-  const maxAttempts = attemptOverride ?? exam.settings.maxAttempts ?? 1;
-  const saveAttemptLimit = async () => {
-    setSavingAttempts(true);
-    const result = await updateExam(exam.id, { settings: { ...exam.settings, maxAttempts } });
-    setSavingAttempts(false);
-    if (result.error) {
-      addToast({ type: 'error', title: 'Batas percobaan belum tersimpan', message: result.error });
-      return;
-    }
-    setAttemptOverride(null);
-    addToast({ type: 'success', title: 'Batas percobaan diperbarui', message: maxAttempts === 0 ? 'Murid sekarang boleh mengerjakan tanpa batas percobaan.' : `Maksimal ${maxAttempts} percobaan per murid.` });
-  };
   const saveFullSettings = async (next: {
     title: string;
     description: string;
@@ -135,11 +121,10 @@ export default function ExamWorkspacePage() {
     });
     setSavingSettings(false);
     if (result.error) {
-      addToast({ type: 'error', title: 'Pengaturan belum tersimpan', message: result.error });
+      addToast({ type: 'error', title: 'Aturan belum tersimpan', message: result.error });
       return;
     }
-    setAttemptOverride(null);
-    addToast({ type: 'success', title: 'Pengaturan ujian diperbarui', message: 'Judul, jadwal, peserta, dan pengaturan pengerjaan sudah disimpan.' });
+    addToast({ type: 'success', title: 'Aturan ujian diperbarui', message: 'Judul, jadwal, peserta, dan aturan pengerjaan sudah disimpan.' });
   };
 
   return (
@@ -161,11 +146,11 @@ export default function ExamWorkspacePage() {
 
       <nav className="workspace-tabs" aria-label="Menu ujian">
         {([
-          ['ringkasan', ClipboardList, 'Ringkasan'], ['soal', BookOpen, 'Soal'], ['peserta', Users, 'Peserta'], ['hasil', BarChart2, 'Hasil'], ['pengaturan', Settings, 'Pengaturan'],
+          ['ringkasan', ClipboardList, 'Ringkasan'], ['soal', BookOpen, 'Soal'], ['peserta', Users, 'Peserta'], ['hasil', BarChart2, 'Hasil'], ['pengaturan', SlidersHorizontal, 'Aturan'],
         ] as const).map(([value, Icon, label]) => <button key={value} className={tab === value ? 'active' : ''} onClick={() => openTab(value)}><Icon size={16} /> {label}</button>)}
       </nav>
 
-      {tab === 'ringkasan' && <SummaryTab exam={exam} submissions={examSubmissions} finalCount={finalCount} essayCount={essayCount} onOpenTab={openTab} maxAttempts={maxAttempts} savingAttempts={savingAttempts} onChangeAttempts={setAttemptOverride} onSaveAttempts={saveAttemptLimit} />}
+      {tab === 'ringkasan' && <SummaryTab exam={exam} submissions={examSubmissions} finalCount={finalCount} essayCount={essayCount} onOpenTab={openTab} />}
       {tab === 'soal' && <QuestionsTab exam={exam} onEdit={() => navigate(`/guru/ujian/${exam.id}/edit-soal`)} onPreview={() => navigate(`/guru/ujian/${exam.id}/preview`)} />}
       {tab === 'peserta' && <ParticipantsTab exam={exam} submissions={allExamSubmissions} essayCount={essayCount} attemptExtras={attemptExtras} onAddAttempt={openAttemptDialog} />}
       {tab === 'hasil' && <ResultsTab exam={exam} submissions={examSubmissions} essayCount={essayCount} onGrade={() => navigate(`/guru/hasil?exam=${exam.id}`)} />}
@@ -191,8 +176,8 @@ export default function ExamWorkspacePage() {
             }}
             onNext={data => void saveFullSettings(data)}
             submitLabel={savingSettings ? 'Menyimpan...' : 'Simpan Perubahan'}
-            heading="Edit Pengaturan Ujian"
-            intro="Ubah judul, jadwal, peserta, timer, percobaan, penilaian, hasil, dan keamanan tanpa membuat ujian baru."
+            heading="Aturan & Akses Ujian"
+            intro="Ini satu-satunya tempat untuk mengubah identitas, jadwal, daftar peserta, timer, percobaan, penilaian, hasil, dan keamanan ujian."
           />
           <div style={{ marginTop: 'var(--sp-5)', paddingTop: 'var(--sp-5)', borderTop: '1px solid var(--border)' }}>
             <button className="btn btn-secondary" onClick={() => navigate(`/guru/ujian/${exam.id}/edit-soal`)}>Edit Soal</button>
@@ -206,24 +191,7 @@ export default function ExamWorkspacePage() {
   );
 }
 
-function AttemptLimitControl({ currentValue, value, saving, onChange, onSave }: { currentValue: number; value: number; saving: boolean; onChange: (value: number) => void; onSave: () => Promise<void> }) {
-  return <div className="form-group" style={{ maxWidth: 420 }}>
-    <label className="form-label" htmlFor="workspace-max-attempts">Maksimal percobaan per murid</label>
-    <div style={{ display: 'flex', gap: 10, alignItems: 'stretch', flexWrap: 'wrap' }}>
-      <select id="workspace-max-attempts" className="form-select" style={{ flex: '1 1 180px' }} value={value} onChange={event => onChange(Number(event.target.value))}>
-        <option value={1}>1 kali</option>
-        <option value={2}>2 kali</option>
-        <option value={3}>3 kali</option>
-        <option value={5}>5 kali</option>
-        <option value={0}>Tidak terbatas</option>
-      </select>
-      <button className="btn btn-primary" disabled={saving || value === currentValue} onClick={() => void onSave()}>{saving ? 'Menyimpan...' : 'Simpan'}</button>
-    </div>
-    <span className="form-hint">Hanya jawaban yang berhasil dikumpulkan yang memakai jatah. Draft, autosave, dan submit gagal tidak dihitung.</span>
-  </div>;
-}
-
-function SummaryTab({ exam, submissions, finalCount, essayCount, onOpenTab, maxAttempts, savingAttempts, onChangeAttempts, onSaveAttempts }: { exam: NonNullable<ReturnType<typeof useApp>['exams']>[number]; submissions: Submission[]; finalCount: number; essayCount: number; onOpenTab: (tab: WorkspaceTab) => void; maxAttempts: number; savingAttempts: boolean; onChangeAttempts: (value: number) => void; onSaveAttempts: () => Promise<void> }) {
+function SummaryTab({ exam, submissions, finalCount, essayCount, onOpenTab }: { exam: NonNullable<ReturnType<typeof useApp>['exams']>[number]; submissions: Submission[]; finalCount: number; essayCount: number; onOpenTab: (tab: WorkspaceTab) => void }) {
   return <>
     <div className="workspace-summary-grid">
       <div><span>Soal</span><strong>{exam.questions.length}</strong></div>
@@ -237,9 +205,12 @@ function SummaryTab({ exam, submissions, finalCount, essayCount, onOpenTab, maxA
         <div className="workspace-progress-bar"><span style={{ width: submissions.length ? '100%' : '0%' }} /></div>
         <p className="workspace-muted">{essayCount > 0 ? `${submissions.filter(s => essayStatus(s, essayCount) !== 'FINAL').length} peserta masih menunggu koreksi essay.` : 'Ujian ini dinilai otomatis.'}</p>
       </section>
-      <section className="card"><SectionHeader title="Pengaturan cepat" subtitle="Atur jatah pengerjaan tanpa mencari menu lain." />
-        <AttemptLimitControl currentValue={exam.settings.maxAttempts ?? 1} value={maxAttempts} saving={savingAttempts} onChange={onChangeAttempts} onSave={onSaveAttempts} />
-        <div className="workspace-action-list" style={{ marginTop: 'var(--sp-4)' }}><button onClick={() => onOpenTab('soal')}><BookOpen size={18} /> Kelola soal</button><button onClick={() => onOpenTab('peserta')}><Users size={18} /> Lihat peserta</button><button onClick={() => onOpenTab('hasil')}><BarChart2 size={18} /> Buka hasil</button></div>
+      <section className="card"><SectionHeader title="Akses pengerjaan" subtitle="Perubahan konfigurasi dipusatkan di tab Aturan." />
+        <div className="workspace-settings-summary">
+          <div><span>Maksimal percobaan</span><strong>{exam.settings.maxAttempts === 0 ? 'Tidak terbatas' : `${exam.settings.maxAttempts ?? 1} kali`}</strong></div>
+          <div><span>Daftar peserta</span><strong>{exam.preloadedStudents.length ? `${exam.preloadedStudents.length} murid` : 'Akses dengan kode'}</strong></div>
+        </div>
+        <div className="workspace-action-list" style={{ marginTop: 'var(--sp-4)' }}><button onClick={() => onOpenTab('pengaturan')}><SlidersHorizontal size={18} /> Buka aturan ujian</button><button onClick={() => onOpenTab('peserta')}><Users size={18} /> Pantau peserta</button><button onClick={() => onOpenTab('hasil')}><BarChart2 size={18} /> Buka hasil</button></div>
       </section>
     </div>
   </>;

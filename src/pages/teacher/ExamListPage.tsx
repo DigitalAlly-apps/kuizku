@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, Search, Copy, Edit2, Trash2, BarChart2, Archive, Play, MoreVertical, FileText, Users, ChevronDown, ChevronRight, CheckCircle2, Clock, X, Save, Loader2, Calendar, Share2, QrCode } from 'lucide-react';
+import { Plus, Search, Copy, Edit2, Trash2, BarChart2, Archive, Play, MoreVertical, FileText, Users, ChevronDown, ChevronRight, CheckCircle2, Clock, Loader2, Calendar, Share2, QrCode, SlidersHorizontal } from 'lucide-react';
 import { useApp, useToast } from '../../context/AppContext';
 import { FormatBadge, ExamTypeBadge, EmptyState, ConfirmDialog, Modal } from '../../components/ui';
-import DateTime24Input from '../../components/ui/DateTime24Input';
-import { formatDateTime, formatRelative, isoToLocalDateTimeInput } from '../../utils/helpers';
+import { formatDateTime, formatRelative } from '../../utils/helpers';
 import { matchRosterToCompletedSubmissions } from '../../utils/participantAttendance';
 import { buildExamWhatsAppMessage } from '../../utils/examShare';
 import type { Exam, ExamType } from '../../types';
@@ -50,7 +49,7 @@ function formatSchedule(exam: Exam): string {
 }
 
 export default function ExamListPage() {
-  const { currentTeacher, exams, questionCollections, copyExamQuestionsToBank, updateExam, deleteExam, duplicateExam, publishExam, archiveExam, endExam, submissions } = useApp();
+  const { currentTeacher, exams, questionCollections, copyExamQuestionsToBank, deleteExam, duplicateExam, publishExam, archiveExam, endExam, submissions } = useApp();
   const { addToast } = useToast();
   const navigate = useNavigate();
   const { enabled: personalExamEnabled } = usePersonalExam();
@@ -69,20 +68,6 @@ export default function ExamListPage() {
   const [copyExam, setCopyExam] = useState<Exam | null>(null);
   const [copyCollectionId, setCopyCollectionId] = useState('');
   const [copyingToBank, setCopyingToBank] = useState(false);
-
-  // Edit modal state
-  const [editExam, setEditExam] = useState<Exam | null>(null);
-  const [editTitle, setEditTitle] = useState('');
-  const [editDesc, setEditDesc] = useState('');
-  const [editSubject, setEditSubject] = useState('');
-  const [editClass, setEditClass] = useState('');
-  const [editType, setEditType] = useState<ExamType>('UJIAN');
-  const [editFrom, setEditFrom] = useState('');
-  const [editTo, setEditTo] = useState('');
-  const [editStudents, setEditStudents] = useState('');
-  const [editSaving, setEditSaving] = useState(false);
-  const [selectedRosterLines, setSelectedRosterLines] = useState<Set<number>>(new Set());
-  const [rosterDeleteMode, setRosterDeleteMode] = useState<'selected' | 'all' | null>(null);
 
   useEffect(() => {
     if (!openMenuId) return;
@@ -144,89 +129,6 @@ export default function ExamListPage() {
       next.has(key) ? next.delete(key) : next.add(key);
       return next;
     });
-  };
-
-  const openEdit = (exam: Exam) => {
-    setEditExam(exam);
-    setEditTitle(exam.title);
-    setEditDesc(exam.description || '');
-    setEditSubject(exam.subject);
-    setEditClass(exam.className || '');
-    setEditType(exam.examType ?? 'UJIAN');
-    setEditFrom(isoToLocalDateTimeInput(exam.activeFrom));
-    setEditTo(isoToLocalDateTimeInput(exam.activeTo));
-    setEditStudents((exam.preloadedStudents || []).map(s => s.name).join('\n'));
-    setSelectedRosterLines(new Set());
-    setRosterDeleteMode(null);
-    setOpenMenuId(null);
-  };
-
-  const rosterLines = editStudents.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-  const toggleRosterLine = (index: number) => {
-    setSelectedRosterLines(current => {
-      const next = new Set(current);
-      next.has(index) ? next.delete(index) : next.add(index);
-      return next;
-    });
-  };
-  const deleteRosterLines = () => {
-    if (rosterDeleteMode === 'all') {
-      setEditStudents('');
-    } else if (rosterDeleteMode === 'selected') {
-      setEditStudents(rosterLines.filter((_, index) => !selectedRosterLines.has(index)).join('\n'));
-    }
-    setSelectedRosterLines(new Set());
-    setRosterDeleteMode(null);
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editExam) return;
-    if (!editTitle.trim()) { addToast({ type: 'error', title: 'Judul tidak boleh kosong' }); return; }
-    setEditSaving(true);
-    // Parse daftar peserta dari textarea
-    const existingByName = new Map<string, typeof editExam.preloadedStudents>();
-    const submittedParticipantIds = new Set(
-      submissions
-        .filter(submission => submission.examId === editExam.id && submission.isComplete && !submission.isReturned)
-        .map(submission => submission.participantId)
-        .filter((participantId): participantId is string => !!participantId),
-    );
-    editExam.preloadedStudents.forEach(student => {
-      const key = student.name.trim().toLocaleLowerCase('id-ID').replace(/\s+/g, ' ');
-      const matches = [...(existingByName.get(key) ?? []), student]
-        .sort((a, b) => Number(submittedParticipantIds.has(b.participantId ?? '')) - Number(submittedParticipantIds.has(a.participantId ?? '')));
-      existingByName.set(key, matches);
-    });
-    const parsedStudents = editStudents.split(/\r?\n/).map(line => line.trim()).filter(Boolean).map((line, index) => {
-      const [nameRaw] = line.split(/[,;\t]/).map(p => p.trim());
-      const name = nameRaw || '';
-      const key = name.toLocaleLowerCase('id-ID').replace(/\s+/g, ' ');
-      const existing = existingByName.get(key)?.shift();
-      return { name, participantId: existing?.participantId, nis: existing?.nis ?? String(index + 1), attendanceNo: index + 1 };
-    }).filter(s => s.name);
-    if (parsedStudents.length === 0 && !window.confirm('Daftar peserta kosong akan memblokir semua murid untuk masuk ujian ini. Lanjutkan menyimpan?')) {
-      setEditSaving(false);
-      return;
-    }
-
-    const res = await updateExam(editExam.id, {
-      title: editTitle.trim(),
-      description: editDesc,
-      subject: editSubject,
-      className: editClass,
-      examType: editType,
-      activeFrom: editFrom || undefined,
-      activeTo: editTo || undefined,
-      settings: { ...editExam.settings, participantAccess: parsedStudents.length ? 'ROSTER_ONLY' : 'BLOCKED' },
-      preloadedStudents: parsedStudents,
-    });
-    setEditSaving(false);
-    if (res?.error) {
-      addToast({ type: 'error', title: 'Gagal memperbarui ujian', message: res.error });
-    } else {
-      setEditExam(null);
-      addToast({ type: 'success', title: 'Ujian berhasil diperbarui!' });
-    }
   };
 
   const copyCode = (code: string) => {
@@ -370,8 +272,7 @@ export default function ExamListPage() {
     const status = availabilityStyle[availability];
 
     return (
-      <div key={exam.id} className="exam-card" style={{ position: 'relative', zIndex: openMenuId === exam.id ? 10 : undefined }}
-        onClick={() => navigate(`/guru/ujian/${exam.id}`)}>
+      <article className="exam-card" style={{ position: 'relative', zIndex: openMenuId === exam.id ? 10 : undefined }}>
         <div className="exam-card-header">
           <div className="exam-card-badges">
             <ExamTypeBadge examType={exam.examType} />
@@ -383,13 +284,7 @@ export default function ExamListPage() {
               </span>
             )}
           </div>
-          <div className="exam-card-actions" onClick={e => e.stopPropagation()}>
-            <button className="btn btn-ghost btn-sm btn-icon" title="Salin kode" onClick={() => copyCode(exam.code)}>
-              <Copy size={14} />
-            </button>
-            <button className="btn btn-ghost btn-sm btn-icon" title="Edit" onClick={e => { e.stopPropagation(); openEdit(exam); }}>
-              <Edit2 size={14} />
-            </button>
+          <div className="exam-card-actions">
             <div
               ref={openMenuId === exam.id ? activeMenuRef : undefined}
               style={{ position: 'relative' }}
@@ -425,6 +320,9 @@ export default function ExamListPage() {
                     )}
                     <button style={menuItemStyle} onClick={() => { navigate(`/guru/hasil?exam=${exam.id}`); setOpenMenuId(null); }}>
                       <BarChart2 size={14} /> Lihat Hasil
+                    </button>
+                    <button style={menuItemStyle} onClick={() => { navigate(`/guru/ujian/${exam.id}/pengaturan`); setOpenMenuId(null); }}>
+                      <SlidersHorizontal size={14} /> Atur Ujian
                     </button>
                     <button style={menuItemStyle} onClick={() => { navigate(`/guru/ujian/${exam.id}/edit-soal`); setOpenMenuId(null); }}>
                       <Edit2 size={14} style={{ color: 'var(--primary)' }} /> Edit Soal
@@ -465,7 +363,7 @@ export default function ExamListPage() {
         </div>
 
         <div>
-          <div className="exam-card-title">{exam.title}</div>
+          <button className="exam-card-title exam-card-title-button" onClick={() => navigate(`/guru/ujian/${exam.id}`)}>{exam.title}</button>
           <div className="exam-card-subject">{exam.subject}</div>
         </div>
 
@@ -483,20 +381,21 @@ export default function ExamListPage() {
             </span>
           )}
           <span className="exam-card-meta-item"><Calendar size={13} /> {formatSchedule(exam)}</span>
-          <span className="exam-card-meta-item" style={{ fontFamily: 'monospace', color: 'var(--primary)', fontWeight: 700 }}>#{exam.code}</span>
+          <button className="exam-card-code" onClick={() => copyCode(exam.code)} aria-label={`Salin kode ujian ${exam.code}`}><Copy size={13} /> #{exam.code}</button>
           <span className="exam-card-meta-item" style={{ marginLeft: 'auto' }}>{formatRelative(exam.updatedAt)}</span>
         </div>
         {isDraftPastStart && <div style={{ marginTop: 8, fontSize: '0.8rem', color: 'var(--warning)', fontWeight: 600 }}>Jadwal mulai sudah lewat. Ujian tetap belum dapat diakses karena belum dipublikasikan.</div>}
-        <div style={{ display: 'flex', gap: 8, marginTop: 'var(--sp-3)', flexWrap: 'wrap' }} onClick={event => event.stopPropagation()}>
-          {availability === 'DRAFT' && <button className="btn btn-primary btn-sm" onClick={() => handlePublish(exam.id)}><Play size={14} /> {isDraftPastStart ? 'Publikasikan Sekarang' : 'Publikasikan'}</button>}
-          {availability === 'ACTIVE' && <><button className="btn btn-primary btn-sm" onClick={() => navigate(`/guru/ujian/${exam.id}`)}>Buka Ujian</button><button className="btn btn-secondary btn-sm" onClick={() => shareWhatsApp(exam)}><Share2 size={14} /> Bagikan</button></>}
-          {availability === 'UPCOMING' && <button className="btn btn-secondary btn-sm" onClick={() => copyLink(exam.code)}><Share2 size={14} /> Bagikan</button>}
+        <div className="exam-card-primary-actions">
+          {availability === 'DRAFT' && <><button className="btn btn-primary btn-sm" onClick={() => handlePublish(exam.id)}><Play size={14} /> {isDraftPastStart ? 'Publikasikan Sekarang' : 'Publikasikan'}</button><button className="btn btn-secondary btn-sm" onClick={() => navigate(`/guru/ujian/${exam.id}`)}>Kelola</button></>}
+          {availability === 'ACTIVE' && <><button className="btn btn-primary btn-sm" onClick={() => navigate(`/guru/ujian/${exam.id}`)}>Kelola Ujian</button><button className="btn btn-secondary btn-sm" onClick={() => shareWhatsApp(exam)}><Share2 size={14} /> Bagikan</button></>}
+          {availability === 'UPCOMING' && <><button className="btn btn-primary btn-sm" onClick={() => navigate(`/guru/ujian/${exam.id}`)}>Kelola Ujian</button><button className="btn btn-secondary btn-sm" onClick={() => copyLink(exam.code)}><Share2 size={14} /> Bagikan</button></>}
           {availability === 'FINISHED' && <>
             {canReopen && <button className="btn btn-primary btn-sm" onClick={() => handleReopen(exam.id)}><Play size={14} /> Buka Kembali</button>}
-            <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/guru/hasil?exam=${exam.id}`)}><BarChart2 size={14} /> Lihat Hasil</button>
+            <button className={canReopen ? 'btn btn-secondary btn-sm' : 'btn btn-primary btn-sm'} onClick={() => navigate(`/guru/hasil?exam=${exam.id}`)}><BarChart2 size={14} /> Lihat Hasil</button>
           </>}
+          {availability === 'ARCHIVED' && <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/guru/ujian/${exam.id}`)}>Lihat Arsip</button>}
         </div>
-      </div>
+      </article>
     );
   };
 
@@ -507,13 +406,13 @@ export default function ExamListPage() {
           <h1>Ujian Saya</h1>
           <p style={{ color: 'var(--text-muted)' }}>{myExams.length} item terdaftar</p>
         </div>
-        <div className="section-header-action">
+        <div className="section-header-action exam-page-actions">
+          {personalExamEnabled && <button className="btn btn-secondary" onClick={() => setShowPersonalData(true)}><Users size={16} /> Data Murid & Mapel</button>}
           <button className="btn btn-primary w-full" onClick={() => navigate('/guru/ujian/baru')}>
             <Plus size={16} /> Buat Ujian/Tugas
           </button>
         </div>
       </div>
-      {personalExamEnabled && <button className="btn btn-secondary" style={{ position: 'fixed', right: 24, bottom: 24, zIndex: 10 }} onClick={() => setShowPersonalData(true)}><Users size={16} /> Kelola murid & mapel</button>}
       {showPersonalData && <PersonalDataModal onClose={() => setShowPersonalData(false)} />}
 
       {/* Filters */}
@@ -608,106 +507,6 @@ export default function ExamListPage() {
         </div>
       )}
 
-      {/* Edit Modal */}
-      <Modal open={!!editExam} onClose={() => setEditExam(null)} title={`Edit — ${editExam?.title ?? ''}`} size="lg"
-        footer={
-          <>
-            <button className="btn btn-secondary" onClick={() => { setEditExam(null); setSelectedRosterLines(new Set()); }}><X size={15} /> Batal</button>
-            <button className="btn btn-primary" onClick={handleSaveEdit} disabled={editSaving}>
-              {editSaving ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> Menyimpan...</> : <><Save size={15} /> Simpan</>}
-            </button>
-          </>
-        }>
-        {editExam && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
-            {/* Tipe */}
-            <div>
-              <label className="form-label" style={{ marginBottom: 8, display: 'block' }}>Tipe Kegiatan</label>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {([['UJIAN', '📝 Ujian', 'var(--danger)', 'var(--danger-light)'],
-                   ['TUGAS', '📋 Tugas', 'var(--warning)', 'var(--warning-light)'],
-                   ['LATIHAN', '🎯 Latihan', 'var(--success)', 'var(--success-light)']] as const).map(([v, label, color, bg]) => (
-                  <button key={v} type="button"
-                    style={{
-                      padding: '8px 14px', borderRadius: 'var(--r-md)',
-                      border: `2px solid ${editType === v ? color : 'var(--border-strong)'}`,
-                      background: editType === v ? bg : 'var(--surface-2)',
-                      color: editType === v ? color : 'var(--text-muted)',
-                      fontWeight: editType === v ? 700 : 500, cursor: 'pointer', fontSize: '0.82rem',
-                    }}
-                    onClick={() => setEditType(v)}>{label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {/* Title */}
-            <div className="form-group">
-              <label className="form-label">Judul <span style={{ color: 'var(--danger)' }}>*</span></label>
-              <input className="form-input" value={editTitle} onChange={e => setEditTitle(e.target.value)} />
-            </div>
-            {/* Subject + Class */}
-            <div className="exam-edit-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-3)' }}>
-              <div className="form-group">
-                <label className="form-label">Mata Pelajaran</label>
-                <input className="form-input" value={editSubject} onChange={e => setEditSubject(e.target.value)} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Kelas</label>
-                <input className="form-input" placeholder="Contoh: Kelas 10A" value={editClass} onChange={e => setEditClass(e.target.value)} />
-              </div>
-            </div>
-            {/* Description */}
-            <div className="form-group">
-              <label className="form-label">Deskripsi</label>
-              <textarea className="form-textarea" rows={2} value={editDesc} onChange={e => setEditDesc(e.target.value)} />
-            </div>
-            {/* Jadwal akses */}
-            <div>
-              <div className="form-label" style={{ marginBottom: 4 }}>Jadwal Akses</div>
-              <p className="form-hint" style={{ margin: 0 }}>Murid hanya dapat mengakses ujian selama periode ini setelah ujian dipublikasikan.</p>
-            </div>
-            <div className="exam-edit-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-3)' }}>
-              <div className="form-group">
-                <label className="form-label">Mulai</label>
-                <DateTime24Input id="edit-active-from" value={editFrom} onChange={setEditFrom} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Berakhir</label>
-                <DateTime24Input id="edit-active-to" value={editTo} onChange={setEditTo} />
-              </div>
-            </div>
-            {/* Roster peserta. Menyimpan roster kosong berarti akses diblokir. */}
-            <div className="form-group">
-              <label className="form-label" htmlFor="edit-roster">Daftar Peserta Ujian</label>
-              <p className="form-hint" style={{ marginTop: 0 }}>Satu nama per baris. Urutan baris menjadi nomor absen. Jika daftar dikosongkan lalu disimpan, semua murid diblokir dari ujian ini.</p>
-              <textarea id="edit-roster" className="form-textarea" rows={4} style={{ marginTop: 'var(--sp-3)' }}
-                placeholder={'Satu nama per baris. Nomor absen dibuat otomatis sesuai urutan.'}
-                value={editStudents} onChange={e => { setEditStudents(e.target.value); setSelectedRosterLines(new Set()); }} />
-              {rosterLines.length > 0 && <div style={{ marginTop: 'var(--sp-4)', paddingTop: 'var(--sp-3)', borderTop: '1px solid var(--border)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--sp-3)', alignItems: 'center', marginBottom: 'var(--sp-2)', flexWrap: 'wrap' }}>
-                    <strong style={{ fontSize: '0.82rem' }}>Hapus peserta</strong>
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      <button type="button" className="btn btn-ghost btn-sm" disabled={selectedRosterLines.size === 0} onClick={() => setRosterDeleteMode('selected')}>
-                        <Trash2 size={13} /> Hapus {selectedRosterLines.size || ''} dipilih
-                      </button>
-                      <button type="button" className="btn btn-danger btn-sm" onClick={() => setRosterDeleteMode('all')}>
-                        <Trash2 size={13} /> Hapus semua peserta
-                      </button>
-                    </div>
-                  </div>
-                  <div style={{ maxHeight: 154, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2, padding: 2, border: '1px solid var(--border)', borderRadius: 'var(--r-md)', background: 'var(--surface-2)' }}>
-                    {rosterLines.map((name, index) => <label key={`${name}-${index}`} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 9px', cursor: 'pointer', borderRadius: 'var(--r-sm)', background: selectedRosterLines.has(index) ? 'var(--danger-light)' : 'transparent' }}>
-                      <input type="checkbox" checked={selectedRosterLines.has(index)} onChange={() => toggleRosterLine(index)} aria-label={`Pilih ${name}`} />
-                      <span style={{ fontSize: '0.82rem', flex: 1 }}>{index + 1}. {name}</span>
-                    </label>)}
-                  </div>
-                  <span className="form-hint">Hapus semua mengosongkan roster. Saat disimpan, akses murid akan diblokir.</span>
-                </div>}
-            </div>
-          </div>
-        )}
-      </Modal>
-
       <Modal open={!!copyExam} onClose={() => !copyingToBank && setCopyExam(null)} title="Simpan Soal ke Bank Soal"
         subtitle={copyExam ? `${copyExam.questions.length} soal dari “${copyExam.title}” akan disalin.` : undefined}
         footer={<>
@@ -753,10 +552,6 @@ export default function ExamListPage() {
       <ConfirmDialog open={!!deleteId} title="Hapus Ujian?"
         message="Semua data ujian ini akan dihapus permanen. Tindakan ini tidak bisa dibatalkan."
         confirmLabel="Hapus" danger onConfirm={handleDelete} onCancel={() => setDeleteId(null)} />
-      <ConfirmDialog open={rosterDeleteMode !== null}
-        title={rosterDeleteMode === 'all' ? 'Hapus semua peserta?' : `Hapus ${selectedRosterLines.size} peserta?`}
-        message={rosterDeleteMode === 'all' ? 'Seluruh nama akan dihapus dari daftar roster di modal ini. Klik Simpan untuk menerapkan perubahan.' : 'Nama yang dipilih akan dihapus dari daftar roster di modal ini. Klik Simpan untuk menerapkan perubahan.'}
-        confirmLabel="Hapus dari daftar" danger onConfirm={deleteRosterLines} onCancel={() => setRosterDeleteMode(null)} />
     </div>
   );
 }

@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { User, Building, BookOpen, Save, Loader2, Mail, Shield, Palette, CheckCircle2, Info, Moon, Sun } from 'lucide-react';
 import { useAuth, useToast } from '../../context/AppContext';
 import { storage } from '../../utils/storage';
+import { useTheme } from '../../context/theme';
 
 export default function SettingsPage() {
   const { currentTeacher } = useAuth();
@@ -11,23 +12,12 @@ export default function SettingsPage() {
   const [institution, setInstitution] = useState(currentTeacher?.institution ?? '');
   const [saving, setSaving] = useState(false);
   const [sendingReset, setSendingReset] = useState(false);
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('app-theme');
-    if (savedTheme === 'dark' || savedTheme === 'light') setTheme(savedTheme);
-  }, []);
+  const { theme, setTheme } = useTheme();
 
   const profileCompletion = useMemo(() => {
     const fields = [name, subject, institution];
     return Math.round((fields.filter(value => value.trim()).length / fields.length) * 100);
   }, [name, subject, institution]);
-
-  const changeTheme = (nextTheme: 'light' | 'dark') => {
-    setTheme(nextTheme);
-    localStorage.setItem('app-theme', nextTheme);
-    document.documentElement.setAttribute('data-theme', nextTheme);
-  };
 
   const handleSave = async () => {
     if (!currentTeacher) return;
@@ -57,7 +47,7 @@ export default function SettingsPage() {
   return (
     <div className="page-content settings-page">
       <div className="page-header settings-page-header">
-        <div><div className="settings-eyebrow">AKUN GURU</div><h1>Pengaturan Akun</h1><p>Kelola identitas, tampilan, dan keamanan akun Kuizku Anda.</p></div>
+        <div><div className="settings-eyebrow">PREFERENSI GURU</div><h1>Akun & Tampilan</h1><p>Satu tempat untuk identitas guru, tema aplikasi, dan pemulihan akun.</p></div>
         <div className="settings-header-status"><CheckCircle2 size={16} /> Akun aktif</div>
       </div>
 
@@ -82,7 +72,7 @@ export default function SettingsPage() {
 
         <aside className="settings-side-area">
           <section className="settings-side-section" aria-labelledby="account-info-heading"><div className="settings-section-icon"><Info size={18} /></div><div className="settings-side-content"><h2 id="account-info-heading">Informasi Akun</h2><p>Data login dikelola oleh Kuizku.</p><div className="settings-info-list">{[['Email login', currentTeacher?.email ?? '—'], ['ID Akun', (currentTeacher?.id.slice(0, 8) ?? '—') + '...']].map(([label, val]) => <div key={label}><span>{label}</span><strong>{val}</strong></div>)}</div></div></section>
-          <section className="settings-side-section" aria-labelledby="appearance-heading"><div className="settings-section-icon"><Palette size={18} /></div><div className="settings-side-content"><h2 id="appearance-heading">Tampilan</h2><p>Pilih mode yang nyaman di perangkat ini.</p><div className="settings-theme-list">{([['light', Sun, 'Mode terang'], ['dark', Moon, 'Mode gelap']] as const).map(([value, Icon, label]) => <button className="settings-theme-option" key={value} type="button" onClick={() => changeTheme(value)} aria-pressed={theme === value}><Icon size={17} /><span>{label}</span>{theme === value && <CheckCircle2 size={16} />}</button>)}</div></div></section>
+          <section className="settings-side-section" aria-labelledby="appearance-heading"><div className="settings-section-icon"><Palette size={18} /></div><div className="settings-side-content"><h2 id="appearance-heading">Tema aplikasi</h2><p>Preferensi ini berlaku di seluruh area guru pada perangkat ini.</p><div className="settings-theme-list">{([['light', Sun, 'Mode terang'], ['dark', Moon, 'Mode gelap']] as const).map(([value, Icon, label]) => <button className="settings-theme-option" key={value} type="button" onClick={() => setTheme(value)} aria-pressed={theme === value}><Icon size={17} /><span>{label}</span>{theme === value && <CheckCircle2 size={16} />}</button>)}</div></div></section>
         </aside>
       </div>
 

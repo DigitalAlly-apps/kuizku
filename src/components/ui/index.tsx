@@ -320,10 +320,10 @@ export function NetworkStatusBanner() {
   }, []);
 
   return (
-    <div style={{
+    <div role="status" aria-live="polite" style={{
       position: 'fixed', bottom: 16, left: 16, zIndex: 60,
       padding: '8px 12px', borderRadius: 'var(--r-md)',
-      background: online ? 'rgba(16,185,129,0.92)' : 'rgba(239,68,68,0.92)',
+      background: online ? '#047857' : '#b91c1c',
       color: 'white', fontSize: '0.78rem', fontWeight: 600,
       boxShadow: 'var(--shadow-lg)',
     }}>

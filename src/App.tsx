@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { PersonalExamProvider } from './features/personal-exam/PersonalExamContext';
 import TeacherLayout from './components/layout/TeacherLayout';
 import { ToastContainer, PageLoader, NetworkStatusBanner, ErrorBoundary } from './components/ui';
@@ -32,7 +33,7 @@ const StudentRankingPage  = lazy(() => import('./pages/student/StudentRankingPag
 function App() {
   return (
     <ErrorBoundary>
-      <AppProvider>
+      <ThemeProvider><AppProvider>
         <PersonalExamProvider><BrowserRouter>
           <Suspense fallback={<PageLoader />}>
             <Routes>
@@ -78,7 +79,7 @@ function App() {
           <NetworkStatusBanner />
           <ToastContainer />
         </BrowserRouter></PersonalExamProvider>
-      </AppProvider>
+      </AppProvider></ThemeProvider>
     </ErrorBoundary>
   );
 }

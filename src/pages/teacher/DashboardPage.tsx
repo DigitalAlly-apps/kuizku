@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, FileText, BookOpen, Users, TrendingUp, Clock, CheckCircle, MessageSquareWarning } from 'lucide-react';
+import { Plus, FileText, Users, TrendingUp, Clock, CheckCircle, ChevronRight, MessageSquareWarning } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { StatCard, FormatBadge, StatusBadge, ExamTypeBadge, EmptyState, SectionHeader } from '../../components/ui';
 import { formatRelative } from '../../utils/helpers';
@@ -85,25 +85,9 @@ export default function DashboardPage() {
             <MessageSquareWarning size={18} style={{ color: 'var(--warning)' }} />
             <h3 style={{ margin: 0 }}>Perlu Perhatian</h3>
           </div>
-          <ActionRow label="Peserta sudah mengumpulkan di ujian aktif" value={actionStats.activeSubmissions} color="var(--success)" />
-          <ActionRow label="Peserta terdaftar belum mengerjakan" value={actionStats.notSubmitted} color="var(--warning)" />
-          <ActionRow label="Jawaban essay belum dinilai" value={actionStats.essayPending} color="var(--secondary)" />
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="dashboard-quick-actions">
-        <SectionHeader title="Aksi Cepat" />
-        <div style={{ display: 'flex', gap: 'var(--sp-3)', flexWrap: 'wrap' }}>
-          <button className="btn btn-primary" onClick={() => navigate('/guru/ujian/baru')}>
-            <Plus size={16} /> Buat Ujian Baru
-          </button>
-          <button className="btn btn-secondary" onClick={() => navigate('/guru/bank-soal')}>
-            <BookOpen size={16} /> Bank Soal
-          </button>
-          <button className="btn btn-secondary" onClick={() => navigate('/guru/hasil')}>
-            <TrendingUp size={16} /> Lihat Hasil
-          </button>
+          <ActionRow label="Peserta sudah mengumpulkan di ujian aktif" value={actionStats.activeSubmissions} color="var(--success)" onClick={() => navigate('/guru/ujian?status=ACTIVE')} />
+          <ActionRow label="Peserta terdaftar belum mengerjakan" value={actionStats.notSubmitted} color="var(--warning)" onClick={() => navigate('/guru/ujian?status=ACTIVE')} />
+          <ActionRow label="Jawaban essay belum dinilai" value={actionStats.essayPending} color="var(--secondary)" onClick={() => navigate('/guru/hasil')} />
         </div>
       </div>
 
@@ -125,7 +109,7 @@ export default function DashboardPage() {
           {recentExams.map(exam => {
             const examSubs = submissions.filter(s => s.examId === exam.id);
             return (
-              <div key={exam.id} className="exam-card" onClick={() => navigate(`/guru/ujian/${exam.id}`)}>
+              <button type="button" key={exam.id} className="exam-card dashboard-exam-card" onClick={() => navigate(`/guru/ujian/${exam.id}`)}>
                 <div className="exam-card-header">
                   <div className="exam-card-badges">
                     <ExamTypeBadge examType={exam.examType} />
@@ -147,7 +131,7 @@ export default function DashboardPage() {
                     # {exam.code}
                   </span>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -174,12 +158,12 @@ export default function DashboardPage() {
   );
 }
 
-function ActionRow({ label, value, color }: { label: string; value: number; color: string }) {
+function ActionRow({ label, value, color, onClick }: { label: string; value: number; color: string; onClick: () => void }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--sp-3)', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+    <button type="button" className="dashboard-action-row" onClick={onClick}>
       <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{label}</span>
-      <strong style={{ color }}>{value}</strong>
-    </div>
+      <span className="dashboard-action-row-value"><strong style={{ color }}>{value}</strong><ChevronRight size={16} /></span>
+    </button>
   );
 }
 

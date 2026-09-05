@@ -62,10 +62,16 @@
     font-size: 0.88rem;
   }
 
-  /* Mobile header already has a create (+) action. Avoid duplicate giant CTA. */
+  /* The page owns its primary action; the app header only exposes the account. */
   .section-header-action {
-    display: none !important;
+    display: flex !important;
+    width: 100%;
+    gap: 8px;
   }
+
+  .section-header-action .btn { flex: 1; justify-content: center; }
+
+  .exam-page-actions { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
   /* The pending-roster action is a core mobile workflow, not a duplicate page CTA. */
   .section-header-action.results-pending-copy-action {
@@ -228,13 +234,12 @@
   }
 
   /* Schedule is the important contextual row: give it the full width. */
-  .exam-card-meta-item:has(svg[data-lucide="calendar"]),
-  .exam-card-meta-item:nth-last-child(3) {
+  .exam-card-meta-item:has(svg[data-lucide="calendar"]) {
     grid-column: 1 / -1;
   }
 
   /* Code should stay prominent and tappable-looking, relative timestamp is secondary. */
-  .exam-card-meta-item[style*="monospace"] {
+  .exam-card-code {
     grid-column: 1;
     font-size: 0.9rem;
     letter-spacing: 0.02em;
@@ -246,20 +251,26 @@
     font-size: 0.72rem;
   }
 
-  .exam-card > div:last-child {
+  .exam-card-primary-actions {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 8px !important;
     margin-top: 4px !important;
   }
 
-  .exam-card > div:last-child .btn {
+  .exam-card-primary-actions .btn {
     width: 100%;
     min-height: 46px;
     justify-content: center;
     border-radius: 13px;
     font-size: 0.84rem;
   }
+
+  .exam-card-primary-actions .btn:only-child { grid-column: 1 / -1; }
+
+  .exam-page-actions .btn:only-child { grid-column: 1 / -1; }
+
+  .workspace-settings-summary { grid-template-columns: 1fr; }
 
   /* ---------- Results header ---------- */
   .results-page-header {
