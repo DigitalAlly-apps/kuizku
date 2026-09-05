@@ -18,6 +18,8 @@ export interface ExamSession {
   answers: StudentAnswer[];
   startedAt: string;
   remainingSeconds?: number; // for whole-exam timer
+  /** Sisa waktu per soal, keyed by question ID; survives a page refresh. */
+  perQuestionRemainingSeconds?: Record<string, number>;
   currentQuestionIndex: number;
   /** Soal tertinggi yang pernah dibuka; dipakai untuk resume navigasi berurutan. */
   highestUnlockedIndex?: number;
@@ -27,7 +29,17 @@ export interface ExamSession {
 // ---- Save session to localStorage ----
 export function saveSession(session: ExamSession): void {
   try {
-    localStorage.setItem(SESSION_KEY(session.examCode, session.participantId), JSON.stringify(session));
+    // Timer per-soal can be persisted independently of React state. Preserve
+    // its newest values when another session update (answer/navigation) writes.
+    const existing = loadSession(session.examCode, session.participantId);
+    const perQuestionRemainingSeconds = {
+      ...(existing?.submissionId === session.submissionId ? existing.perQuestionRemainingSeconds : {}),
+      ...session.perQuestionRemainingSeconds,
+    };
+    localStorage.setItem(SESSION_KEY(session.examCode, session.participantId), JSON.stringify({
+      ...session,
+      ...(Object.keys(perQuestionRemainingSeconds).length > 0 ? { perQuestionRemainingSeconds } : {}),
+    }));
   } catch {
     console.warn('Failed to save session');
   }
@@ -106,6 +118,26 @@ export function updateTimer(session: ExamSession, remaining: number): ExamSessio
   const updated = { ...session, remainingSeconds: remaining };
   saveSession(updated);
   return updated;
+}
+
+/** Persist a per-question countdown without re-rendering the whole exam page. */
+export function savePerQuestionTimer(
+  code: string,
+  participantId: string,
+  questionId: string,
+  remaining: number,
+): void {
+  const session = loadSession(code, participantId);
+  if (!session) return;
+  const perQuestionRemainingSeconds = {
+    ...session.perQuestionRemainingSeconds,
+    [questionId]: Math.max(0, Math.floor(remaining)),
+  };
+  try {
+    localStorage.setItem(SESSION_KEY(code, participantId), JSON.stringify({ ...session, perQuestionRemainingSeconds }));
+  } catch {
+    console.warn('Failed to save per-question timer');
+  }
 }
 
 // ---- Update current question index ----

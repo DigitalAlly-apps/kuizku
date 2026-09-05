@@ -6,7 +6,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { storage } from '../../utils/storage';
 import {
   loadSession, upsertAnswer, updateTimer,
-  updateCurrentIndex, buildSubmission, buildDraftSubmission, createSession, clearSession,
+  updateCurrentIndex, buildSubmission, buildDraftSubmission, createSession, clearSession, savePerQuestionTimer,
   type ExamSession,
 } from '../../utils/examSession';
 
@@ -224,7 +224,13 @@ export default function ExamTakingPage() {
   const perQSeconds = currentQ?.timerSeconds ?? exam?.settings.perQuestionDefaultSeconds ?? 60;
 
   // Fix #3: Track waktu tersisa per soal agar tidak reset saat back-and-forth
-  const perQRemainingRef = useRef<Record<number, number>>({});
+  const perQRemainingRef = useRef<Record<string, number>>({});
+
+  useEffect(() => {
+    if (session?.perQuestionRemainingSeconds) {
+      perQRemainingRef.current = { ...session.perQuestionRemainingSeconds };
+    }
+  }, [session?.submissionId]);
 
   const goNext = useCallback(() => {
     const next = Math.min(currentIdx + 1, questions.length - 1);
@@ -233,7 +239,7 @@ export default function ExamTakingPage() {
   }, [currentIdx, questions.length]);
 
   const perQTimer = useCountdown({
-    initialSeconds: perQRemainingRef.current[currentIdx] ?? perQSeconds,
+    initialSeconds: session?.perQuestionRemainingSeconds?.[currentQ?.id ?? ''] ?? perQSeconds,
     autoStart: perQEnabled && !!session && !submitted,
     onExpire: useCallback(() => {
       if (currentIdx < questions.length - 1) goNext();
@@ -246,22 +252,31 @@ export default function ExamTakingPage() {
     ? Math.max(0, Math.min(100, Math.round((perQTimer.remaining / perQSeconds) * 100)))
     : undefined;
 
-  // Simpan sisa waktu soal saat pindah, lalu reset timer ke sisa waktu soal tujuan
+  // Simpan sisa waktu menurut ID soal, bukan index, agar refresh tidak memberi
+  // durasi baru dan perubahan urutan soal tidak salah memasangkan timer.
   useEffect(() => {
-    if (!perQEnabled) return;
-    // Simpan remaining soal sebelumnya (via ref, bukan state, agar tidak trigger re-render)
+    if (!perQEnabled || !session || !currentQ) return;
     return () => {
-      perQRemainingRef.current[currentIdx] = perQCurrentRemainingRef.current;
+      perQRemainingRef.current[currentQ.id] = perQCurrentRemainingRef.current;
+      savePerQuestionTimer(session.examCode, session.participantId, currentQ.id, perQCurrentRemainingRef.current);
     };
-  }, [currentIdx, perQEnabled]);
+  }, [currentIdx, currentQ?.id, perQEnabled, session?.submissionId]);
 
   useEffect(() => {
-    if (perQEnabled) {
-      const saved = perQRemainingRef.current[currentIdx];
-      const target = saved !== undefined ? saved : (questions[currentIdx]?.timerSeconds ?? exam?.settings.perQuestionDefaultSeconds ?? 60);
+    if (!perQEnabled || !session || !currentQ || submitted) return;
+    const id = window.setInterval(() => {
+      savePerQuestionTimer(session.examCode, session.participantId, currentQ.id, perQCurrentRemainingRef.current);
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [perQEnabled, session?.submissionId, currentQ?.id, submitted]);
+
+  useEffect(() => {
+    if (perQEnabled && session && currentQ) {
+      const saved = perQRemainingRef.current[currentQ.id] ?? session.perQuestionRemainingSeconds?.[currentQ.id];
+      const target = saved ?? (currentQ.timerSeconds ?? exam?.settings.perQuestionDefaultSeconds ?? 60);
       perQTimer.reset(target);
     }
-  }, [currentIdx]);
+  }, [currentIdx, currentQ?.id]);
 
   // ---- Answer handler (autosave) ----
   const handleAnswer = useCallback((answer: StudentAnswer) => {

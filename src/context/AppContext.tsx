@@ -240,8 +240,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const hasStudents = data.preloadedStudents !== undefined;
 
     let res: { error?: string } = {};
-    if (hasQuestions || hasStudents) {
+    if (hasQuestions) {
       res = await storage.saveExam(updated);
+    } else if (hasStudents) {
+      res = await storage.saveExamSettingsAndRoster(updated);
     } else {
       res = await storage.updateExamMeta(id, {
         title: data.title,

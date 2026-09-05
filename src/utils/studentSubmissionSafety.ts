@@ -118,6 +118,7 @@ function hydrateServerDraft(exam: any, name: string, participantId: string, draf
     remainingSeconds: existingLocal?.remainingSeconds ?? (exam.settings?.timerMode === 'WHOLE_EXAM'
       ? Math.max(0, wholeDuration - elapsed)
       : undefined),
+    perQuestionRemainingSeconds: existingLocal?.perQuestionRemainingSeconds,
     currentQuestionIndex: existingLocal?.currentQuestionIndex ?? 0,
     isSubmitted: false,
   };

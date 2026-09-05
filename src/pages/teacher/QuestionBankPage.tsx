@@ -167,18 +167,35 @@ export default function QuestionBankPage() {
         `Soal ini dipakai di ${usedIn.length} ujian. Perbarui juga di ujian tersebut?`
       );
       if (shouldPropagate) {
+        let updatedExamCount = 0;
+        let skippedAmbiguousCount = 0;
         for (const examId of usedIn) {
           const exam = exams.find(e => e.id === examId);
           if (!exam) continue;
-          const updatedQuestions = exam.questions.map(eq =>
-            eq.text === editQ.text ? { ...eq, ...q, id: eq.id } : eq
+          const matchingQuestions = exam.questions.filter(question => question.text === editQ.text);
+          // The legacy relationship records only an exam ID, not a source
+          // question ID. Do not guess when the same text appears twice.
+          if (matchingQuestions.length !== 1) {
+            skippedAmbiguousCount += 1;
+            continue;
+          }
+          const targetId = matchingQuestions[0].id;
+          const updatedQuestions = exam.questions.map(question =>
+            question.id === targetId ? { ...question, ...q, id: question.id } : question
           );
-          if (updatedQuestions !== exam.questions) {
+          if (updatedQuestions.some((question, index) => question !== exam.questions[index])) {
             await storage.saveExam({ ...exam, questions: updatedQuestions });
+            updatedExamCount += 1;
           }
         }
         await refreshExams();
-        addToast({ type: 'success', title: 'Soal diperbarui di bank + ujian terkait.' });
+        addToast({
+          type: skippedAmbiguousCount > 0 ? 'warning' : 'success',
+          title: 'Soal diperbarui di bank soal.',
+          message: skippedAmbiguousCount > 0
+            ? `${updatedExamCount} ujian diperbarui; ${skippedAmbiguousCount} dilewati karena teks soal tidak unik.`
+            : `${updatedExamCount} ujian terkait diperbarui.`,
+        });
         return;
       }
     }

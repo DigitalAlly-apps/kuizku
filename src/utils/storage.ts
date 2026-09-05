@@ -423,6 +423,36 @@ export const storage = {
     return {};
   },
 
+  // Save exam metadata and roster without deleting/reinserting questions.
+  // This remains safe after submissions reference those question rows.
+  async saveExamSettingsAndRoster(exam: Exam): Promise<{ error?: string }> {
+    const { error } = await supabase.rpc('save_exam_settings_and_roster', {
+      p_exam: {
+        id: exam.id,
+        teacher_id: exam.teacherId,
+        title: exam.title,
+        description: exam.description || null,
+        subject: exam.subject,
+        class_name: exam.className || null,
+        exam_type: exam.examType || 'UJIAN',
+        format: exam.format,
+        status: exam.status,
+        code: exam.code,
+        settings: exam.settings,
+        active_from: localDateTimeToIso(exam.activeFrom),
+        active_to: localDateTimeToIso(exam.activeTo),
+      },
+      p_students: (exam.preloadedStudents || []).map(student => ({
+        name: student.name,
+        participant_id: student.participantId ?? null,
+        nis: student.nis ?? '',
+        attendance_no: student.attendanceNo ?? null,
+      })),
+    });
+    if (error) return { error: error.message };
+    return {};
+  },
+
   // Update hanya metadata exam (judul, deskripsi, dll) tanpa menyentuh soal
   async updateExamMeta(id: string, data: {
     title?: string; description?: string; subject?: string; className?: string;
