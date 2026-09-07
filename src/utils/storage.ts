@@ -44,6 +44,15 @@ export interface StudentAttemptOverview {
   extraAttempts: number;
 }
 
+export interface StudentAnswerReview {
+  available: boolean;
+  keys: Array<{
+    questionId: string;
+    correctOptionId?: string;
+    acceptedAnswers?: string[];
+  }>;
+}
+
 const AI_GRADING_ERROR_MESSAGES: Record<string, string> = {
   unauthorized: 'Sesi guru sudah berakhir. Silakan login ulang lalu coba lagi.',
   forbidden: 'Ujian ini tidak dapat dinilai oleh akun guru yang sedang login.',
@@ -360,6 +369,21 @@ export const storage = {
       maxAttempts: Number(data.max_attempts ?? data.exam?.settings?.maxAttempts ?? 1),
       resume: data.resume === true,
     };
+  },
+
+  async getStudentAnswerReview(examCode: string, submissionId: string, participantId: string): Promise<StudentAnswerReview> {
+    const { data, error } = await supabase.rpc('get_student_answer_review', {
+      p_exam_code: examCode,
+      p_submission_id: submissionId,
+      p_participant_id: participantId,
+    });
+    if (error || !data?.available) return { available: false, keys: [] };
+    const keys: StudentAnswerReview['keys'] = Array.isArray(data.keys) ? (data.keys as Record<string, unknown>[]).map(key => ({
+        questionId: String(key.question_id ?? ''),
+        correctOptionId: typeof key.correct_option_id === 'string' ? key.correct_option_id : undefined,
+        acceptedAnswers: Array.isArray(key.accepted_answers) ? key.accepted_answers.filter((answer): answer is string => typeof answer === 'string') : undefined,
+      })).filter(key => key.questionId) : [];
+    return { available: true, keys };
   },
 
   async saveExam(exam: Exam): Promise<{ error?: string }> {

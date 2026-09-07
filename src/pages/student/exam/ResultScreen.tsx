@@ -5,7 +5,8 @@ import { formatDateTime, calcMaxMCScore } from '../../../utils/helpers';
 import { storage } from '../../../utils/storage';
 import type { Exam, Submission, StudentRanking } from '../../../types';
 import { studentSubmissionMessages } from '../../../utils/studentMessages';
-import { canShowAnswerKey, canShowRanking, canShowScore, getPassingScore } from '../../../utils/examSettings';
+import { canShowRanking, canShowScore, getPassingScore } from '../../../utils/examSettings';
+import type { StudentAnswerReview } from '../../../utils/storage';
 
 interface Props {
   exam: Exam;
@@ -20,8 +21,6 @@ export default function ResultScreen({ exam, submission, studentName }: Props) {
   const hasPendingEssay = hasEssay && submission.totalScore == null;
   const showScore = canShowScore(exam, hasPendingEssay);
   const showRanking = canShowRanking(exam, hasPendingEssay);
-  // get_student_exam sengaja tidak membawa kunci sebelum ada RPC review aman.
-  const showAnswerKey = canShowAnswerKey(exam);
   const passingScore = getPassingScore(exam.settings);
   const maxMC         = calcMaxMCScore(exam);
   const maxTotal = exam.questions.reduce((sum, question) => sum + question.weight, 0);
@@ -31,6 +30,16 @@ export default function ResultScreen({ exam, submission, studentName }: Props) {
   const hasShortAnswer = exam.questions.some(question => question.type === 'SHORT_ANSWER');
   const mcPct         = maxMC > 0 ? Math.round((submission.mcScore / maxMC) * 100) : 0;
   const [ranking, setRanking] = useState<StudentRanking | null>(null);
+  const [answerReview, setAnswerReview] = useState<StudentAnswerReview | null>(null);
+
+  useEffect(() => {
+    if (!submission.participantId || !submission.id) return;
+    let cancelled = false;
+    void storage.getStudentAnswerReview(exam.code, submission.id, submission.participantId).then(review => {
+      if (!cancelled) setAnswerReview(review);
+    });
+    return () => { cancelled = true; };
+  }, [exam.code, submission.id, submission.participantId]);
 
   useEffect(() => {
     if (!showRanking) return;
@@ -183,7 +192,7 @@ export default function ResultScreen({ exam, submission, studentName }: Props) {
         )}
 
         {/* ---- Answer Review ---- */}
-        {showAnswerKey && (
+        {answerReview?.available && (
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-xl)', padding: 'var(--sp-6)', boxShadow: 'var(--shadow-md)' }}>
             <h3 style={{ fontSize: '1rem', marginBottom: 'var(--sp-4)', display: 'flex', alignItems: 'center', gap: 8 }}>
               📋 Review Jawaban
@@ -191,10 +200,11 @@ export default function ResultScreen({ exam, submission, studentName }: Props) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
               {exam.questions.map((q, idx) => {
                 const ans = submission.answers.find(a => a.questionId === q.id);
+                const answerKey = answerReview.keys.find(key => key.questionId === q.id);
                 const normalize = (value: string) => value.trim().toLowerCase().replace(/\s+/g, ' ');
                 const isCorrect = q.type === 'MULTIPLE_CHOICE'
-                  ? ans?.selectedOptionId === q.correctOptionId
-                  : q.type === 'SHORT_ANSWER' && !!ans?.shortAnswer && (q.acceptedAnswers ?? []).some(value => normalize(value) === normalize(ans.shortAnswer!));
+                  ? ans?.selectedOptionId === answerKey?.correctOptionId
+                  : q.type === 'SHORT_ANSWER' && !!ans?.shortAnswer && (answerKey?.acceptedAnswers ?? []).some(value => normalize(value) === normalize(ans.shortAnswer!));
                 const essayGrade = submission.essayScores.find(g => g.questionId === q.id);
                 const borderColor = q.type === 'ESSAY' ? 'var(--secondary)' : isCorrect ? 'var(--success)' : 'var(--danger)';
 
@@ -214,11 +224,11 @@ export default function ResultScreen({ exam, submission, studentName }: Props) {
                             {' '}{isCorrect ? '✓' : '✗'}
                           </span>
                         </div>
-                        {!isCorrect && showAnswerKey && q.correctOptionId && (
+                        {!isCorrect && answerKey?.correctOptionId && (
                           <div>
                             <span style={{ color: 'var(--text-muted)' }}>Jawaban benar: </span>
                             <span style={{ fontWeight: 600, color: 'var(--success)' }}>
-                              {q.options?.find(o => o.id === q.correctOptionId)?.text ?? '—'}
+                              {q.options?.find(o => o.id === answerKey.correctOptionId)?.text ?? '—'}
                             </span>
                           </div>
                         )}

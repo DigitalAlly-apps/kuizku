@@ -56,7 +56,6 @@ const defaultSettings: ExamSettings = {
   navigationMode: 'FREE',
   scoreReleaseMode: 'IMMEDIATE',
   answerKeyReleaseMode: 'NEVER',
-  explanationReleaseMode: 'NEVER',
   showRankingAfterSubmit: false,
   autoSubmitOnTimeUp: true,
 };

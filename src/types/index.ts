@@ -125,8 +125,8 @@ export interface ExamSettings {
   navigationMode?: 'FREE' | 'SEQUENTIAL';
   /** Kebijakan baru; resolver tetap membaca field lama untuk ujian terdahulu. */
   scoreReleaseMode?: 'IMMEDIATE' | 'AFTER_EXAM_END' | 'AFTER_GRADING' | 'NEVER';
+  /** Mengatur kapan murid dapat melihat kembali jawabannya beserta statusnya. */
   answerKeyReleaseMode?: 'IMMEDIATE' | 'AFTER_EXAM_END' | 'NEVER';
-  explanationReleaseMode?: 'IMMEDIATE' | 'AFTER_EXAM_END' | 'NEVER';
   showRankingAfterSubmit?: boolean;
   autoSubmitOnTimeUp?: boolean;
   /** Available only to the private personal-exam module. */
