@@ -15,13 +15,14 @@ interface Props {
   perQRemaining?: number;
   perQUrgency?: string;
   perQProgressPct?: number;
+  syncStatus?: 'local' | 'syncing' | 'synced' | 'failed';
   onOpenQuestionList?: () => void;
 }
 
 export default function ExamHeader({
   examTitle, studentName, currentIdx, total, answeredCount,
   timerMode, wholeRemaining, wholeUrgency, perQRemaining, perQUrgency, perQProgressPct,
-  onOpenQuestionList,
+  onOpenQuestionList, syncStatus,
 }: Props) {
   const urgencyColor = (u?: string) =>
     u === 'critical' ? 'var(--danger)' : u === 'warning' ? 'var(--warning)' : 'var(--text-primary)';
@@ -140,6 +141,9 @@ export default function ExamHeader({
         {answeredCount < total && (
           <span style={{ color: 'var(--warning)' }}>• {total - answeredCount} belum dijawab</span>
         )}
+        {syncStatus && <span className={`exam-sync-status is-${syncStatus}`} aria-live="polite">
+          {syncStatus === 'local' ? 'Tersimpan di perangkat' : syncStatus === 'syncing' ? 'Menyinkronkan…' : syncStatus === 'synced' ? 'Tersinkron' : 'Belum tersinkron'}
+        </span>}
       </div>
     </header>
   );

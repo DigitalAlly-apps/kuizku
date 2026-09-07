@@ -14,18 +14,21 @@ export default function DashboardPage() {
 
   const stats = useMemo(() => {
     const now = Date.now();
-    const activeCount = myExams.filter(e => e.status === 'ACTIVE' && (!e.activeTo || new Date(e.activeTo).getTime() >= now)).length;
+    const isAvailableNow = (exam: typeof myExams[number]) => exam.status === 'ACTIVE'
+      && (!exam.activeFrom || new Date(exam.activeFrom).getTime() <= now)
+      && (!exam.activeTo || new Date(exam.activeTo).getTime() >= now);
+    const activeCount = myExams.filter(isAvailableNow).length;
     const endedCount = myExams.filter(e => e.status === 'ENDED' || (e.status === 'ACTIVE' && e.activeTo && new Date(e.activeTo).getTime() < now)).length;
     return {
       total: myExams.length,
       active: activeCount,
       ended: endedCount,
       draft: myExams.filter(e => e.status === 'DRAFT').length,
-      todaySubmissions: submissions.filter(s => {
+      todaySubmissions: new Set(submissions.filter(s => {
         const today = new Date().toDateString();
         return s.submittedAt && new Date(s.submittedAt).toDateString() === today &&
           myExams.some(e => e.id === s.examId);
-      }).length,
+      }).map(s => s.participantId ?? `${s.examId}:${s.studentName.trim().toLocaleLowerCase()}`)).size,
     };
   }, [myExams, submissions]);
 
@@ -35,8 +38,8 @@ export default function DashboardPage() {
 
   const actionStats = useMemo(() => {
     const now = Date.now();
-    const activeExamIds = new Set(myExams.filter(e => e.status === 'ACTIVE' && (!e.activeTo || new Date(e.activeTo).getTime() >= now)).map(e => e.id));
-    const activeSubmissions = submissions.filter(s => activeExamIds.has(s.examId) && s.isComplete);
+    const activeExamIds = new Set(myExams.filter(e => e.status === 'ACTIVE' && (!e.activeFrom || new Date(e.activeFrom).getTime() <= now) && (!e.activeTo || new Date(e.activeTo).getTime() >= now)).map(e => e.id));
+    const activeSubmissions = new Set(submissions.filter(s => activeExamIds.has(s.examId) && s.isComplete).map(s => s.participantId ?? `${s.examId}:${s.studentName.trim().toLocaleLowerCase()}`));
     const essayPending = submissions.filter(s => {
       const exam = myExams.find(e => e.id === s.examId);
       if (!exam || !s.isComplete || exam.format === 'PG_ONLY') return false;
@@ -53,7 +56,7 @@ export default function DashboardPage() {
       ).filter(Boolean).length;
       return sum + Math.max(0, preloaded - submitted);
     }, 0);
-    return { activeSubmissions: activeSubmissions.length, essayPending, notSubmitted };
+    return { activeSubmissions: activeSubmissions.size, essayPending, notSubmitted };
   }, [myExams, submissions]);
 
   const hour = new Date().getHours();
@@ -62,7 +65,7 @@ export default function DashboardPage() {
   return (
     <div className="page-content">
       {/* Header */}
-      <div className="dashboard-intro">
+      <div className="dashboard-intro dashboard-hero">
         <div><span>RINGKASAN HARI INI</span><h1>{greeting}, {currentTeacher?.name.split(' ')[0]}</h1><p>Kelola ujian dan pantau aktivitas murid dari satu tempat.</p></div>
         <button className="btn btn-primary" onClick={() => navigate('/guru/ujian/baru')}><Plus size={16} /> Buat Ujian</button>
       </div>

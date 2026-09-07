@@ -1,5 +1,6 @@
 // QuestionView — renders PG or Essay question and handles answer input
 import { useCallback } from 'react';
+import { AlertTriangle } from 'lucide-react';
 import type { Question, StudentAnswer } from '../../../types';
 
 interface Props {
@@ -10,13 +11,14 @@ interface Props {
   onAnswer: (answer: StudentAnswer) => void;
   perQRemaining?: number;
   perQUrgency?: string;
+  disabled?: boolean;
 }
 
 const OPTION_LETTERS = 'ABCDEF';
 
 export default function QuestionView({
   question, questionNumber,
-  currentAnswer, onAnswer, perQUrgency,
+  currentAnswer, onAnswer, perQUrgency, disabled = false,
 }: Props) {
 
   const handleSelectOption = useCallback((optionId: string) => {
@@ -60,7 +62,7 @@ export default function QuestionView({
           {questionNumber}
         </div>
         <div>
-          <span className={`badge ${question.type === 'MULTIPLE_CHOICE' || question.type === 'SHORT_ANSWER' ? 'badge-pg' : 'badge-essay'}`}>
+          <span id={`question-type-${question.id}`} className={`badge ${question.type === 'MULTIPLE_CHOICE' || question.type === 'SHORT_ANSWER' ? 'badge-pg' : 'badge-essay'}`}>
             {question.type === 'MULTIPLE_CHOICE' ? 'Pilihan Ganda' : question.type === 'SHORT_ANSWER' ? 'Jawaban Singkat' : 'Essay'}
           </span>
         </div>
@@ -70,7 +72,7 @@ export default function QuestionView({
       </div>
 
       {/* Question text */}
-      <div style={{
+      <div id={`question-title-${question.id}`} tabIndex={-1} style={{
         fontSize: '1rem',
         color: 'var(--text-primary)',
         lineHeight: 1.7,
@@ -95,6 +97,8 @@ export default function QuestionView({
                 id={`opt-${opt.id}`}
                 type="button"
                 onClick={() => handleSelectOption(opt.id)}
+                disabled={disabled}
+                aria-pressed={isSelected}
                 style={{
                   display: 'flex', alignItems: 'flex-start', gap: 'var(--sp-3)',
                   padding: 'var(--sp-4) var(--sp-5)',
@@ -151,6 +155,7 @@ export default function QuestionView({
               </span>
               <button
                 type="button"
+                disabled={disabled}
                 onClick={() => onAnswer({ questionId: question.id, questionType: 'MULTIPLE_CHOICE', selectedOptionId: undefined })}
                 style={{ alignSelf: 'flex-start', background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.78rem', cursor: 'pointer', padding: '4px 0' }}>
                 × Hapus pilihan
@@ -169,6 +174,8 @@ export default function QuestionView({
             placeholder="Tulis jawaban singkat Anda..."
             value={shortAnswer}
             onChange={e => handleShortAnswerChange(e.target.value)}
+            disabled={disabled}
+            aria-labelledby={`question-title-${question.id} question-type-${question.id}`}
             style={{ fontSize: '1rem', minHeight: 48, borderColor: shortAnswer.trim() ? 'var(--success)' : undefined }}
           />
           <div style={{ marginTop: 6, fontSize: '0.75rem', color: 'var(--text-muted)' }}>{shortAnswer.trim() ? '✓ Jawaban tersimpan otomatis' : 'Belum dijawab'}</div>
@@ -184,6 +191,8 @@ export default function QuestionView({
             placeholder="Tulis jawaban Anda di sini..."
             value={essayText}
             onChange={e => handleEssayChange(e.target.value)}
+            disabled={disabled}
+            aria-labelledby={`question-title-${question.id} question-type-${question.id}`}
             style={{
               fontSize: '0.95rem',
               lineHeight: 1.7,
@@ -206,8 +215,9 @@ export default function QuestionView({
           background: 'var(--danger-light)', border: '1px solid rgba(239,68,68,0.25)',
           borderRadius: 'var(--r-md)', fontSize: '0.8rem', color: 'var(--danger)',
           animation: 'pulse 1s infinite', textAlign: 'center', fontWeight: 600,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
         }}>
-          ⚠️ Waktu soal hampir habis. Simpan jawaban Anda sebelum berpindah otomatis.
+          <AlertTriangle size={16} aria-hidden="true" /> Waktu soal hampir habis. Simpan jawaban Anda sebelum berpindah otomatis.
         </div>
       )}
     </div>

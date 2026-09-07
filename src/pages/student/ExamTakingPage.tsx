@@ -6,7 +6,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { storage } from '../../utils/storage';
 import {
   loadSession, upsertAnswer, updateTimer,
-  updateCurrentIndex, buildSubmission, buildDraftSubmission, createSession, clearSession, savePerQuestionTimer,
+  updateCurrentIndex, buildSubmission, buildDraftSubmission, createSession, clearSession, savePerQuestionTimer, isAnswerFilled, saveSession,
   type ExamSession,
 } from '../../utils/examSession';
 
@@ -45,10 +45,16 @@ export default function ExamTakingPage() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitPending, setSubmitPending] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<'local' | 'syncing' | 'synced' | 'failed'>('local');
   const [timeExpired, setTimeExpired] = useState(false);
   const [submittedData, setSubmittedData] = useState<ReturnType<typeof buildSubmission> | null>(null);
   const [error, setError] = useState('');
   const submitRef = useRef(false);
+  const sessionRef = useRef<ExamSession | null>(null);
+  const draftSavingRef = useRef(false);
+  const draftDirtyRef = useRef(false);
+  sessionRef.current = session;
 
   // ---- Anti-cheat ----
   const [violations, setViolations] = useState(0);
@@ -78,31 +84,50 @@ export default function ExamTakingPage() {
         return;
       }
 
-      // Shuffle if enabled
-      let qs = [...found.questions].sort((a, b) => a.order - b.order);
-      if (found.settings.shuffleQuestions) {
-        qs = qs.sort(() => Math.random() - 0.5);
-      }
-      if (found.settings.shuffleOptions) {
-        qs = qs.map(q => ({
-          ...q,
-          options: q.options ? [...q.options].sort(() => Math.random() - 0.5) : q.options,
-        }));
-      }
-      setQuestions(qs);
-      setExam(found);
-
-      // Load or create session
+      // Restore the existing session even after a browser refresh. Presentation
+      // order is persisted so a shuffled exam never changes midway through.
       const existing = loadSession(code, state.participantId);
-      if (existing && state.resume) {
-        setSession(existing);
-        setCurrentIdx(existing.currentQuestionIndex);
+      const ordered = [...found.questions].sort((a, b) => a.order - b.order);
+      let qs: Question[];
+      if (existing && !existing.isSubmitted) {
+        const byId = new Map(ordered.map(question => [question.id, question]));
+        const questionOrder = existing.questionOrder?.filter(id => byId.has(id));
+        const stableQuestions = questionOrder?.length === ordered.length
+          ? questionOrder.map(id => byId.get(id)!)
+          : ordered;
+        qs = stableQuestions.map(question => {
+          const optionOrder = existing.optionOrderByQuestion?.[question.id];
+          if (!question.options || !optionOrder?.length) return question;
+          const optionsById = new Map(question.options.map(option => [option.id, option]));
+          const options = optionOrder.map(id => optionsById.get(id)).filter(Boolean) as NonNullable<Question['options']>;
+          return options.length === question.options.length ? { ...question, options } : question;
+        });
+        // Sessions created before stable ordering existed migrate once to a
+        // deterministic order and keep that order on every later resume.
+        const restoredSession = existing.questionOrder ? existing : {
+          ...existing,
+          questionOrder: qs.map(question => question.id),
+          optionOrderByQuestion: Object.fromEntries(qs.filter(question => question.options).map(question => [question.id, question.options!.map(option => option.id)])),
+        };
+        if (restoredSession !== existing) saveSession(restoredSession);
+        setSession(restoredSession);
+        setCurrentIdx(Math.min(restoredSession.currentQuestionIndex, qs.length - 1));
       } else {
+        qs = found.settings.shuffleQuestions ? [...ordered].sort(() => Math.random() - 0.5) : ordered;
+        if (found.settings.shuffleOptions) {
+          qs = qs.map(question => ({ ...question, options: question.options ? [...question.options].sort(() => Math.random() - 0.5) : question.options }));
+        }
         // Attempt number berasal dari submission COMPLETE di server. Draft/autosave tidak memakan jatah.
-        const newSession = createSession(found, state.studentName, state.participantId, attemptNumber ?? 1);
+        const newSession = createSession(
+          found, state.studentName, state.participantId, attemptNumber ?? 1,
+          qs.map(question => question.id),
+          Object.fromEntries(qs.filter(question => question.options).map(question => [question.id, question.options!.map(option => option.id)])),
+        );
         setSession(newSession);
         setCurrentIdx(0);
       }
+      setQuestions(qs);
+      setExam(found);
     }).catch((err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       setLoadError(`Gagal memuat ujian: ${msg}`);
@@ -112,6 +137,7 @@ export default function ExamTakingPage() {
   const handleSubmit = useCallback(async () => {
     if (submitRef.current || !session || !exam) return;
     submitRef.current = true;
+    setIsSubmitting(true);
 
     // Final submit langsung menuju RPC save_student_submission.
     // RPC adalah sumber kebenaran dan sudah memvalidasi status ujian, jadwal,
@@ -119,7 +145,12 @@ export default function ExamTakingPage() {
     // Menghindari lookup kedua di sini mencegah final submit kandas karena
     // request validasi terpisah gagal sesaat sebelum jawaban dikirim.
     const sub = { ...buildSubmission(session, exam), antiCheatEvents: antiCheatEventsRef.current };
-    const saveResult = await storage.saveSubmission(sub);
+    let saveResult: Awaited<ReturnType<typeof storage.saveSubmission>>;
+    try {
+      saveResult = await storage.saveSubmission(sub);
+    } catch {
+      saveResult = { saved: false, queued: false, error: 'Jawaban belum dapat dikirim. Periksa koneksi lalu coba lagi.' };
+    }
 
     if (saveResult.saved) {
       // Session baru dihapus setelah server mengonfirmasi submission COMPLETE.
@@ -128,10 +159,12 @@ export default function ExamTakingPage() {
       setSubmitted(true);
       setSubmitPending(false);
       setShowSubmit(false);
+      setIsSubmitting(false);
       return;
     }
 
     submitRef.current = false;
+    setIsSubmitting(false);
     setShowSubmit(false);
     setSubmittedData(sub);
     if (saveResult.queued) {
@@ -146,15 +179,26 @@ export default function ExamTakingPage() {
     }
   }, [session, exam]);
 
-  // Server-side autosave draft. LocalStorage remains for instant resume on the
-  // same device, while Supabase keeps a recoverable draft copy of answers.
+  // Keep a recoverable server draft without recreating the interval for every
+  // keystroke or sending overlapping requests.
   useEffect(() => {
-    if (!session || !exam || submitted || session.answers.length === 0) return;
+    if (!exam || submitted) return;
     const id = setInterval(() => {
-      void storage.saveSubmission({ ...buildDraftSubmission(session, exam), antiCheatEvents: antiCheatEventsRef.current });
+      const latest = sessionRef.current;
+      if (!latest || latest.answers.length === 0 || !draftDirtyRef.current || draftSavingRef.current) return;
+      draftSavingRef.current = true;
+      setSyncStatus('syncing');
+      void storage.saveSubmission({ ...buildDraftSubmission(latest, exam), antiCheatEvents: antiCheatEventsRef.current }).then(result => {
+        if (result.saved) {
+          draftDirtyRef.current = false;
+          setSyncStatus('synced');
+        } else {
+          setSyncStatus('failed');
+        }
+      }).catch(() => setSyncStatus('failed')).finally(() => { draftSavingRef.current = false; });
     }, 5000);
     return () => clearInterval(id);
-  }, [session, exam, submitted]);
+  }, [exam, submitted]);
 
   // ---- Anti-cheat: visibilitychange listener (after handleSubmit) ----
   useEffect(() => {
@@ -281,6 +325,8 @@ export default function ExamTakingPage() {
   // ---- Answer handler (autosave) ----
   const handleAnswer = useCallback((answer: StudentAnswer) => {
     if (timeExpired) return;
+    draftDirtyRef.current = true;
+    setSyncStatus('local');
     setSession(prev => {
       if (!prev) return prev;
       return upsertAnswer(prev, answer);
@@ -352,7 +398,7 @@ export default function ExamTakingPage() {
     );
   }
 
-  const answeredIds = new Set(session.answers.map(a => a.questionId));
+  const answeredIds = new Set(session.answers.filter(isAnswerFilled).map(answer => answer.questionId));
 
   return (
     <div className="exam-taking-shell" style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
@@ -369,6 +415,7 @@ export default function ExamTakingPage() {
         perQRemaining={perQEnabled ? perQTimer.remaining : undefined}
         perQUrgency={perQTimer.urgency}
         perQProgressPct={perQProgressPct}
+        syncStatus={syncStatus}
         onOpenQuestionList={() => setMobileNavOpen(true)}
       />
 
@@ -390,21 +437,22 @@ export default function ExamTakingPage() {
               totalQuestions={questions.length}
               currentAnswer={session.answers.find(a => a.questionId === currentQ.id)}
               onAnswer={handleAnswer}
+              disabled={timeExpired || isSubmitting}
               perQRemaining={perQEnabled ? perQTimer.remaining : undefined}
               perQUrgency={perQTimer.urgency}
             />
 
             {/* Navigation buttons */}
             <div className="exam-inline-navigation" style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--sp-6)', gap: 'var(--sp-3)' }}>
-              <button className="btn btn-secondary" onClick={goPrev} disabled={currentIdx === 0}>
+              <button className="btn btn-secondary" onClick={goPrev} disabled={currentIdx === 0 || isSubmitting}>
                 ← Sebelumnya
               </button>
               {currentIdx < questions.length - 1 ? (
-                <button className="btn btn-primary" onClick={goNextBtn}>
+                <button className="btn btn-primary" onClick={goNextBtn} disabled={isSubmitting}>
                   Berikutnya →
                 </button>
               ) : (
-                <button className="btn btn-secondary" onClick={() => setShowSubmit(true)}>
+                <button className="btn btn-secondary" onClick={() => setShowSubmit(true)} disabled={isSubmitting}>
                   Selesai &amp; Periksa Jawaban →
                 </button>
               )}
@@ -426,15 +474,15 @@ export default function ExamTakingPage() {
       </div>
 
       <div className="exam-mobile-navigation">
-        <button type="button" className="btn btn-secondary" onClick={goPrev} disabled={currentIdx === 0}>
+        <button type="button" className="btn btn-secondary" onClick={goPrev} disabled={currentIdx === 0 || isSubmitting}>
           ← Sebelumnya
         </button>
         {currentIdx < questions.length - 1 ? (
-          <button type="button" className="btn btn-primary" onClick={goNextBtn}>
+          <button type="button" className="btn btn-primary" onClick={goNextBtn} disabled={isSubmitting}>
             Berikutnya →
           </button>
         ) : (
-          <button type="button" className="btn btn-secondary" onClick={() => setShowSubmit(true)}>
+          <button type="button" className="btn btn-secondary" onClick={() => setShowSubmit(true)} disabled={isSubmitting}>
             Periksa Jawaban →
           </button>
         )}
@@ -445,6 +493,7 @@ export default function ExamTakingPage() {
         open={showSubmit}
         questions={questions}
         answeredIds={answeredIds}
+        submitting={isSubmitting}
         onConfirm={() => handleSubmit()}
         onCancel={() => { if (!timeExpired) setShowSubmit(false); }}
       />

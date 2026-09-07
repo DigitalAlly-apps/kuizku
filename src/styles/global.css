@@ -650,6 +650,9 @@ tbody td {
 /* ---- Student Exam Taking ---- */
 .exam-taking-shell {
   height: 100vh;
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--primary-light) 72%, transparent), transparent 34rem),
+    var(--bg);
 }
 
 .exam-header {
@@ -670,6 +673,13 @@ tbody td {
   min-width: 0;
 }
 
+.exam-question-scroll > div { padding-bottom: var(--sp-8); }
+.exam-sync-status { margin-left: auto; font-weight: 600; }
+.exam-sync-status.is-synced { color: var(--success); }
+.exam-sync-status.is-failed { color: var(--danger); }
+.exam-sync-status.is-syncing { color: var(--primary); }
+.exam-sync-status.is-local { color: var(--text-muted); }
+
 .question-nav-panel {
   min-height: 0;
   width: 220px;
@@ -679,7 +689,7 @@ tbody td {
   gap: var(--sp-3);
   padding: var(--sp-4);
   overflow-y: auto;
-  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 94%, var(--primary-light));
   border-left: 1px solid var(--border);
 }
 
@@ -726,11 +736,13 @@ tbody td {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.12s ease;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .question-nav-number.is-answered { border-color: var(--success); background: var(--success-light); color: var(--success); font-weight: 700; }
 .question-nav-number.is-current { border-color: var(--primary); background: var(--primary); color: white; font-weight: 700; box-shadow: 0 0 0 2px var(--primary-light); }
+.question-nav-number:disabled { opacity: .52; cursor: not-allowed; }
+.question-nav-number:not(:disabled):hover { border-color: var(--primary); }
 .question-nav-check { position: absolute; right: 2px; bottom: 1px; font-size: 0.58rem; line-height: 1; font-weight: 900; }
 .question-nav-current-dot { position: absolute; left: 3px; top: 3px; width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: 0.9; }
 
@@ -1410,6 +1422,8 @@ tbody td {
     flex-basis: calc(100% - 112px) !important;
   }
 
+  .exam-header-completion { display: none !important; }
+
   .exam-per-question-timer {
     padding: 6px var(--sp-4) !important;
   }
@@ -1495,9 +1509,9 @@ tbody td {
   .question-nav-mobile-sheet .question-nav-grid { grid-template-columns: repeat(6, minmax(40px, 1fr)); }
   .question-nav-mobile-sheet .question-nav-number { min-height: 44px; aspect-ratio: auto; }
 
-  .exam-header-progress-text {
-    display: none !important;
-  }
+  .exam-header-progress-text { display: flex !important; padding: 6px var(--sp-4) !important; font-size: .72rem !important; }
+  .exam-header-progress-text > span:nth-child(2), .exam-header-progress-text > span:nth-child(3) { display: none; }
+  .exam-sync-status { margin-left: auto; }
 
   .submit-dialog-actions {
     flex-direction: column-reverse;

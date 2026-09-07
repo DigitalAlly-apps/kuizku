@@ -23,6 +23,10 @@ export interface ExamSession {
   currentQuestionIndex: number;
   /** Soal tertinggi yang pernah dibuka; dipakai untuk resume navigasi berurutan. */
   highestUnlockedIndex?: number;
+  /** Stable presentation order so refresh/resume never re-shuffles an exam. */
+  questionOrder?: string[];
+  /** Stable option order per question for shuffled multiple-choice questions. */
+  optionOrderByQuestion?: Record<string, string[]>;
   isSubmitted: boolean;
 }
 
@@ -78,6 +82,8 @@ export function createSession(
   studentName: string,
   participantId: string,
   attemptNumber: number,
+  questionOrder?: string[],
+  optionOrderByQuestion?: Record<string, string[]>,
 ): ExamSession {
   const session: ExamSession = {
     submissionId: generateId(),
@@ -93,10 +99,20 @@ export function createSession(
       : undefined,
     currentQuestionIndex: 0,
     highestUnlockedIndex: 0,
+    questionOrder,
+    optionOrderByQuestion,
     isSubmitted: false,
   };
   saveSession(session);
   return session;
+}
+
+/** A question counts as answered only when it contains a meaningful value. */
+export function isAnswerFilled(answer: StudentAnswer | undefined): boolean {
+  if (!answer) return false;
+  if (answer.questionType === 'MULTIPLE_CHOICE') return Boolean(answer.selectedOptionId);
+  if (answer.questionType === 'ESSAY') return Boolean(answer.essayText?.trim());
+  return Boolean(answer.shortAnswer?.trim());
 }
 
 // ---- Upsert an answer ----
@@ -105,6 +121,12 @@ export function upsertAnswer(
   answer: StudentAnswer,
 ): ExamSession {
   const existing = session.answers.findIndex(a => a.questionId === answer.questionId);
+  if (!isAnswerFilled(answer)) {
+    const answers = existing >= 0 ? session.answers.filter((_, index) => index !== existing) : session.answers;
+    const newSession = { ...session, answers };
+    saveSession(newSession);
+    return newSession;
+  }
   const updated = existing >= 0
     ? session.answers.map((a, i) => i === existing ? answer : a)
     : [...session.answers, answer];

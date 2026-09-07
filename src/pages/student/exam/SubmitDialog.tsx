@@ -6,11 +6,12 @@ interface Props {
   open: boolean;
   questions: Question[];
   answeredIds: Set<string>;
+  submitting?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
-export default function SubmitDialog({ open, questions, answeredIds, onConfirm, onCancel }: Props) {
+export default function SubmitDialog({ open, questions, answeredIds, submitting = false, onConfirm, onCancel }: Props) {
   if (!open) return null;
 
   const unanswered = questions.filter(q => !answeredIds.has(q.id));
@@ -94,11 +95,11 @@ export default function SubmitDialog({ open, questions, answeredIds, onConfirm, 
         </div>
 
         <div className="submit-dialog-actions" style={{ display: 'flex', gap: 'var(--sp-3)' }}>
-          <button className="btn btn-secondary" style={{ flex: 1, justifyContent: 'center' }} onClick={onCancel}>
+          <button className="btn btn-secondary" style={{ flex: 1, justifyContent: 'center' }} onClick={onCancel} disabled={submitting}>
             Periksa Lagi
           </button>
-          <button className="btn btn-success" style={{ flex: 1, justifyContent: 'center' }} onClick={onConfirm}>
-            ✓ Ya, Kumpulkan
+          <button className="btn btn-success" style={{ flex: 1, justifyContent: 'center' }} onClick={onConfirm} disabled={submitting}>
+            {submitting ? 'Mengirim…' : '✓ Ya, Kumpulkan'}
           </button>
         </div>
       </div>
