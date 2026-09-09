@@ -626,10 +626,11 @@ export const storage = {
     return { saved: true, queued: false, mcScore: Number(data?.mc_score ?? 0), totalScore: data?.total_score == null ? undefined : Number(data.total_score) };
   },
 
-  async grantStudentExtraAttempt(examId: string, studentIdentifier: string): Promise<{ extraAttempts?: number; error?: string }> {
+  async grantStudentExtraAttempt(examId: string, studentIdentifier: string, count: number = 1): Promise<{ extraAttempts?: number; error?: string }> {
     const { data, error } = await supabase.rpc('grant_student_extra_attempt', {
       p_exam_id: examId,
       p_student_identifier: studentIdentifier.trim(),
+      p_count: count,
     });
     if (error || data?.success !== true) {
       console.error('grantStudentExtraAttempt error:', error ?? data);

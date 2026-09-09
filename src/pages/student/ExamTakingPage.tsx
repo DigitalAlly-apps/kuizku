@@ -3,6 +3,7 @@
 // ============================================================
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Wifi, WifiOff } from 'lucide-react';
 import { storage } from '../../utils/storage';
 import {
   loadSession, upsertAnswer, updateTimer,
@@ -54,7 +55,31 @@ export default function ExamTakingPage() {
   const sessionRef = useRef<ExamSession | null>(null);
   const draftSavingRef = useRef(false);
   const draftDirtyRef = useRef(false);
-  sessionRef.current = session;
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [showRestoredBanner, setShowRestoredBanner] = useState(false);
+  const wasOfflineRef = useRef(false);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      if (wasOfflineRef.current) {
+        setShowRestoredBanner(true);
+        const timer = setTimeout(() => setShowRestoredBanner(false), 4000);
+        wasOfflineRef.current = false;
+        return () => clearTimeout(timer);
+      }
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      wasOfflineRef.current = true;
+    };
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // ---- Anti-cheat ----
   const [violations, setViolations] = useState(0);
@@ -418,6 +443,48 @@ export default function ExamTakingPage() {
         syncStatus={syncStatus}
         onOpenQuestionList={() => setMobileNavOpen(true)}
       />
+
+      {/* Sinyal Buruk / Offline Warning Banner */}
+      {(!isOnline || syncStatus === 'failed') && (
+        <div role="alert" style={{
+          background: '#fef3c7',
+          color: '#92400e',
+          borderBottom: '1px solid #f59e0b',
+          padding: '10px var(--sp-6)',
+          fontSize: '0.85rem',
+          fontWeight: 600,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
+          textAlign: 'center',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+        }}>
+          <WifiOff size={18} style={{ flexShrink: 0 }} />
+          <span>
+            Sinyal internet Anda terputus atau tidak stabil. <strong>Jawaban Anda tetap tersimpan aman di perangkat ini.</strong> Jangan keluar atau refresh halaman.
+          </span>
+        </div>
+      )}
+      {/* Restored Connection Banner */}
+      {showRestoredBanner && isOnline && syncStatus !== 'failed' && (
+        <div role="status" style={{
+          background: '#d1fae5',
+          color: '#065f46',
+          borderBottom: '1px solid #10b981',
+          padding: '8px var(--sp-6)',
+          fontSize: '0.85rem',
+          fontWeight: 600,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
+          textAlign: 'center',
+        }}>
+          <Wifi size={18} style={{ flexShrink: 0 }} />
+          <span>Koneksi kembali terhubung! Jawaban Anda telah tersinkronisasi ke server.</span>
+        </div>
+      )}
 
       {/* Anti-cheat warning banner */}
       {showViolationWarning && (
