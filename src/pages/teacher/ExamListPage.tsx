@@ -13,11 +13,11 @@ import { PersonalDataModal } from '../../features/personal-exam/PersonalDataModa
 type ExamAvailability = 'DRAFT' | 'UPCOMING' | 'ACTIVE' | 'FINISHED' | 'ARCHIVED';
 
 const STATUS_FILTERS: { label: string; value: ExamAvailability | 'ALL' }[] = [
+  { label: 'Aktif', value: 'ACTIVE' },
+  { label: 'Akan Datang', value: 'UPCOMING' },
+  { label: 'Selesai', value: 'FINISHED' },
   { label: 'Semua', value: 'ALL' },
   { label: 'Draft', value: 'DRAFT' },
-  { label: 'Akan Datang', value: 'UPCOMING' },
-  { label: 'Aktif', value: 'ACTIVE' },
-  { label: 'Selesai', value: 'FINISHED' },
   { label: 'Diarsipkan', value: 'ARCHIVED' },
 ];
 
