@@ -60,7 +60,7 @@ export default function StudentRankingPage() {
   const currentEntry = visibleEntries.find(entry => entry.isCurrent);
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: 'var(--sp-4)' }}>
+    <div style={{ minHeight: '100dvh', background: 'var(--bg)', padding: 'var(--sp-4)' }}>
       <main style={{ maxWidth: 620, margin: '0 auto', padding: 'var(--sp-4) 0 var(--sp-8)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 'var(--sp-6)' }}>
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate(`/ujian/${code}`)}><ArrowLeft size={15} /> Kembali</button>

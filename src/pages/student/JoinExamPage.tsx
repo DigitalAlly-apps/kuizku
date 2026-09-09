@@ -356,7 +356,7 @@ const iconStyle: React.CSSProperties = {
 };
 
 const styles: Record<string, React.CSSProperties> = {
-  page: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--sp-4)', position: 'relative', background: 'var(--bg)' },
+  page: { minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--sp-4)', position: 'relative', background: 'var(--bg)' },
   bg: { display: 'none' },
   container: { position: 'relative', zIndex: 1, width: '100%', maxWidth: 480, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--sp-6)' },
   logo: { display: 'flex', alignItems: 'center', gap: 10 },

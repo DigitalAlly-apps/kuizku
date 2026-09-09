@@ -1353,8 +1353,8 @@ tbody td {
   }
 
   .btn-icon {
-    min-width: 38px;
-    min-height: 38px;
+    min-width: 44px;
+    min-height: 44px;
   }
 
   .table-wrap {
@@ -1376,6 +1376,16 @@ tbody td {
     left: 0;
     z-index: 2;
     background: var(--surface);
+  }
+
+  /* Sticky second column di mobile */
+  table thead th:nth-child(3),
+  table tbody td:nth-child(3) {
+    position: sticky;
+    left: 120px;
+    z-index: 2;
+    background: var(--surface);
+    box-shadow: 4px 0 8px -4px rgba(0, 0, 0, 0.1);
   }
 
   thead th,
@@ -1451,8 +1461,8 @@ tbody td {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 40px;
-    padding: 0 10px;
+    min-height: 44px;
+    padding: 0 12px;
     border: 1px solid var(--border-strong);
     border-radius: var(--r-md);
     background: var(--surface-2);

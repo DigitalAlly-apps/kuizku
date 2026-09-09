@@ -142,7 +142,7 @@
   }
 
   .exam-filter-chip {
-    min-height: 38px;
+    min-height: 44px;
     padding: 7px 14px;
     flex: 0 0 auto;
     font-size: 0.8rem;
@@ -206,8 +206,8 @@
   }
 
   .exam-card-actions .btn-icon {
-    min-width: 40px;
-    min-height: 40px;
+    min-width: 44px;
+    min-height: 44px;
   }
 
   .exam-card-title {

@@ -34,7 +34,7 @@ export default function InstructionsPage() {
   }, [state, code, navigate]);
 
   if (!exam || !state) return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <span className="spinner spinner-lg" />
     </div>
   );
@@ -107,7 +107,7 @@ export default function InstructionsPage() {
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  page: { minHeight: '100vh', background: 'var(--bg)', padding: 'var(--sp-6) var(--sp-4)', position: 'relative' },
+  page: { minHeight: '100dvh', background: 'var(--bg)', padding: 'var(--sp-6) var(--sp-4)', position: 'relative' },
   bg: { position: 'fixed', inset: 0, background: 'radial-gradient(ellipse 60% 40% at 50% 0%, rgba(79,110,247,0.1), transparent)', zIndex: 0, pointerEvents: 'none' },
   container: { position: 'relative', zIndex: 1, maxWidth: 560, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' },
   card: { background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 'var(--r-xl)', padding: 'var(--sp-6)', boxShadow: 'var(--shadow-sm)' },

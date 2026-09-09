@@ -287,10 +287,10 @@
 .workspace-participant-select span:not(.sr-only) { display: grid; place-items: center; }
 .workspace-participant-select:focus-within { border-radius: var(--r-sm); outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-.workspace-roster-selection-bar { position: sticky; bottom: var(--sp-3); z-index: 4; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); margin-top: var(--sp-4); padding: var(--sp-3); border: 1px solid var(--border-strong); border-radius: var(--r-lg); background: color-mix(in srgb, var(--surface) 94%, transparent); box-shadow: var(--shadow-lg); backdrop-filter: blur(10px); }
+.workspace-roster-selection-bar { position: sticky; bottom: var(--sp-3); z-index: 4; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-3); margin-top: var(--sp-4); padding: var(--sp-3); border: 1px solid var(--border-strong); border-radius: var(--r-lg); background: color-mix(in srgb, var(--surface) 94%, transparent); box-shadow: var(--shadow-lg); backdrop-filter: blur(10px); }
 .workspace-roster-selection-bar span { color: var(--text-secondary); font-size: .84rem; }
 .participant-filter-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 var(--sp-3); }
-.participant-filter-chips button { min-height: 32px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--r-full); background: var(--surface-2); color: var(--text-muted); font-size: 0.78rem; font-weight: 700; }
+.participant-filter-chips button { min-height: 44px; padding: 0 14px; border: 1px solid var(--border); border-radius: var(--r-full); background: var(--surface-2); color: var(--text-muted); font-size: 0.8rem; font-weight: 700; }
 .participant-filter-chips button.is-active { border-color: var(--primary); background: var(--primary-light); color: var(--primary); }
 .roster-pending-list { display: flex; flex-direction: column; }
 .roster-pending-row { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; align-items: center; gap: var(--sp-3); min-height: 46px; padding: 8px 0; border-bottom: 1px solid var(--border); }
@@ -601,7 +601,7 @@
   .page-header h1, .section-header h1 { font-size: 1.5rem; }
   .card { padding: var(--sp-4); }
   .btn { min-height: 44px; }
-  .btn-sm { min-height: 36px; }
+  .btn-sm { min-height: 44px; }
   .btn-icon { min-width: 44px; min-height: 44px; }
   .form-input, .form-select, .form-textarea { min-height: 44px; font-size: 1rem; }
   .form-textarea { min-height: 112px; }

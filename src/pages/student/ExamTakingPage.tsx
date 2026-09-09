@@ -374,7 +374,7 @@ export default function ExamTakingPage() {
   // ---- Error state ----
   if (loadError) {
     return (
-      <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, padding: 'var(--sp-6)' }}>
+      <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, padding: 'var(--sp-6)' }}>
         <div style={{ fontSize: '3rem' }}>⚠️</div>
         <p style={{ color: 'var(--danger)', fontWeight: 600, textAlign: 'center' }}>{loadError}</p>
         <button className="btn btn-secondary" onClick={() => navigate('/ujian')}>← Kembali</button>
@@ -385,7 +385,7 @@ export default function ExamTakingPage() {
   // ---- Loading state ----
   if (!exam || !session || questions.length === 0) {
     return (
-      <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ textAlign: 'center' }}>
           <span className="spinner spinner-lg" style={{ display: 'block', margin: '0 auto var(--sp-4)' }} />
           <p style={{ color: 'var(--text-muted)' }}>Memuat ujian...</p>
@@ -396,7 +396,7 @@ export default function ExamTakingPage() {
 
   if (error) {
     return (
-      <div role="alert" aria-live="assertive" style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, padding: 'var(--sp-6)' }}>
+      <div role="alert" aria-live="assertive" style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, padding: 'var(--sp-6)' }}>
         <p style={{ color: 'var(--danger)', fontWeight: 600, textAlign: 'center' }}>{error}</p>
         <div style={{ display: 'flex', gap: 'var(--sp-3)', flexWrap: 'wrap', justifyContent: 'center' }}>
           <button className="btn btn-primary" onClick={() => { setError(''); void handleSubmit(); }}>Coba kirim lagi</button>
@@ -412,7 +412,7 @@ export default function ExamTakingPage() {
 
   if (submitPending) {
     return (
-      <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--sp-6)' }}>
+      <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--sp-6)' }}>
         <div style={{ maxWidth: 480, textAlign: 'center', background: 'var(--surface)', border: '1px solid var(--warning)', borderRadius: 'var(--r-xl)', padding: 'var(--sp-8)' }}>
           <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>📥</div>
           <h1 style={{ marginBottom: 8 }}>Jawaban Belum Terkirim</h1>
@@ -426,7 +426,7 @@ export default function ExamTakingPage() {
   const answeredIds = new Set(session.answers.filter(isAnswerFilled).map(answer => answer.questionId));
 
   return (
-    <div className="exam-taking-shell" style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
+    <div className="exam-taking-shell" style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
       {/* Header with timer */}
       <ExamHeader
         examTitle={exam.title}

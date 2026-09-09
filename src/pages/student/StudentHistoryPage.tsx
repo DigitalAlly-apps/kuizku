@@ -72,7 +72,7 @@ export default function StudentHistoryPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
       <header style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: 'var(--sp-4) var(--sp-6)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><div style={{ width: 32, height: 32, background: 'linear-gradient(135deg, var(--primary), var(--secondary))', borderRadius: 10, display: 'grid', placeItems: 'center' }}>{APP_CONFIG.icon}</div><strong style={{ fontSize: '1.15rem' }}>{APP_CONFIG.name}</strong></div>
         <button type="button" className="btn btn-primary btn-sm" onClick={() => navigate('/ujian')}>Masuk Ujian</button>

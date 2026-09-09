@@ -87,7 +87,7 @@ export default function ResultScreen({ exam, submission, studentName }: Props) {
   }, []);
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 'var(--sp-4)', paddingTop: 'var(--sp-8)' }}>
+    <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 'var(--sp-4)', paddingTop: 'var(--sp-8)' }}>
       <div style={{ maxWidth: 520, width: '100%', display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
 
         {/* ---- Success Card ---- */}

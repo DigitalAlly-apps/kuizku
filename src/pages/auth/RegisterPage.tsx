@@ -105,7 +105,7 @@ export default function RegisterPage() {
 const iconStyle: React.CSSProperties = { position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' };
 
 const styles: Record<string, React.CSSProperties> = {
-  page: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--sp-4)', position: 'relative', background: 'var(--bg)' },
+  page: { minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--sp-4)', position: 'relative', background: 'var(--bg)' },
   bg: { display: 'none' },
   card: { position: 'relative', zIndex: 1, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: 'var(--sp-8)', width: '100%', maxWidth: 520, boxShadow: 'var(--shadow-sm)', margin: 'var(--sp-6) auto' },
   logo: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 'var(--sp-6)', justifyContent: 'center' },
