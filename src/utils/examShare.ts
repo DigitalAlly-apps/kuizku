@@ -18,6 +18,13 @@ function formatTimer(exam: Exam): string | undefined {
 
 export function buildExamWhatsAppMessage(exam: Exam, url: string): string {
   const timer = formatTimer(exam);
+  const maxAttempts = exam.settings.maxAttempts;
+  const attemptsText = maxAttempts === 1
+    ? 'Percobaan: 1x (tidak bisa mengulang)'
+    : maxAttempts > 1
+      ? `Percobaan: ${maxAttempts}x`
+      : undefined;
+
   return [
     `📝 *${exam.title}*`,
     exam.description?.trim(),
@@ -25,9 +32,10 @@ export function buildExamWhatsAppMessage(exam: Exam, url: string): string {
     `Link ujian: ${url}`,
     `\nBentuk soal: ${formatExamFormat(exam.format)}`,
     `Jumlah soal: ${exam.questions.length} soal`,
-    `Waktu dibuka: ${formatShareDateTime(exam.activeFrom)}`,
+    exam.activeFrom ? `Waktu dibuka: ${formatShareDateTime(exam.activeFrom)}` : undefined,
     `Waktu ditutup: ${exam.activeTo ? formatShareDateTime(exam.activeTo) : 'Tidak dibatasi'}`,
     timer ? `Timer: ${timer}` : undefined,
+    attemptsText,
     `\nSilakan masuk menggunakan kode atau link di atas.`,
   ].filter(Boolean).join('\n');
 }
