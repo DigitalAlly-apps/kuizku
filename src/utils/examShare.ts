@@ -19,11 +19,9 @@ function formatTimer(exam: Exam): string | undefined {
 export function buildExamWhatsAppMessage(exam: Exam, url: string): string {
   const timer = formatTimer(exam);
   const maxAttempts = exam.settings.maxAttempts;
-  const attemptsText = maxAttempts === 1
-    ? 'Percobaan: 1x (tidak bisa mengulang)'
-    : maxAttempts > 1
-      ? `Percobaan: ${maxAttempts}x`
-      : undefined;
+  const attemptsText = maxAttempts > 0
+    ? `Percobaan: 1/${maxAttempts}`
+    : undefined;
 
   return [
     `📝 *${exam.title}*`,

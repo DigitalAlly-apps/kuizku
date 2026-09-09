@@ -1,5 +1,0 @@
-import{O as s}from"./index-CgPyl6Wq.js";function o(t){return t?new Date(t).toLocaleString("id-ID",{weekday:"long",day:"numeric",month:"long",year:"numeric",hour:"2-digit",minute:"2-digit",hour12:!1,hourCycle:"h23"}):"Setelah ujian dipublikasikan"}function u(t){if(t.settings.timerMode!=="NONE"){if(t.settings.timerMode==="WHOLE_EXAM"&&t.settings.wholExamTimerSeconds)return`${Math.ceil(t.settings.wholExamTimerSeconds/60)} menit untuk seluruh ujian`;if(t.settings.timerMode==="PER_QUESTION"&&t.settings.perQuestionDefaultSeconds)return`${t.settings.perQuestionDefaultSeconds} detik per soal`}}function l(t,a){var n;const e=u(t),i=t.settings.maxAttempts,r=i===1?"Percobaan: 1x (tidak bisa mengulang)":i>1?`Percobaan: ${i}x`:void 0;return[`📝 *${t.title}*`,(n=t.description)==null?void 0:n.trim(),`
-Kode ujian: *${t.code}*`,`Link ujian: ${a}`,`
-Bentuk soal: ${s(t.format)}`,`Jumlah soal: ${t.questions.length} soal`,t.activeFrom?`Waktu dibuka: ${o(t.activeFrom)}`:void 0,`Waktu ditutup: ${t.activeTo?o(t.activeTo):"Tidak dibatasi"}`,e?`Timer: ${e}`:void 0,r,`
-Silakan masuk menggunakan kode atau link di atas.`].filter(Boolean).join(`
-`)}export{l as b,o as f};

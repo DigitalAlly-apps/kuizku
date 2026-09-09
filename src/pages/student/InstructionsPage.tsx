@@ -71,7 +71,7 @@ export default function InstructionsPage() {
 
         <section className="student-identity-summary" aria-label="Identitas peserta">
           <div><span>Peserta</span><strong>{state.studentName}</strong></div>
-          <div><span>Percobaan</span><strong>{state.attemptNumber} dari {exam.settings.maxAttempts === 0 ? '∞' : exam.settings.maxAttempts}</strong></div>
+          <div><span>Percobaan</span><strong>{state.attemptNumber}/{exam.settings.maxAttempts === 0 ? '∞' : exam.settings.maxAttempts}</strong></div>
         </section>
 
         <section className="student-before-start" style={styles.card}>
