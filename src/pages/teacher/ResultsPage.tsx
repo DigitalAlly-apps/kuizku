@@ -814,7 +814,7 @@ export default function ResultsPage() {
                   <div className="student-analysis-identity">
                     <div>
                       <strong>{detailSub.studentName}</strong>
-                      <span>Percobaan {detailSub.attemptNumber}</span>
+                      <span>Percobaan {detailSub.attemptNumber}/{selectedExam?.settings.maxAttempts === 0 ? '∞' : selectedExam?.settings.maxAttempts ?? 1}</span>
                     </div>
                     {detailSub.isReturned && <span className="student-analysis-returned">Dikembalikan untuk revisi</span>}
                   </div>
