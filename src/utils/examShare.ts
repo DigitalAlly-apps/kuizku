@@ -1,7 +1,7 @@
 import type { Exam } from '../types';
 import { formatExamFormat } from './helpers';
 
-function formatShareDateTime(iso?: string): string {
+export function formatShareDateTime(iso?: string): string {
   if (!iso) return 'Setelah ujian dipublikasikan';
   return new Date(iso).toLocaleString('id-ID', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',

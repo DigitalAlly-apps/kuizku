@@ -5,6 +5,7 @@ import { useApp, useToast } from '../../context/AppContext';
 import { EmptyState, FormatBadge, StatusBadge, SectionHeader, Modal } from '../../components/ui';
 import NumericInput from '../../components/ui/NumericInput';
 import { calcMaxMCScore, calcMaxEssayScore, formatDateTime } from '../../utils/helpers';
+import { formatShareDateTime } from '../../utils/examShare';
 import { getPassingScore } from '../../utils/examSettings';
 import { getRosterAttendance } from '../../utils/participantAttendance';
 import * as XLSX from 'xlsx';
@@ -494,8 +495,17 @@ export default function ResultsPage() {
 
   const copyPendingRoster = async () => {
     if (!selectedExam || !pendingRosterParticipants.length) return;
+    const url = `${window.location.origin}/ujian/${selectedExam.code}`;
     const names = pendingRosterParticipants.map(({ student }, index) => `${String(student.attendanceNo ?? index + 1).padStart(2, '0')}. ${student.name}`);
-    const message = `📢 Pengingat — ${selectedExam.title}\n\nBerikut murid yang belum mengumpulkan:\n${names.join('\n')}\n\nMohon segera mengerjakan dan mengumpulkan ujian.`;
+    const activeToText = selectedExam.activeTo ? formatShareDateTime(selectedExam.activeTo) : 'Tidak dibatasi';
+    const message = [
+      `Link tugas: ${url}`,
+      `\n📢 *Pengingat — ${selectedExam.title}*`,
+      `\nBerikut murid yang belum mengerjakan:`,
+      names.join('\n'),
+      `\nWaktu ditutup: ${activeToText}`,
+      `\nMohon segera mengerjakan dan mengumpulkan.`,
+    ].join('\n');
     try {
       await copyTextToClipboard(message);
       addToast({ type: 'success', title: 'Daftar siap dikirim', message: `${names.length} nama sudah disalin untuk dikirim ke grup.` });
