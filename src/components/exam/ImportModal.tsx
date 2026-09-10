@@ -190,7 +190,7 @@ export default function ImportModal({ open, format, onImport, onBeforeImport, on
       subtitle="Upload file Excel, CSV, atau Word (.docx) berisi daftar soal Anda">
       {step === 'upload' && (
         <div>
-          <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv,.docx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style={{ display: 'none' }}
+          <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv,.docx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,application/vnd.openxmlformats-officedocument.wordprocessingml.document" className="sr-only" tabIndex={-1}
             onClick={event => event.stopPropagation()}
             onChange={event => {
               const file = event.target.files?.[0];
