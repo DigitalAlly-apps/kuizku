@@ -401,7 +401,28 @@ export default function ResultsPage() {
 
   const exportExcel = () => {
     if (!selectedExam) return;
-    const rows = examSubs.map((s, i) => {
+
+    const normalizeName = (value: string) => value.trim().toLocaleLowerCase('id-ID');
+    const rosterKey = (student: { name: string; nis?: string; participantId?: string }) => student.participantId
+      ? `participant:${student.participantId}`
+      : student.nis?.trim()
+      ? `nis:${student.nis.trim().toLowerCase()}`
+      : `name:${normalizeName(student.name)}`;
+    const submKey = (sub: Submission) => sub.participantId
+      ? `participant:${sub.participantId}`
+      : sub.nis?.trim()
+      ? `nis:${sub.nis.trim().toLowerCase()}`
+      : `name:${normalizeName(sub.studentName)}`;
+    const sortSubs = (items: Submission[]) => [...items].sort((a, b) =>
+      a.attemptNumber - b.attemptNumber
+      || (a.submittedAt ?? '').localeCompare(b.submittedAt ?? '')
+      || a.studentName.localeCompare(b.studentName, 'id-ID'));
+
+    const rowForSub = (attendanceNo: number | undefined, s: Submission | null, name: string): (string | number)[] => {
+      const detailHeaders = selectedExam.questions.flatMap(() => ['', '', '']);
+      if (!s) {
+        return ['', name, attendanceNo ?? '', '', '', '', '', '', '', 'BELUM MENGERJAKAN', maxMC, maxEssay, maxTotal, 0, ...detailHeaders];
+      }
       const essayTotal = s.essayScores.reduce((a, g) => a + g.score, 0);
       const gradingStatus = essayStatus(s);
       const isFinal = !s.isReturned && s.totalScore != null && (gradingStatus === 'NONE' || gradingStatus === 'FINAL');
@@ -420,12 +441,41 @@ export default function ResultsPage() {
         const comment = q.type === 'ESSAY' ? grade?.comment ?? '' : '';
         return [`${qIdx + 1}. ${answerText}`, score, comment];
       });
-      return [i + 1, s.studentName, attendanceNoFor(s) ?? '', s.attemptNumber, s.submittedAt ? formatDateTime(s.submittedAt) : '-', s.mcScore, essayTotal || '', isFinal ? s.totalScore : '', isFinal && s.totalScore != null ? toPercent(s.totalScore) : '', isFinal ? 'FINAL' : gradingStatus === 'PARTIAL' ? 'DINILAI SEBAGIAN' : 'MENUNGGU PENILAIAN', maxMC, maxEssay, maxTotal, s.antiCheatEvents?.length ?? 0, ...details];
-    });
+      return ['', s.studentName, attendanceNo ?? '', s.attemptNumber, s.submittedAt ? formatDateTime(s.submittedAt) : '-', s.mcScore ?? '', essayTotal || '', isFinal ? (s.totalScore ?? '') : '', isFinal && s.totalScore != null ? toPercent(s.totalScore) : '', isFinal ? 'FINAL' : gradingStatus === 'PARTIAL' ? 'DINILAI SEBAGIAN' : 'MENUNGGU PENILAIAN', maxMC, maxEssay, maxTotal, s.antiCheatEvents?.length ?? 0, ...details];
+    };
+
+    const unassigned = new Map(examSubs.map(sub => [sub.id, sub]));
+    const dataRows: (string | number)[][] = [];
+
+    if (selectedExam.preloadedStudents.length > 0) {
+      [...selectedExam.preloadedStudents]
+        .sort((a, b) => (a.attendanceNo ?? Number.MAX_SAFE_INTEGER) - (b.attendanceNo ?? Number.MAX_SAFE_INTEGER) || a.name.localeCompare(b.name, 'id-ID'))
+        .forEach(student => {
+          const key = rosterKey(student);
+          const matched = sortSubs(examSubs.filter(sub => submKey(sub) === key));
+          matched.forEach(sub => unassigned.delete(sub.id));
+          if (matched.length) {
+            matched.forEach(sub => dataRows.push(rowForSub(student.attendanceNo, sub, student.name)));
+          } else {
+            dataRows.push(rowForSub(student.attendanceNo, null, student.name));
+          }
+        });
+      sortSubs([...unassigned.values()])
+        .sort((a, b) => a.studentName.localeCompare(b.studentName, 'id-ID') || a.attemptNumber - b.attemptNumber)
+        .forEach(sub => dataRows.push(rowForSub(attendanceNoFor(sub), sub, sub.studentName)));
+    } else {
+      [...examSubs]
+        .sort((a, b) => a.studentName.localeCompare(b.studentName, 'id-ID') || a.attemptNumber - b.attemptNumber)
+        .forEach(sub => dataRows.push(rowForSub(attendanceNoFor(sub), sub, sub.studentName)));
+    }
+
+    // Isi kolom "No" (nomor urut baris)
+    dataRows.forEach((row, i) => { row[0] = i + 1; });
+
     const detailHeaders = selectedExam.questions.flatMap((_, i) => [`S${i + 1} Jawaban`, `S${i + 1} Skor`, `S${i + 1} Komentar`]);
     const ws = XLSX.utils.aoa_to_sheet([
-      ['No','Nama','No. Absen','Percobaan','Waktu Submit','Skor PG','Skor Essay','Total','Nilai (0-100)','Status Nilai','Maks PG','Maks Essay','Maks Total','Pelanggaran Anti-cheat', ...detailHeaders],
-      ...rows,
+      ['No', 'Nama', 'No. Absen', 'Percobaan', 'Waktu Submit', 'Skor PG', 'Skor Essay', 'Total', 'Nilai (0-100)', 'Status Nilai', 'Maks PG', 'Maks Essay', 'Maks Total', 'Pelanggaran Anti-cheat', ...detailHeaders],
+      ...dataRows,
     ]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Rekap');
